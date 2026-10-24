@@ -37,5 +37,6 @@ business fields; `backend/repositories` reserves the future persistence layer.
 DDL, operator tools, checks, and documentation. `desktop` and `mobile` document
 future clients without implementing them.
 
-The local feature branch is for independent Phase 1 review. Publishing and PR
-creation require explicit approval. No Phase 2 work is included.
+The feature branch is for independent Phase 1 review. Publication and a draft PR
+were authorized for the final engineering review; merging requires a separate
+approval. See [final engineering review](docs/FINAL_REVIEW.md). No Phase 2 work is included.

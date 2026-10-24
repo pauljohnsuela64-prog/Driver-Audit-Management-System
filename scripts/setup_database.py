@@ -28,11 +28,16 @@ def main():
             cursor.execute("SELECT User FROM mysql.user WHERE User IN (%s, %s)", (app_user, migration_user))
             if cursor.fetchone():
                 raise SystemExit("DAMS accounts already exist; refusing to alter existing accounts")
+            cursor.execute("SELECT @@GLOBAL.partial_revokes")
+            partial_revokes = bool(cursor.fetchone()[0])
+            # Database-level grants interpret underscores as wildcards unless
+            # partial_revokes is enabled. Never broaden grants to similar names.
+            grant_database = database if partial_revokes else database.replace("_", r"\_")
             # Fixed identifiers only. MySQL DDL auto-commits: inspect partial failures.
             cursor.execute(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
             cursor.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s", (app_user, app_password))
             cursor.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s", (migration_user, migration_password))
-            cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES ON `{database}`.* TO %s@'localhost'", (migration_user,))
+            cursor.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES ON `{grant_database}`.* TO %s@'localhost'", (migration_user,))
         print(f"Provisioned {database}; run migrations using {migration_user}.")
         print("Runtime account has no grants yet: apply database/README.md grants after migration.")
     finally:

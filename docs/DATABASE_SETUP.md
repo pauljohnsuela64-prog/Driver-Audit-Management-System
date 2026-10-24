@@ -60,14 +60,22 @@ account URL (same driver, `driver_audit_test_phase1`). Tests deliberately read t
 variable from the environment, not `.env`. The database must already exist and
 contain no tables. Tests refuse root, non-test database names and nonempty targets.
 They upgrade, insert duplicate plates, compare metadata, check version, downgrade,
-upgrade again and check Alembic drift. They leave only the Alembic version table;
-an administrator must prepare an empty test database before another run.
+upgrade again and check Alembic drift. Successful runs remove their own Alembic
+version table and leave the test database empty for another run. If a run fails,
+inspect only the dedicated test database before cleaning up partial test state.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q -rs
 .\.venv\Scripts\python.exe -m pytest -m mysql -q -rs
+# Also execute the model, relationship, UTC, version and transaction tests on MySQL:
+.\.venv\Scripts\python.exe -m pytest --mysql -q -rs
 ```
 
 Without this configuration MySQL tests skip; SQLite migration and unit tests
 still execute without any MySQL access. Do not point tests at the development
 database or Company Operations ERP, Basic Hauling, or IT Help Desk databases.
+
+Database-wide migration grants escape underscore wildcard characters when
+`partial_revokes` is disabled; when enabled, the literal database name is used.
+This prevents access to similarly named databases without changing server settings.
+See [MySQL GRANT semantics](https://dev.mysql.com/doc/refman/8.0/en/grant.html).

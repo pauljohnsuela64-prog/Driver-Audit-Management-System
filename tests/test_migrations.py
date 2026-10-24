@@ -8,13 +8,13 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
-from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from backend.core.database import make_engine
 from backend.models import Base
 from tests.test_foundation import audit, user
+from tests.mysql_support import mysql_test_engine
 
 
 def verify_migrations(engine):
@@ -45,14 +45,21 @@ def verify_migrations(engine):
             s.rollback()
         command.downgrade(config, "base")
         assert inspect(connection).get_table_names() == ["alembic_version"]
+        connection.commit()
         command.upgrade(config, "head")
         command.check(config)
         command.downgrade(config, "base")
+        connection.commit()
+        # Only the version table created in this verified-empty test database.
+        connection.execute(text("DROP TABLE alembic_version"))
+        connection.commit()
+        assert inspect(connection).get_table_names() == []
 
 
 def test_sqlite_migration_roundtrip():
     engine = make_engine("sqlite://")
     try:
+        verify_migrations(engine)
         verify_migrations(engine)
     finally:
         engine.dispose()
@@ -81,14 +88,9 @@ def test_mysql_migration_roundtrip():
     value = os.getenv("DAMS_TEST_DATABASE_URL")
     if not value:
         pytest.skip("DAMS_TEST_DATABASE_URL absent; dedicated empty MySQL test database and credentials required")
-    url = make_url(value)
-    assert url.drivername == "mysql+pymysql"
-    assert url.database and url.database.startswith("driver_audit_test_")
-    assert url.username and url.username.lower() != "root" and url.password
-    engine = make_engine(url)
+    engine = mysql_test_engine()
     try:
         with engine.connect() as connection:
-            assert inspect(connection).get_table_names() == [], "Test database must be empty; refusing to modify existing tables"
             assert connection.scalar(text("SELECT @@session.time_zone")) == "+00:00"
         verify_migrations(engine)
     finally:

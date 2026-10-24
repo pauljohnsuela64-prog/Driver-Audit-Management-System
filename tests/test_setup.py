@@ -6,14 +6,15 @@ from scripts import setup_database
 
 
 @pytest.mark.parametrize("test", [False, True])
-def test_provisioning_scoped_to_dams(monkeypatch, test):
+@pytest.mark.parametrize("partial_revokes", [False, True])
+def test_provisioning_scoped_to_dams(monkeypatch, test, partial_revokes):
     monkeypatch.setattr("sys.argv", ["setup_database"] + (["--test"] if test else []))
     monkeypatch.setattr("builtins.input", lambda _: "administrator")
     passwords = iter(["admin-test-only", "app-test-only", "migration-test-only"])
     monkeypatch.setattr(setup_database, "getpass", lambda _: next(passwords))
     connection = MagicMock()
     cursor = connection.cursor.return_value.__enter__.return_value
-    cursor.fetchone.return_value = None
+    cursor.fetchone.side_effect = [None, None, (int(partial_revokes),)]
     connect = MagicMock(return_value=connection)
     monkeypatch.setattr(setup_database.pymysql, "connect", connect)
     setup_database.main()
@@ -21,6 +22,8 @@ def test_provisioning_scoped_to_dams(monkeypatch, test):
     target = "driver_audit_test_phase1" if test else "driver_audit_db"
     assert any(f"CREATE DATABASE `{target}`" in statement for statement in sql)
     assert sum(statement.startswith("GRANT") for statement in sql) == 1
+    grant_target = target if partial_revokes else target.replace("_", r"\_")
+    assert any(f"ON `{grant_target}`.*" in statement for statement in sql)
     assert not any("ALTER USER" in statement or "DROP" == statement.split()[0] for statement in sql)
     for statement in sql:
         assert "test-only" not in statement
