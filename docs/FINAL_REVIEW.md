@@ -1,5 +1,8 @@
 # Phase 1 final engineering review
 
+Historical checkpoint: the live MySQL blocker below was subsequently resolved.
+See [LIVE_MYSQL_REVIEW.md](LIVE_MYSQL_REVIEW.md) for the final gate results.
+
 Review date: October 25, 2026 (Asia/Manila). Project: `C:\BHLI-Audit`.
 
 Verdict: local verification passes; hold final merge approval pending live MySQL

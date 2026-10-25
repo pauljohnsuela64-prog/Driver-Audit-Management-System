@@ -1,7 +1,8 @@
 # MySQL setup
 
-Use MySQL 8.0.16 or newer (enforced CHECK constraints). The local MySQL80 service
-was observed running, but no DAMS account/database has been provisioned or tested.
+Use MySQL 8.0.16 or newer (enforced CHECK constraints). Live Phase 1 verification completed on MySQL 8.0.46 with MySQL80 running.
+Both dedicated databases and all four accounts are provisioned; see
+[LIVE_MYSQL_REVIEW.md](LIVE_MYSQL_REVIEW.md) for the execution record.
 The MySQL client is outside PATH; Python scripts use PyMySQL directly.
 
 ## Administrator provisioning
@@ -79,3 +80,20 @@ Database-wide migration grants escape underscore wildcard characters when
 `partial_revokes` is disabled; when enabled, the literal database name is used.
 This prevents access to similarly named databases without changing server settings.
 See [MySQL GRANT semantics](https://dev.mysql.com/doc/refman/8.0/en/grant.html).
+
+## Loading ignored local configuration for tests
+
+Tests read their URLs from process environment variables. To load the ignored
+`.env` into only the test process without exposing credentials in arguments:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv('.env'); import pytest; raise SystemExit(pytest.main(['--mysql', '-q', '-rs']))"
+```
+
+`DAMS_TEST_RUNTIME_URL` additionally supplies the dedicated `dams_test_app` URL
+for live runtime grant checks. It must target the same host/port/test database
+as `DAMS_TEST_DATABASE_URL`. Keep it in the ignored, access-restricted `.env` or
+process environment. The runtime test checks allowed writes/rollback, denied
+DELETE and DDL, append-only events, and denial of production database access.
+The live isolation test checks uncommitted-write isolation and a stable
+REPEATABLE READ snapshot across two independent connections.

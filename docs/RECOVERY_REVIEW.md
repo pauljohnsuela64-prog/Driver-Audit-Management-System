@@ -1,5 +1,8 @@
 # Phase 1 recovery verification
 
+Historical checkpoint: the live MySQL blocker below was subsequently resolved.
+See [LIVE_MYSQL_REVIEW.md](LIVE_MYSQL_REVIEW.md) for the final gate results.
+
 Reviewed October 25, 2026 (Asia/Manila), in `C:\BHLI-Audit`.
 Recommendation: hold merge pending dedicated live MySQL verification and final review.
 

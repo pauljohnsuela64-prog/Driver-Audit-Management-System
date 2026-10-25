@@ -9,10 +9,10 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from backend.core.database import make_engine
 from backend.models import Base
+from tests.constraint_support import constraint_violation
 from tests.test_foundation import audit, user
 from tests.mysql_support import mysql_test_engine
 
@@ -34,11 +34,11 @@ def verify_migrations(engine):
             s.add_all([audit(u.id), audit(u.id)])
             s.commit()
             # Exercise database constraints on the migrated schema too.
-            with pytest.raises(IntegrityError):
+            with constraint_violation():
                 with s.begin_nested():
                     s.add(audit(999999))
                     s.flush()
-            with pytest.raises(IntegrityError):
+            with constraint_violation():
                 with s.begin_nested():
                     s.add(user(role="INVALID", username="bad-role"))
                     s.flush()
@@ -95,3 +95,15 @@ def test_mysql_migration_roundtrip():
         verify_migrations(engine)
     finally:
         engine.dispose()
+
+
+def test_mysql_offline_downgrade_keeps_fk_indexes_until_table_drop(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "mysql+pymysql://dams:compile-only@localhost/driver_audit_db")
+    output = StringIO()
+    config = Config("alembic.ini", output_buffer=output)
+    command.downgrade(config, "0001:base", sql=True)
+    sql = output.getvalue()
+    assert "DROP INDEX" not in sql
+    positions = [sql.index(f"DROP TABLE {table}") for table in
+                 ("audit_events", "auth_sessions", "audit_records", "users")]
+    assert positions == sorted(positions)

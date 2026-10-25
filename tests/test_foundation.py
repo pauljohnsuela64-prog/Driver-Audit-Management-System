@@ -3,13 +3,14 @@ from datetime import date, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import func, inspect, select, text
-from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
+from sqlalchemy.exc import OperationalError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from backend.core.config import database_url
 from backend.core.database import make_engine, session_scope, utcnow
 from backend.models import AuditEvent, AuditRecord, AuthSession, Base, User
+from tests.constraint_support import constraint_violation
 from backend.schemas.audit import AuditFields, AuditRead
 
 
@@ -60,17 +61,17 @@ def test_audit_constraints(session, field, value):
     if field == "version":
         # The ORM initializes versions to 1; exercise the DB constraint directly.
         session.flush()
-        with pytest.raises(IntegrityError):
+        with constraint_violation():
             session.execute(text("UPDATE audit_records SET version=0 WHERE id=:id"), {"id": a.id})
         return
-    with pytest.raises(IntegrityError):
+    with constraint_violation():
         session.flush()
 
 
 @pytest.mark.parametrize("changes", [{"role": "OWNER"}, {"username": ""}, {"full_name": " "}, {"password_hash": ""}])
 def test_user_constraints(session, changes):
     session.add(user(**changes))
-    with pytest.raises(IntegrityError):
+    with constraint_violation():
         session.flush()
 
 
@@ -85,7 +86,7 @@ def test_unique_constraints(session, kind):
         session.add_all([audit(u.id, idempotency_key="same"), audit(u.id, idempotency_key="same")])
     else:
         session.add_all([AuthSession(user_id=u.id, token_hash="a" * 64, expires_at=utcnow() + timedelta(hours=1)) for _ in range(2)])
-    with pytest.raises(IntegrityError):
+    with constraint_violation():
         session.flush()
 
 
@@ -102,7 +103,7 @@ def test_event_session_constraints(session, kind):
         session.add(AuditEvent(audit_id=999 if kind == "event_audit" else a.id, actor_user_id=999 if kind == "event_actor" else u.id, action="INVALID" if kind == "action" else "CREATE"))
     else:
         session.add(AuthSession(user_id=999 if kind == "session_user" else u.id, token_hash="bad" if kind == "hash" else "a" * 64, created_at=now, expires_at=now - timedelta(hours=1) if kind == "expiry" else now + timedelta(hours=1), revoked_at=now - timedelta(hours=1) if kind == "revocation" else None))
-    with pytest.raises(IntegrityError):
+    with constraint_violation():
         session.flush()
 
 
@@ -115,7 +116,7 @@ def test_restrict_deletion(session):
     session.flush()
     session.add(AuditEvent(audit_id=a.id, actor_user_id=u.id, action="CREATE"))
     session.flush()
-    with pytest.raises(IntegrityError):
+    with constraint_violation():
         session.execute(text("DELETE FROM audit_records WHERE id=:id"), {"id": a.id})
 
 

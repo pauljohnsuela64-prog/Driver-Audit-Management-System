@@ -124,20 +124,9 @@ def upgrade():
 
 
 def downgrade():
-    # Frozen initial schema; independent of application model imports.
-    op.drop_index(op.f('ix_audit_events_created_at'), table_name='audit_events')
-    op.drop_index(op.f('ix_audit_events_audit_id'), table_name='audit_events')
-    op.drop_index(op.f('ix_audit_events_actor_user_id'), table_name='audit_events')
+    # Drop dependent tables first. MySQL rejects dropping an index still used
+    # by a foreign key; dropping its table removes both constraints and indexes.
     op.drop_table('audit_events')
-    op.drop_index(op.f('ix_auth_sessions_user_id'), table_name='auth_sessions')
-    op.drop_index(op.f('ix_auth_sessions_expires_at'), table_name='auth_sessions')
     op.drop_table('auth_sessions')
-    op.drop_index(op.f('ix_audit_records_updated_by_user_id'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_station'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_plate_number'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_deleted_by_user_id'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_deleted_at'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_audited_by_user_id'), table_name='audit_records')
-    op.drop_index(op.f('ix_audit_records_audit_date'), table_name='audit_records')
     op.drop_table('audit_records')
     op.drop_table('users')
