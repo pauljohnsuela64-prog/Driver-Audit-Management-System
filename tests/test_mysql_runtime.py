@@ -66,7 +66,9 @@ def test_mysql_runtime_permissions(live_database):
     target = live_database.url
     if (url.drivername != target.drivername or url.host != target.host
             or url.port != target.port or url.database != target.database
-            or url.username != 'dams_test_app' or not url.password):
+            or url.username != 'dams_test_app' or not url.password
+            or set(url.query) - {'charset'}
+            or url.query.get('charset', 'utf8mb4') != 'utf8mb4'):
         raise ValueError('Runtime URL must use dams_test_app on the same isolated test target')
     runtime = make_engine(url)
     try:

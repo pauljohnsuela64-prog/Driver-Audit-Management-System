@@ -1,8 +1,11 @@
 # Driver Audit Management System (DAMS)
 
 Phase 1 provides the Python foundation, MySQL schema, Alembic migration and tests.
+Phase 2A adds the FastAPI application, bearer-session authentication, role
+dependencies and secure local administrator bootstrap/recovery. See
+[authentication setup and API](docs/AUTHENTICATION.md).
 Official directory: `C:\BHLI-Audit`. The existing empty `app.py` and `database.py`
-are preserved. No desktop GUI, Android application or business API is implemented.
+are preserved. No audit CRUD, desktop GUI, Android application or reporting is implemented.
 
 ## Setup (PowerShell)
 
@@ -37,6 +40,5 @@ business fields; `backend/repositories` reserves the future persistence layer.
 DDL, operator tools, checks, and documentation. `desktop` and `mobile` document
 future clients without implementing them.
 
-The feature branch is for independent Phase 1 review. Publication and a draft PR
-were authorized for the final engineering review; merging requires a separate
-approval. See [final engineering review](docs/FINAL_REVIEW.md). No Phase 2 work is included.
+Phase 1 is merged. Phase 2A is developed on `feat/dams-backend-auth` for a draft
+PR and independent engineering review. Phase 2B is not included.

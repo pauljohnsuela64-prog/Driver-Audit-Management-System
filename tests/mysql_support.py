@@ -14,7 +14,9 @@ def mysql_test_engine():
     url = make_url(value)
     if (url.drivername != "mysql+pymysql" or not url.database
             or not url.database.startswith("driver_audit_test_")
-            or not url.username or url.username.lower() == "root" or not url.password):
+            or not url.username or url.username.lower() == "root" or not url.password
+            or set(url.query) - {"charset"}
+            or url.query.get("charset", "utf8mb4") != "utf8mb4"):
         raise ValueError("Live tests require a dedicated non-root account and driver_audit_test_ database")
     engine = make_engine(url)
     try:
