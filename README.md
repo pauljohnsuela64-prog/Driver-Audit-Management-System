@@ -1,13 +1,13 @@
 # Driver Audit Management System (DAMS)
 
 Phase 1 provides the Python foundation, MySQL schema, Alembic migration and tests.
-Official directory: `C:\BHLI Audit`. The existing empty `app.py` and `database.py`
+Official directory: `C:\BHLI-Audit`. The existing empty `app.py` and `database.py`
 are preserved. No desktop GUI, Android application or business API is implemented.
 
 ## Setup (PowerShell)
 
 ```powershell
-Set-Location 'C:\BHLI Audit'
+Set-Location 'C:\BHLI-Audit'
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env

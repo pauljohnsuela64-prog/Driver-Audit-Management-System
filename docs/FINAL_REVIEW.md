@@ -1,9 +1,13 @@
 # Phase 1 final engineering review
 
-Review date: October 25, 2026 (Asia/Manila). Project: `C:\BHLI Audit`.
+Review date: October 25, 2026 (Asia/Manila). Project: `C:\BHLI-Audit`.
 
 Verdict: local verification passes; hold final merge approval pending live MySQL
 verification. No Phase 2 implementation has begun.
+
+See [RECOVERY_REVIEW.md](RECOVERY_REVIEW.md) for the subsequent repository,
+publication-security and test re-verification. The publication narrative below
+records the earlier session.
 
 ## Scope and integrity
 

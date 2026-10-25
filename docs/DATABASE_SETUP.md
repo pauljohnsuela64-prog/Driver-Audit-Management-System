@@ -6,7 +6,7 @@ The MySQL client is outside PATH; Python scripts use PyMySQL directly.
 
 ## Administrator provisioning
 
-Run from `C:\BHLI Audit` after installing requirements:
+Run from `C:\BHLI-Audit` after installing requirements:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.setup_database
@@ -73,7 +73,7 @@ inspect only the dedicated test database before cleaning up partial test state.
 
 Without this configuration MySQL tests skip; SQLite migration and unit tests
 still execute without any MySQL access. Do not point tests at the development
-database or Company Operations ERP, Basic Hauling, or IT Help Desk databases.
+database or any unrelated project database.
 
 Database-wide migration grants escape underscore wildcard characters when
 `partial_revokes` is disabled; when enabled, the literal database name is used.

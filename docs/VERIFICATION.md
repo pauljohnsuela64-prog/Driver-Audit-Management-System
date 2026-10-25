@@ -1,6 +1,9 @@
 # Phase 1 verification record
 
-Executed on October 25, 2026 (Asia/Manila) in `C:\BHLI Audit`.
+Executed on October 25, 2026 (Asia/Manila) in `C:\BHLI-Audit`.
+
+This is the initial verification record. The current recovery and publication
+status is recorded in [RECOVERY_REVIEW.md](RECOVERY_REVIEW.md).
 
 ## Repository
 
