@@ -152,6 +152,7 @@ class Audits(ctk.CTkFrame):
         self.loaded=False
         self.last_error=None
         self.table.set_rows(())
+        self.range.configure(text='Loading…')
         self.notice.show('Loading driver audits…',False)
         for b in (self.previous,self.next,self.detail_button):
             b.configure(state='disabled')

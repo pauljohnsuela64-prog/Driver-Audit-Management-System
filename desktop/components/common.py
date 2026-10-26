@@ -58,12 +58,12 @@ def option_menu(parent,**kwargs):
     widget.configure(button_color=color('primary'),button_hover_color=color('hover'),
                      dropdown_fg_color=color('surface'),dropdown_text_color=color('text'),
                      dropdown_hover_color=color('raised'))
-    widget._canvas.configure(takefocus=1,highlightthickness=2,
-                             highlightbackground=resolved('primary'),highlightcolor=resolved('on_primary'))
+    widget._canvas.configure(takefocus=1)
     widget.bind('<Return>',lambda e=None:widget._open_dropdown_menu())
     widget.bind('<space>',lambda e=None:widget._open_dropdown_menu())
-    widget.bind('<FocusIn>',lambda e=None:widget.configure(button_color=color('focus')))
-    widget.bind('<FocusOut>',lambda e=None:widget.configure(button_color=color('primary')))
+    widget.bind('<FocusIn>',lambda e=None:widget._canvas.configure(highlightthickness=2,
+                highlightbackground=resolved('on_primary'),highlightcolor=resolved('on_primary')))
+    widget.bind('<FocusOut>',lambda e=None:widget._canvas.configure(highlightthickness=0))
     return widget
 
 

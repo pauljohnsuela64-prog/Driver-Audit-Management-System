@@ -1,7 +1,8 @@
 # Backend integration readiness â€” Phase 2C, Assignment 3B
 
 **PASS for controlled local Windows-client integration.** This is not production
-deployment approval. No GUI is implemented. Activity logging adds revision 0002;
+deployment approval. The Phase 3A read-only Windows client is now documented in
+[WINDOWS_DESKTOP.md](WINDOWS_DESKTOP.md). Activity logging adds revision 0002;
 production upgrade/grants require separate approval. Seven audit fields are unchanged.
 
 ## Start and connect
