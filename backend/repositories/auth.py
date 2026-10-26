@@ -9,6 +9,11 @@ class AuthRepository:
         self.session = session
 
     def find_user(self, username: str):
+        # SQLite ignores FOR UPDATE. Serialize login with password reset so an
+        # old password cannot create a session after reset's revocation commits.
+        connection = self.session.connection()
+        if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
         return self.session.scalar(select(User).where(User.username == username).with_for_update())
 
     def find_session(self, digest: str):

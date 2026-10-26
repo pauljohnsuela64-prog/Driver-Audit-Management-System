@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request, Response
 
-from backend.api.dependencies import Auth, Identity
-from backend.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from backend.api.dependencies import Auth, DatabaseSession, Identity
+from backend.schemas.auth import LoginRequest, PasswordChangeRequest, TokenResponse, UserResponse
+from backend.services.users import change_own_password
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -22,3 +23,9 @@ def logout(identity: Identity, auth: Auth):
 @router.get("/me", response_model=UserResponse)
 def me(identity: Identity):
     return UserResponse.model_validate(identity[1])
+
+
+@router.post("/change-password", status_code=204)
+def change_password(payload: PasswordChangeRequest, session: DatabaseSession, identity: Identity):
+    change_own_password(session, payload, identity)
+    return Response(status_code=204)

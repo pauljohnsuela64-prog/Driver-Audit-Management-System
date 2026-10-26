@@ -16,7 +16,7 @@ Production connections continue to use `dams_prod_app`; revision `0001` is uncha
 ADMIN can create/read/edit all records and soft-delete. AUDITOR can create/read
 all active records and their history, but edit only records owned by their account
 ID. Matching display names do not grant ownership. AUDITOR cannot delete.
-There are no account administration endpoints.
+Account administration is documented in [USER_ACCOUNTS.md](USER_ACCOUNTS.md).
 
 ## Payload and identity
 

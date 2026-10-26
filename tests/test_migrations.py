@@ -23,7 +23,7 @@ def verify_migrations(engine):
         config.attributes["connection"] = connection
         command.upgrade(config, "head")
         context = MigrationContext.configure(connection, opts={"compare_type": True})
-        assert context.get_current_revision() == ScriptDirectory.from_config(config).get_current_head() == "0001"
+        assert context.get_current_revision() == ScriptDirectory.from_config(config).get_current_head() == "0002"
         assert compare_metadata(context, Base.metadata) == []
         assert set(inspect(connection).get_table_names()) == set(Base.metadata.tables) | {"alembic_version"}
         connection.commit()
