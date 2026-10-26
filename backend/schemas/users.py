@@ -1,7 +1,7 @@
 """Employee account input and credential-free output contracts."""
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, StrictBool, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, SecretStr, StrictBool, StringConstraints, field_validator, model_validator
 from backend.schemas.auth import BootstrapRequest, UserResponse, Username
 
 
@@ -49,3 +49,24 @@ class UserAccessPatch(BaseModel):
         if not self.model_fields_set or any(getattr(self, key) is None for key in self.model_fields_set):
             raise ValueError("Supply at least one non-null access field")
         return self
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    admin_password: SecretStr
+    new_password: SecretStr
+
+    @field_validator("admin_password")
+    @classmethod
+    def bounded_reauthentication(cls, value):
+        if not 1 <= len(value.get_secret_value()) <= 128:
+            raise ValueError("Invalid administrator password length")
+        return value
+
+    @field_validator("new_password")
+    @classmethod
+    def replacement_password(cls, value):
+        password = value.get_secret_value()
+        if not 15 <= len(password) <= 128 or not password.strip():
+            raise ValueError("Use a nonblank password of 15 to 128 characters")
+        return value

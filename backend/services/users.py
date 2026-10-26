@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.core.database import utcnow
 from backend.core.errors import ServiceError, unauthorized
-from backend.core.security import hash_password
+from backend.core.security import hash_password, verify_password
 from backend.models import AuthSession, User
 
 
@@ -69,26 +69,9 @@ def update_access(session, user_id, payload, identity):
     observed = session.execute(select(User.role, User.is_active).where(User.id == user_id)).first()
     if observed is None:
         raise ServiceError(404, "not_found", "Account not found")
-    # The lowest user ID is a permanent transaction guard: accounts are never
-    # deleted. All access changes take it first, including changes to other rows.
-    # SQLite has no row locks, so acquire its database write lock explicitly.
-    connection = session.connection()
-    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
-        connection.exec_driver_sql("BEGIN IMMEDIATE")
-    session.scalar(select(User.id).order_by(User.id).limit(1).with_for_update())
-
-    # Authentication may have happened before waiting for the guard. Revalidate
-    # the caller and token with current locking reads before granting authority.
-    pair = session.execute(select(AuthSession, User).join(User, User.id == AuthSession.user_id)
-                           .where(AuthSession.id == identity[0].id, User.id == identity[1].id)
-                           .with_for_update().execution_options(populate_existing=True)).first()
+    lock_account_guard(session)
+    actor = current_locked_admin(session, identity)
     now = utcnow()
-    if (pair is None or pair[0].revoked_at is not None or pair[0].expires_at <= now
-            or not pair[1].is_active):
-        raise unauthorized()
-    actor = pair[1]
-    if actor.role != "ADMIN":
-        raise ServiceError(403, "forbidden", "Insufficient permission")
     user = session.scalar(select(User).where(User.id == user_id).with_for_update()
                           .execution_options(populate_existing=True))
     if user is None:
@@ -107,7 +90,57 @@ def update_access(session, user_id, payload, identity):
     if role != user.role or active != user.is_active:
         user.role, user.is_active = role, active
         session.flush()
-        session.execute(update(AuthSession).where(AuthSession.user_id == user.id,
-                        AuthSession.revoked_at.is_(None), AuthSession.expires_at > now)
-                        .values(revoked_at=now).execution_options(synchronize_session=False))
+        revoke_user_sessions(session, user.id, now, active_only=True)
     return user
+
+
+def lock_account_guard(session):
+    # The lowest user ID is a permanent transaction guard: accounts are never
+    # deleted. All access changes take it first, including changes to other rows.
+    # SQLite has no row locks, so acquire its database write lock explicitly.
+    connection = session.connection()
+    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    session.scalar(select(User.id).order_by(User.id).limit(1).with_for_update())
+
+
+
+def current_locked_admin(session, identity):
+    # Authentication may have happened before waiting for the guard. Revalidate
+    # the caller and token with current locking reads before granting authority.
+    pair = session.execute(select(AuthSession, User).join(User, User.id == AuthSession.user_id)
+                           .where(AuthSession.id == identity[0].id, User.id == identity[1].id)
+                           .with_for_update().execution_options(populate_existing=True)).first()
+    now = utcnow()
+    if (pair is None or pair[0].revoked_at is not None or pair[0].expires_at <= now
+            or not pair[1].is_active):
+        raise unauthorized()
+    actor = pair[1]
+    if actor.role != "ADMIN":
+        raise ServiceError(403, "forbidden", "Insufficient permission")
+    return actor
+
+
+def revoke_user_sessions(session, user_id, now, *, active_only=False):
+    statement = update(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
+    if active_only:
+        statement = statement.where(AuthSession.expires_at > now)
+    session.execute(statement.values(revoked_at=now).execution_options(synchronize_session=False))
+
+
+def reset_user_password(session, user_id, payload, identity):
+    lock_account_guard(session)
+    actor = current_locked_admin(session, identity)
+    if not verify_password(actor.password_hash, payload.admin_password.get_secret_value()):
+        raise unauthorized()
+    if user_id == actor.id:
+        raise ServiceError(409, "self_reset", "Use a separate self-service password change flow")
+    target = session.scalar(select(User).where(User.id == user_id).with_for_update()
+                            .execution_options(populate_existing=True))
+    if target is None:
+        raise ServiceError(404, "not_found", "Account not found")
+    # Login locks this same user row before password verification/session insert.
+    # Every pre-reset login must finish before we replace the hash and revoke.
+    target.password_hash = hash_password(payload.new_password.get_secret_value())
+    session.flush()
+    revoke_user_sessions(session, target.id, utcnow())
