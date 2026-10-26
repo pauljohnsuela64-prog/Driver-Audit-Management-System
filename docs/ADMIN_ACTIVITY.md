@@ -56,6 +56,18 @@ Migration 0002 is additive. Its downgrade drops only activity history and loses
 those events; use it only in isolated tests or a separately reviewed recovery
 plan. Normal deployment must preserve records, not downgrade production.
 
+MySQL DDL auto-commits: failure after CREATE TABLE or an index can leave a partial
+activity table while alembic_version still says 0001. Stop deployment and keep the
+old application running; do not blindly retry, downgrade, stamp, or delete history.
+Inspect alembic_version, SHOW CREATE TABLE, indexes/FKs and the event count with
+authorized maintenance credentials. Back up and obtain operator approval for a
+recovery plan. If the new table is demonstrably empty and no new application wrote
+to it, a reviewed removal of only that partial table followed by upgrade is one
+option. If it contains events, preserve/export them and reconcile missing DDL
+instead; stamp 0002 only after independently confirming the exact full schema.
+Re-run schema/grant checks before switching application versions. Isolated
+fault-injection tests exercise the empty-table recovery without touching old data.
+
 Offline bootstrap/recovery remain operator procedures, outside authenticated API
 activity capture. Existing records are not backfilled, rejected attempts are not
 security-attempt logs, and ordinary logins/logouts are not activity events. Runtime
