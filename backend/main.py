@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException
 
 from backend.api.audits import router as audit_router
 from backend.api.auth import router
+from backend.api.users import router as user_router
 from backend.core.config import runtime_database_url
 from backend.core.database import make_engine
 from backend.core.errors import ServiceError
@@ -76,4 +77,5 @@ def create_app(*, engine=None):
 
     app.include_router(router)
     app.include_router(audit_router)
+    app.include_router(user_router)
     return app

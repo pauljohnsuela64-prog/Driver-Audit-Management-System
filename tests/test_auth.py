@@ -215,7 +215,8 @@ def test_health_openapi_and_scope(api):
     assert client.get("/missing").json()["error"]["code"] == "http_error"
     spec = create_app(engine=engine).openapi()
     assert set(spec["paths"]) == {"/health", "/auth/login", "/auth/logout", "/auth/me",
-                                 "/audits", "/audits/{audit_id}", "/audits/{audit_id}/history"}
+                                 "/audits", "/audits/{audit_id}", "/audits/{audit_id}/history",
+                                 "/users", "/users/{user_id}"}
     assert spec["paths"]["/auth/me"]["get"]["security"]
 
 
