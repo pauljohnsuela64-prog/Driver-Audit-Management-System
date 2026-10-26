@@ -6,9 +6,10 @@ from backend.core.database import utcnow
 from backend.core.errors import ServiceError, unauthorized
 from backend.core.security import hash_password, verify_password
 from backend.models import AuthSession, User
+from backend.services.activity import write_activity
 
 
-def create_user(session, payload):
+def create_user(session, payload, actor_id):
     user = User(username=payload.username, full_name=payload.full_name, role=payload.role,
                 password_hash=hash_password(payload.password.get_secret_value()), is_active=True)
     session.add(user)
@@ -20,6 +21,7 @@ def create_user(session, payload):
         if username_conflict(session, exc):
             raise ServiceError(409, "username_exists", "Username already exists") from None
         raise
+    write_activity(session, actor_id, user, "CREATE")
     return user
 
 
@@ -46,7 +48,13 @@ def username_conflict(session, exc):
             or (session.bind.dialect.name == "mysql" and exc.orig.args[0] == 1062))
 
 
-def update_user(session, user_id, payload):
+def update_user(session, user_id, payload, actor_id):
+    lock_account_guard(session)
+    previous = session.scalar(select(User).where(User.id == user_id).with_for_update()
+                              .execution_options(populate_existing=True))
+    if previous is None:
+        raise ServiceError(404, "not_found", "Account not found")
+    before = {field: getattr(previous, field) for field in payload.model_fields_set}
     try:
         # Write only supplied fields. Database UPDATE locks serialize competing
         # writers without overwriting unrelated fields from a stale ORM instance.
@@ -61,8 +69,10 @@ def update_user(session, user_id, payload):
         raise ServiceError(404, "not_found", "Account not found")
     # Refresh even when authentication already loaded this user. A locking read
     # also bypasses an older MySQL REPEATABLE READ snapshot.
-    return session.scalar(select(User).where(User.id == user_id).with_for_update()
+    user = session.scalar(select(User).where(User.id == user_id).with_for_update()
                           .execution_options(populate_existing=True))
+    write_activity(session, actor_id, user, "PROFILE_UPDATE", before)
+    return user
 
 
 def update_access(session, user_id, payload, identity):
@@ -88,9 +98,13 @@ def update_access(session, user_id, payload, identity):
         if len(admins) <= 1:
             raise ServiceError(409, "last_admin", "An active administrator must remain")
     if role != user.role or active != user.is_active:
+        before = {"role": user.role, "is_active": user.is_active}
         user.role, user.is_active = role, active
         session.flush()
         revoke_user_sessions(session, user.id, now, active_only=True)
+        write_activity(session, actor.id, user, "ROLE_CHANGE", before)
+        if before["is_active"] != active:
+            write_activity(session, actor.id, user, "ACTIVATED" if active else "DEACTIVATED", before)
     return user
 
 
@@ -148,6 +162,7 @@ def reset_user_password(session, user_id, payload, identity):
     target.password_hash = hash_password(payload.new_password.get_secret_value())
     session.flush()
     revoke_user_sessions(session, target.id, utcnow())
+    write_activity(session, actor.id, target, "PASSWORD_RESET")
 
 
 def change_own_password(session, payload, identity):
@@ -162,3 +177,4 @@ def change_own_password(session, payload, identity):
     user.password_hash = hash_password(replacement)
     session.flush()
     revoke_user_sessions(session, user.id, utcnow())
+    write_activity(session, user.id, user, "PASSWORD_CHANGE")

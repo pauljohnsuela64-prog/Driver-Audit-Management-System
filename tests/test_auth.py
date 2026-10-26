@@ -217,7 +217,7 @@ def test_health_openapi_and_scope(api):
     assert set(spec["paths"]) == {"/health", "/auth/login", "/auth/logout", "/auth/me", "/auth/change-password",
                                  "/audits", "/audits/{audit_id}", "/audits/{audit_id}/history",
                                  "/users", "/users/{user_id}", "/users/{user_id}/access",
-                                 "/users/{user_id}/reset-password"}
+                                 "/users/{user_id}/reset-password", "/admin-activity"}
     assert spec["paths"]["/auth/me"]["get"]["security"]
 
 

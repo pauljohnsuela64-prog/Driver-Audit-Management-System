@@ -87,7 +87,8 @@ def test_concurrent_profile_edits(accounts, scenario):
     first, second = users[0], users[1]
     barrier = Barrier(2)
     def overlap(connection,cursor,statement,parameters,context,executemany):
-        if statement.startswith("UPDATE users"):
+        if statement == "BEGIN IMMEDIATE" or ("SELECT users.id" in statement
+                and "ORDER BY users.id" in statement and "FOR UPDATE" in statement):
             barrier.wait(timeout=10)
     def request(i):
         target = first if scenario == "different_fields" or i == 0 else second
