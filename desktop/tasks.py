@@ -11,7 +11,6 @@ class Job:
     key: str
     serial: int
     work: object
-    done: object
     dispose: object
 
 
@@ -22,6 +21,7 @@ class Tasks:
         self._queue = Queue()
         self._results = Queue()
         self._current = {}
+        self._callbacks = {}
         self._serial = 0
         self._outstanding = 0
         self._capacity = capacity
@@ -36,7 +36,8 @@ class Tasks:
             self._serial += 1
             self._current[key] = self._serial
             self._outstanding += 1
-            self._queue.put(Job(key, self._serial, work, done, dispose))
+            self._callbacks[self._serial] = done
+            self._queue.put(Job(key, self._serial, work, dispose))
         return True
 
     def _valid(self, job):
@@ -86,14 +87,18 @@ class Tasks:
             except Empty:
                 break
             if self._valid(job):
-                job.done(result, error)
+                callback = self._callbacks.pop(job.serial, None)
+                if callback:
+                    callback(result, error)
             elif job.dispose and result is not None:
                 # Disposal may call HTTP; never do that on the Tk thread.
                 Thread(target=self._dispose, args=(job, result), daemon=True).start()
+            self._callbacks.pop(job.serial, None)
 
     def invalidate(self):
         with self._lock:
             self._current.clear()
+        self._callbacks.clear()
         self._discard_results()
 
     def _discard_results(self):
@@ -109,6 +114,7 @@ class Tasks:
         with self._lock:
             self._closed = True
             self._current.clear()
+        self._callbacks.clear()
         self._discard_results()
         # Wake all idle workers, without waiting for pending network requests.
         for _ in range(4):
