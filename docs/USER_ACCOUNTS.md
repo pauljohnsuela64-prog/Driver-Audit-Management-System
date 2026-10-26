@@ -1,8 +1,8 @@
-# Employee accounts: Assignments 1A, 1B and 1C
+# Employee accounts: Assignments 1A through 1D
 
 All account routes require a valid bearer session and current ADMIN role. AUDITOR
 receives 403; missing/invalid sessions receive 401. Profile editing and dedicated role/status management are supported.
-Password resets are not implemented.
+Administrator password resets require current-password reauthentication.
 
 | Route | Result |
 | --- | --- |
@@ -11,6 +11,7 @@ Password resets are not implemented.
 | GET /users/{id} | Safe details, or 404 when absent |
 | PATCH /users/{id} | ADMIN-only partial username/full_name edit |
 | PATCH /users/{id}/access | ADMIN-only role/status changes |
+| POST /users/{id}/reset-password | Reauthenticated ADMIN reset, 204 |
 
 Creation body (fictional example):
 
@@ -103,7 +104,39 @@ account in the same transaction. Insert/update/commit failures roll back both
 account and session changes. Disabled accounts cannot log in; reactivation permits
 login with the existing password, but never restores old sessions. Account IDs,
 password hashes and historical audit attribution are preserved. Runtime grants
-suffice; no migration, production data change or password-reset endpoint is added.
+suffice; no migration or production data change is required.
 
 Access-specific tests are in tests/test_user_access.py, including forced concurrent
 cross-administrator changes, same-target conflicts and session-revocation failures.
+
+## Administrator password reset (Assignment 1D)
+
+POST /users/{id}/reset-password requires a valid active ADMIN session and exactly
+two fields: admin_password (the acting administrator's current password) and
+new_password. Both use secret request types. The replacement must be 15..128
+characters and nonblank; its exact characters are preserved. Reauthentication is
+bounded to 1..128 characters for compatibility with existing credentials.
+
+Success returns 204 with no body. Missing/invalid sessions or incorrect current
+password return generic 401; AUDITOR access returns 403. Missing targets return
+404 after reauthentication; self-reset returns 409. Missing fields, unexpected
+fields and invalid passwords return sanitized 422. Database errors return 503.
+No passwords, hashes or tokens are returned, generated for delivery, or emailed.
+
+Reset shares the access-management transaction guard, revalidates the caller under
+locking reads, and locks the target user row. Argon2id hash replacement and
+revocation of every unrevoked target session (including expired sessions) commit
+atomically. Any write/revocation/commit failure rolls back both changes. Role,
+active status, account ID and historical audit attribution remain unchanged.
+A disabled account stays disabled; authorized reactivation permits login with
+the replacement password, but never restores old sessions.
+
+MySQL login locks the same user row before password verification/session creation.
+SQLite login uses BEGIN IMMEDIATE for equivalent serialization. A login with the
+old password that completes first has its token revoked by reset; one following
+reset fails password verification. Existing bootstrap/recovery is unchanged.
+Self-service password changes and email recovery are outside this assignment.
+
+Focused tests: tests/test_password_reset.py in default and isolated --mysql modes,
+followed by the affected authentication, bootstrap and user-management regressions.
+Full-suite publication testing remains deferred to the final Phase 2C assignment.
