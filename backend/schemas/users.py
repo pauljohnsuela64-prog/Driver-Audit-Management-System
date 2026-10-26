@@ -1,7 +1,7 @@
 """Employee account input and credential-free output contracts."""
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, StrictBool, StringConstraints, field_validator, model_validator
 from backend.schemas.auth import BootstrapRequest, UserResponse, Username
 
 
@@ -36,4 +36,16 @@ class UserPatch(BaseModel):
     def supplied_fields(self):
         if not self.model_fields_set or any(getattr(self, key) is None for key in self.model_fields_set):
             raise ValueError("Supply at least one non-null profile field")
+        return self
+
+
+class UserAccessPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["ADMIN", "AUDITOR"] | None = None
+    is_active: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def supplied_fields(self):
+        if not self.model_fields_set or any(getattr(self, key) is None for key in self.model_fields_set):
+            raise ValueError("Supply at least one non-null access field")
         return self

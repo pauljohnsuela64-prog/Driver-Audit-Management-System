@@ -3,9 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query
 from pydantic import StringConstraints
 
-from backend.api.dependencies import DatabaseSession, require_roles
-from backend.schemas.users import AccountPage, AccountResponse, UserCreate, UserPatch
-from backend.services.users import create_user, get_user, list_users, update_user
+from backend.api.dependencies import DatabaseSession, Identity, require_roles
+from backend.schemas.users import AccountPage, AccountResponse, UserCreate, UserPatch, UserAccessPatch
+from backend.services.users import create_user, get_user, list_users, update_user, update_access
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_roles("ADMIN"))])
 Search = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -33,3 +33,9 @@ def read(user_id: Annotated[int, Path(ge=1)], session: DatabaseSession):
 @router.patch("/{user_id}", response_model=AccountResponse)
 def edit(user_id: Annotated[int, Path(ge=1)], payload: UserPatch, session: DatabaseSession):
     return AccountResponse.model_validate(update_user(session, user_id, payload))
+
+
+@router.patch("/{user_id}/access", response_model=AccountResponse)
+def edit_access(user_id: Annotated[int, Path(ge=1)], payload: UserAccessPatch,
+                session: DatabaseSession, identity: Identity):
+    return AccountResponse.model_validate(update_access(session, user_id, payload, identity))
