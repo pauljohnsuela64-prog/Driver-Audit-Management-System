@@ -1,8 +1,8 @@
-# Backend integration readiness — Phase 2C, Assignment 3B
+# Backend integration readiness â€” Phase 2C, Assignment 3B
 
 **PASS for controlled local Windows-client integration.** This is not production
-deployment approval. No GUI is implemented. Schema revision remains 0001 and the
-seven audit business fields are unchanged.
+deployment approval. No GUI is implemented. Activity logging adds revision 0002;
+production upgrade/grants require separate approval. Seven audit fields are unchanged.
 
 ## Start and connect
 
@@ -32,6 +32,7 @@ or Authorization headers. No browser/CORS setup is required for a native client.
 | Authentication | POST /auth/login; GET /auth/me; POST /auth/logout; POST /auth/change-password |
 | Accounts (ADMIN) | POST/GET /users; GET/PATCH /users/{id}; PATCH /users/{id}/access; POST /users/{id}/reset-password |
 | Audits | POST/GET /audits; GET/PATCH/DELETE /audits/{id}; GET /audits/{id}/history |
+| Account activity (ADMIN) | GET /admin-activity; paginated action/actor/target filters |
 
 Login sends JSON username/password and receives access_token, token_type=bearer
 and expires_at. Send Authorization: Bearer <token> on protected requests. ADMIN
@@ -109,9 +110,9 @@ Full regression and hosted Actions execution are deferred to final publication.
 
 ## Deployment requirements and outstanding limitations
 
-- **Administrator activity logging: outstanding.** Audit-event history covers
-  driver-audit mutations, not account creation/profile/access/password actions.
-  No admin-activity store or migration has been implemented.
+- **Administrator activity logging: implemented.** Account API mutations use the
+  separate append-only activity store and ADMIN-only GET /admin-activity. See
+  [ADMIN_ACTIVITY.md](ADMIN_ACTIVITY.md); production migration/grants are pending approval.
 - **Deployment security: outstanding configuration/validation.** Establish an
   operator-managed ADMIN, protected server secrets, service supervision, backups,
   host/firewall policy, trusted proxy settings, log redaction and request limits.
@@ -124,12 +125,11 @@ Full regression and hosted Actions execution are deferred to final publication.
 - **Client token storage: not implemented.** Prefer in-memory tokens; if persistence
   is required, use Windows OS-protected credential storage. Never plaintext files,
   registry values or logs. Clear client tokens on logout/401/password change.
-- **Hosted CI: pending.** SQLite and disposable MySQL jobs are configured locally,
-  but the branch has not been pushed and neither hosted job is verified. Docker
-  provisioning still needs its first hosted run.
+- **Hosted CI:** both jobs passed at the original Phase 2C checkpoint. The latest
+  activity-extension HEAD must pass both jobs; consult PR #4 checks for current evidence.
 - Already-authorized in-flight requests are not retroactively canceled. History
   is append-only for runtime accounts, not tamper-proof against database admins.
 
 There is no confirmed backend-code blocker for starting local Windows-client work.
-Deployment configuration, admin activity logging and hosted verification remain
+Deployment configuration, the approved activity rollout and final hosted verification remain
 separate work; this document does not mark the entire Phase 2C complete.

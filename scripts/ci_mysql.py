@@ -72,8 +72,8 @@ def main():
                 cfg.attributes["connection"] = connection
                 command.upgrade(cfg, "head")
                 with admin.cursor() as cursor:
-                    for table in ["users", "audit_records", "auth_sessions", "audit_events"]:
-                        rights = "SELECT, INSERT" if table == "audit_events" else "SELECT, INSERT, UPDATE"
+                    for table in ["users", "audit_records", "auth_sessions", "audit_events", "admin_activity_events"]:
+                        rights = "SELECT, INSERT" if table in {"audit_events", "admin_activity_events"} else "SELECT, INSERT, UPDATE"
                         cursor.execute(f"GRANT {rights} ON `{DATABASE}`.`{table}` TO 'dams_test_app'@'%'")
                 command.downgrade(cfg, "base")
                 connection.execute(text("DROP TABLE alembic_version"))

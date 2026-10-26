@@ -1,7 +1,8 @@
 # Phase 2A: FastAPI foundation and authentication
 
 The application factory is `backend.main:create_app`. Routes call services and
-repositories; models, database transactions and revision 0001 remain from Phase 1.
+repositories. Revision 0001 is preserved; revision 0002 adds account activity history.
+Deploy the new revision and runtime grant only after explicit production approval.
 Audit CRUD and account-management APIs are now available; see
 [backend integration readiness](BACKEND_INTEGRATION_READINESS.md). GUI, mobile
 screens and exports remain outside the implemented backend scope.

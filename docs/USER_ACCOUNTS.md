@@ -141,3 +141,10 @@ Email recovery remains outside scope.
 Focused tests: tests/test_password_reset.py in default and isolated --mysql modes,
 followed by the affected authentication, bootstrap and user-management regressions.
 Full-suite publication testing remains deferred to the final Phase 2C assignment.
+
+
+## Administrator activity
+
+Authenticated account mutations now write append-only activity in the same transaction.
+See [ADMIN_ACTIVITY.md](ADMIN_ACTIVITY.md) for actions, no-op policy, history filters,
+revision 0002 and the separately authorized production rollout.

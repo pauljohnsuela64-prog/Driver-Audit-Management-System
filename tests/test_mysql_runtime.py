@@ -11,7 +11,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from backend.core.database import make_engine, utcnow
-from backend.models import AuditEvent, AuthSession, User
+from backend.models import AdminActivityEvent, AuditEvent, AuthSession, User
 from tests.mysql_support import mysql_test_engine
 from tests.test_foundation import audit, user
 
@@ -82,6 +82,7 @@ def test_mysql_runtime_permissions(live_database):
             event = AuditEvent(audit_id=record.id, actor_user_id=actor.id, action='CREATE')
             token = AuthSession(user_id=actor.id, token_hash='b' * 64, expires_at=utcnow() + timedelta(hours=1))
             session.add_all([event, token])
+            session.add(AdminActivityEvent(actor_user_id=actor.id, target_user_id=actor.id, action="CREATE"))
             session.commit()
             actor.full_name = 'Updated test auditor'
             record.remarks = 'Allowed runtime update'
@@ -97,6 +98,8 @@ def test_mysql_runtime_permissions(live_database):
             'DELETE FROM audit_records WHERE 1=0',
             'DELETE FROM auth_sessions WHERE 1=0',
             'DELETE FROM audit_events WHERE 1=0',
+            'DELETE FROM admin_activity_events WHERE 1=0',
+            "UPDATE admin_activity_events SET action='CREATE' WHERE 1=0",
             "UPDATE audit_events SET action='UPDATE' WHERE 1=0",
             'CREATE TABLE runtime_ddl_probe (id INT PRIMARY KEY)',
             # This existing system table makes denial meaningful on a disposable

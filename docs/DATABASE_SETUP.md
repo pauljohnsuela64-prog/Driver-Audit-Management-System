@@ -67,7 +67,7 @@ future service; use the migration account only for maintenance.
 .\.venv\Scripts\python.exe -m alembic check
 ```
 
-Expected revision is `0001`. Verification connects, checks the recorded head and
+Current application head is `0002`. Production remains at `0001` until the separately approved activity migration and grants are applied. Verification connects, checks the recorded head and
 compares schema metadata. Autogeneration comparison does not detect every CHECK
 or server-default change; review revisions and integration behavior as well.
 Downgrading to base drops the four DAMS tables and their data: use only an empty

@@ -23,7 +23,7 @@ def audit(uid, **overrides):
 
 
 def test_tables_and_business_fields():
-    assert set(Base.metadata.tables) == {"users", "audit_records", "audit_events", "auth_sessions"}
+    assert set(Base.metadata.tables) == {"users", "audit_records", "audit_events", "auth_sessions", "admin_activity_events"}
     assert set(AuditFields.model_fields) == {"driver_name", "helper_name", "audit_date", "station", "plate_number", "remarks", "audited_by_name"}
     assert not AuditRecord.__table__.c.plate_number.unique
     assert AuditRecord.__table__.c.idempotency_key.unique

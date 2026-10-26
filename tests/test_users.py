@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.core.security import verify_password
-from backend.models import User
+from backend.models import AdminActivityEvent, User
 from tests.test_auth import api, auth_engine, encoded_password, headers, login
 from tests.test_user_schemas import PAYLOAD
 
@@ -68,6 +68,7 @@ def test_duplicates_and_concurrent_creation(accounts):
         assert c.post("/users",headers=auth,json=PAYLOAD | {"username":"EMPLOYEE"}).status_code == 409
     with Session(engine) as s:
         assert s.scalar(select(func.count()).select_from(User)) == 4
+        assert s.scalar(select(func.count()).select_from(AdminActivityEvent)) == 1
 
 
 def test_listing_search_pagination(accounts):

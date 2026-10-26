@@ -2,10 +2,10 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from backend.models import User
+from backend.models import AdminActivityEvent, User
 from tests.test_auth import api, auth_engine, encoded_password, headers, login
 from tests.test_users import accounts, SAFE_FIELDS
 
@@ -102,6 +102,7 @@ def test_concurrent_profile_edits(accounts, scenario):
         event.remove(engine,"before_cursor_execute",overlap)
     assert sorted(r.status_code for r in responses) == ([200,200] if scenario == "different_fields" else [200,409])
     with Session(engine) as s:
+        assert s.scalar(select(func.count()).select_from(AdminActivityEvent)) == (2 if scenario == "different_fields" else 1)
         if scenario == "different_fields":
             user=s.get(User,first["id"])
             assert user.username == "concurrent.name" and user.full_name == "Concurrent Name"

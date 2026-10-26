@@ -2,11 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
-from backend.models import AuthSession, User
+from backend.models import AdminActivityEvent, AuthSession, User
 from tests.test_auth import api, auth_engine, encoded_password, headers, login
 from tests.test_users import accounts, SAFE_FIELDS
 
@@ -97,6 +97,9 @@ def test_concurrent_access_safeguards(accounts, scenario):
     codes=sorted(r.status_code for r in responses)
     assert codes == ([200,409] if scenario == "same_target" else [200,401])
     with Session(engine) as s:
+        # One setup CREATE and exactly one winning access change, never an event
+        # for the rejected competing request.
+        assert s.scalar(select(func.count()).select_from(AdminActivityEvent)) == 2
         admins = s.scalars(select(User).where(User.role == "ADMIN",User.is_active.is_(True))).all()
         assert len(admins) >= 1
         if scenario != "same_target":
