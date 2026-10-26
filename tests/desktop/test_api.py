@@ -1,0 +1,120 @@
+from datetime import datetime, timedelta, timezone
+import json
+
+import pytest
+
+from desktop.api import ApiClient, ApiError, Reply
+from desktop.config import Config
+from desktop.models import AuditQuery
+
+TOKEN = 'x' * 43
+USER = dict(id=1, username='reviewer', full_name='Example Reviewer', role='ADMIN')
+AUDIT = dict(id=1, version=2, driver_name='Example Driver', helper_name=None,
+             audit_date='2026-10-26', station='Example Station', plate_number='EXAMPLE-1',
+             remarks=None, audited_by_name='Original Reviewer', audited_by_user_id=1,
+             created_at='2026-10-26T01:00:00Z', updated_at='2026-10-26T02:00:00Z', deleted_at=None)
+
+
+class Transport:
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.requests = []
+
+    def __call__(self, method, path, headers, body):
+        self.requests.append((method, path, headers, body))
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+
+def reply(data=None, status=200, **headers):
+    return Reply(status, headers, json.dumps(data).encode() if data is not None else b'')
+
+
+@pytest.mark.parametrize('url', ['http://example.com', 'https://user:pass@example.com',
+                                'https://example.com?token=x', 'ftp://localhost',
+                                'http://127.0.0.1.evil.test', 'https://example.com/#x',
+                                'http://localhost:bad', 'http://localhost/../secret'])
+def test_reject_unsafe_urls_without_echo(url):
+    with pytest.raises(ValueError) as error:
+        Config(url)
+    assert url not in str(error.value)
+
+
+@pytest.mark.parametrize('url', ['http://localhost:8000', 'http://127.0.0.1:8000',
+                                'http://[::1]:8000', 'https://api.example.com'])
+def test_allowed_urls(url):
+    assert Config(url).base_url == url
+
+
+def test_sign_in_uses_login_then_identity_and_no_secret_repr():
+    t = Transport(reply(dict(access_token=TOKEN, token_type='bearer',
+                             expires_at=(datetime.now(timezone.utc)+timedelta(hours=8)).isoformat())), reply(USER))
+    login = ApiClient(Config(), t).sign_in('reviewer', 'private-password')
+    assert login.user.role == 'ADMIN'
+    assert TOKEN not in repr(login)
+    assert t.requests[0][0:2] == ('POST', '/auth/login')
+    assert json.loads(t.requests[0][3]) == dict(username='reviewer', password='private-password')
+    assert t.requests[1][2]['Authorization'] == 'Bearer '+TOKEN
+
+
+def test_identity_failure_revokes_provisional_token():
+    t = Transport(reply(dict(access_token=TOKEN, token_type='bearer', expires_at='2099-01-01T00:00:00Z')),
+                  reply(dict(USER, role='SUPERUSER')), reply(status=204))
+    with pytest.raises(ApiError):
+        ApiClient(Config(), t).sign_in('reviewer', 'private-password')
+    assert t.requests[-1][1] == '/auth/logout'
+
+
+def test_list_filters_and_detail_etag():
+    t = Transport(reply(dict(items=[AUDIT], total=1, page=2, page_size=25)), reply(AUDIT, etag='"2"'))
+    c = ApiClient(Config(), t)
+    page = c.list_audits(TOKEN, AuditQuery(page=2, driver_name='A&B', station='East', sort='audit_date'))
+    assert page.items[0].audited_by_name == 'Original Reviewer'
+    assert 'driver_name=A%26B' in t.requests[0][1]
+    assert 'include_deleted' not in t.requests[0][1]
+    assert c.get_audit(TOKEN, 1).etag == '"2"'
+
+
+@pytest.mark.parametrize('values', [dict(page=0), dict(page=10001), dict(page_size=101), dict(sort='driver'),
+                                   dict(date_from='2026-02-30'), dict(date_from='2026-12-01', date_to='2026-01-01'),
+                                   dict(driver_name='x'*201), dict(audited_by_user_id=0)])
+def test_query_validation(values):
+    with pytest.raises(ValueError):
+        AuditQuery(**values)
+
+
+@pytest.mark.parametrize('status,code', [(401,'unauthorized'),(403,'forbidden'),(404,'not_found'),
+    (409,'conflict'),(412,'precondition_failed'),(422,'invalid_request'),(429,'rate_limited'),
+    (500,'internal_error'),(503,'service_unavailable'),(302,'unexpected_response')])
+def test_errors_sanitized(status, code):
+    t = Transport(reply({'error': {'code':'password=secret', 'message':'mysql://secret token='+TOKEN}}, status, **{'retry-after':'7'}))
+    with pytest.raises(ApiError) as caught:
+        ApiClient(Config(), t).me(TOKEN)
+    e = caught.value
+    assert e.status == status and e.code == code
+    assert 'secret' not in str(e) + repr(e) and TOKEN not in str(e)
+    if status == 429:
+        assert e.retry_after == 7
+
+
+@pytest.mark.parametrize('body', [b'<html>password</html>', b'[]', b'null', b'{"role":"ADMIN"}'])
+def test_malformed_response_safe(body):
+    with pytest.raises(ApiError, match='invalid response'):
+        ApiClient(Config(), Transport(Reply(200, {}, body))).me(TOKEN)
+
+
+def test_offline_and_timeout_sanitized():
+    for error in [TimeoutError('private-password'), OSError('mysql://secret')]:
+        with pytest.raises(ApiError) as e:
+            ApiClient(Config(), Transport(error)).me(TOKEN)
+        assert 'private-password' not in str(e.value) and 'secret' not in str(e.value)
+
+
+def test_logout_204_and_header_injection():
+    t = Transport(reply(status=204))
+    assert ApiClient(Config(), t).logout(TOKEN) is None
+    with pytest.raises(ApiError):
+        ApiClient(Config(), t).me('bad\r\nAuthorization: evil')
+    assert len(t.requests) == 1

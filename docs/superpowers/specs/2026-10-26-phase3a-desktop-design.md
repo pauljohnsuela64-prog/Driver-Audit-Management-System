@@ -1,6 +1,6 @@
 # Phase 3A — BHLI Audit Windows desktop design
 
-**Status:** Proposed design; sidebar approach approved, document approval pending.
+**Status:** Approved by the user for implementation on 2026-10-26 (design checkpoint `2341f49`).
 **Branch:** `feat/dams-windows-desktop` · **Baseline:** `09e8c585cd52aed826199ef1754f09d653cd1ecf`.
 
 ## Intent and scope
