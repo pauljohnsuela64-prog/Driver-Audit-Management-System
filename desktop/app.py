@@ -5,7 +5,7 @@ import time
 import customtkinter as ctk
 
 from desktop.api import ApiError
-from desktop.components.common import StatePanel, label
+from desktop.components.common import StatePanel, destroy_view
 from desktop.models import AuditQuery
 from desktop.screens.login import LoginScreen
 from desktop.screens.shell import Shell
@@ -38,8 +38,8 @@ class Application(ctk.CTk):
         self.configure(fg_color=color('bg'))
         self.protocol('WM_DELETE_WINDOW',self.close)
         self.bind('<Escape>',self.escape)
-        self.bind('<F5>',lambda e: self.refresh())
-        self.bind('<Control-f>',lambda e: self.focus_search())
+        self.bind('<F5>',lambda e=None: self.refresh())
+        self.bind('<Control-f>',lambda e=None: self.focus_search())
         self.show_login()
         self.after(30,self.poll)
 
@@ -65,10 +65,10 @@ class Application(ctk.CTk):
 
     def show_login(self,message=''):
         if self.shell:
-            self.shell.destroy()
+            destroy_view(self.shell)
             self.shell=None
         elif self.screen:
-            self.screen.destroy()
+            destroy_view(self.screen)
         self.destination=''
         self.screen=LoginScreen(self,self,message)
         self.screen.pack(fill='both',expand=True)
@@ -80,7 +80,7 @@ class Application(ctk.CTk):
                 finished(None,error)
                 return
             self.session.set(result)
-            self.screen.destroy()
+            destroy_view(self.screen)
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
             self.navigate('Dashboard')
@@ -113,7 +113,7 @@ class Application(ctk.CTk):
             return
         self.tasks.invalidate()
         if self.screen and self.screen.winfo_exists():
-            self.screen.destroy()
+            destroy_view(self.screen)
         self.destination=destination
         self.shell.select(destination)
         # Feature screens are imported lazily; the shell stays independent of their widgets.
@@ -172,7 +172,7 @@ class Application(ctk.CTk):
             destination=self.destination
             audit_id=getattr(self.screen,'audit_id',None)
             self.tasks.invalidate()
-            self.shell.destroy()
+            destroy_view(self.shell)
             self.screen=None
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
@@ -202,4 +202,4 @@ class Application(ctk.CTk):
         self.revocations.close()
         if old:
             self._revoke(old.token)
-        self.destroy()
+        destroy_view(self)

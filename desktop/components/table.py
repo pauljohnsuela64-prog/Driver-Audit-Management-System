@@ -34,10 +34,10 @@ class AuditTable(ctk.CTkFrame):
         vertical.grid(row=0,column=1,sticky='ns')
         horizontal.grid(row=1,column=0,sticky='ew')
         self.tree.configure(yscrollcommand=vertical.set,xscrollcommand=horizontal.set)
-        self.tree.bind('<Double-1>',lambda e: on_open())
-        self.tree.bind('<Return>',lambda e: on_open())
-        self.tree.bind('<Home>',lambda e: self.select_edge(False))
-        self.tree.bind('<End>',lambda e: self.select_edge(True))
+        self.tree.bind('<Double-1>',lambda e=None: on_open())
+        self.tree.bind('<Return>',lambda e=None: on_open())
+        self.tree.bind('<Home>',lambda e=None: self.select_edge(False))
+        self.tree.bind('<End>',lambda e=None: self.select_edge(True))
 
     def select_edge(self,last):
         children=self.tree.get_children()

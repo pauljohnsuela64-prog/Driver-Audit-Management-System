@@ -52,8 +52,8 @@ class LoginScreen(ctk.CTkFrame):
         self.submit_button.grid(row=8,column=0,sticky='ew',padx=28,pady=(0,16))
         label(self.card,'Connects securely to your configured service',12,True,wraplength=300).grid(
             row=9,column=0,padx=20,pady=(0,24))
-        self.username.bind('<Return>',lambda e: self.submit())
-        self.password.bind('<Return>',lambda e: self.submit())
+        self.username.bind('<Return>',lambda e=None: self.submit())
+        self.password.bind('<Return>',lambda e=None: self.submit())
         tk.Misc.bind(self,'<Configure>',self.resize,add='+')
         self.username.focus_set()
 

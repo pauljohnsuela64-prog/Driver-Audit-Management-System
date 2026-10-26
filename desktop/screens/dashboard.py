@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from desktop.components.common import button, label, StatePanel
+from desktop.components.common import button, label, StatePanel, destroy_view
 from desktop.components.table import AuditTable
 from desktop.models import AuditQuery
 from desktop.theme import color
@@ -24,14 +24,14 @@ class Dashboard(ctk.CTkScrollableFrame):
     def refresh(self):
         self.loaded=False
         for child in self.body.winfo_children():
-            child.destroy()
+            destroy_view(child)
         StatePanel(self.body,'Loading dashboard','Retrieving the latest audit overview…').grid(row=0,column=0,sticky='ew')
         client,token=self.app.client,self.app.session.login.token
         self.app.request(lambda: client.list_audits(token,AuditQuery(page_size=5)),self.finished)
 
     def finished(self,page,error):
         for child in self.body.winfo_children():
-            child.destroy()
+            destroy_view(child)
         if error:
             StatePanel(self.body,'Overview unavailable',str(error),self.refresh).grid(row=0,column=0,sticky='ew')
             return

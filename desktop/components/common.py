@@ -3,6 +3,28 @@ import tkinter as tk
 from desktop.theme import color, font, resolved
 
 
+def destroy_view(widget):
+    """Cancel this subtree's Tcl timers before Tk deletes their command names.
+
+    Tk does not cancel `after` on widget destruction. CTk uses those callbacks
+    internally; stale names can be reused for unrelated commands on a new screen.
+    Keep root polling and timers belonging to other screens untouched.
+    """
+    target=widget._parent_frame if isinstance(widget,ctk.CTkScrollableFrame) else widget
+    commands={}
+    def collect(current):
+        commands.update({name:current for name in (getattr(current,'_tclCommands',None) or ())})
+        for child in current.winfo_children():
+            collect(child)
+    collect(target)
+    for timer in target.tk.call('after','info'):
+        script,_=target.tk.call('after','info',timer)
+        parts=target.tk.splitlist(script)
+        if parts and parts[0] in commands:
+            commands[parts[0]].after_cancel(timer)
+    widget.destroy()
+
+
 def label(parent, text, size=14, muted=False, **kwargs):
     return ctk.CTkLabel(parent, text=text, font=font(size), text_color=color('muted' if muted else 'text'), **kwargs)
 
@@ -26,8 +48,8 @@ def entry(parent, placeholder='', show=None, **kwargs):
                         fg_color=color('surface'), text_color=color('text'),
                         border_color=color('border'), placeholder_text=placeholder,
                         show=show, **kwargs)
-    widget.bind('<FocusIn>',lambda e:widget.configure(border_color=color('focus')),add='+')
-    widget.bind('<FocusOut>',lambda e:widget.configure(border_color=color('border')),add='+')
+    widget.bind('<FocusIn>',lambda e=None:widget.configure(border_color=color('focus')),add='+')
+    widget.bind('<FocusOut>',lambda e=None:widget.configure(border_color=color('border')),add='+')
     return widget
 
 
@@ -37,10 +59,10 @@ def option_menu(parent,**kwargs):
                      dropdown_fg_color=color('surface'),dropdown_text_color=color('text'),
                      dropdown_hover_color=color('raised'))
     widget._canvas.configure(takefocus=1)
-    widget.bind('<Return>',lambda e:widget._open_dropdown_menu())
-    widget.bind('<space>',lambda e:widget._open_dropdown_menu())
-    widget.bind('<FocusIn>',lambda e:widget.configure(button_color=color('focus')))
-    widget.bind('<FocusOut>',lambda e:widget.configure(button_color=color('primary')))
+    widget.bind('<Return>',lambda e=None:widget._open_dropdown_menu())
+    widget.bind('<space>',lambda e=None:widget._open_dropdown_menu())
+    widget.bind('<FocusIn>',lambda e=None:widget.configure(button_color=color('focus')))
+    widget.bind('<FocusOut>',lambda e=None:widget.configure(button_color=color('primary')))
     return widget
 
 
@@ -48,10 +70,10 @@ def checkbox(parent,**kwargs):
     widget=ctk.CTkCheckBox(parent,**kwargs,fg_color=color('primary'),hover_color=color('hover'),
                            text_color=color('text'),checkmark_color=color('on_primary'),border_color=color('border'))
     widget._canvas.configure(takefocus=1)
-    widget.bind('<space>',lambda e:widget.toggle())
-    widget.bind('<Return>',lambda e:widget.toggle())
-    widget.bind('<FocusIn>',lambda e:widget.configure(border_color=color('focus')))
-    widget.bind('<FocusOut>',lambda e:widget.configure(border_color=color('border')))
+    widget.bind('<space>',lambda e=None:widget.toggle())
+    widget.bind('<Return>',lambda e=None:widget.toggle())
+    widget.bind('<FocusIn>',lambda e=None:widget.configure(border_color=color('focus')))
+    widget.bind('<FocusOut>',lambda e=None:widget.configure(border_color=color('border')))
     return widget
 
 
@@ -76,11 +98,10 @@ class StatePanel(ctk.CTkFrame):
 class Tip:
     def __init__(self, widget, text):
         self.widget, self.text, self.window = widget, text, None
-        widget.bind('<Enter>', self.show, add='+')
-        widget.bind('<FocusIn>', self.show, add='+')
-        widget.bind('<Leave>', self.hide, add='+')
-        widget.bind('<FocusOut>', self.hide, add='+')
-        widget.bind('<Destroy>', self.hide, add='+')
+        # Bind the persistent button frame, not CTk's replaceable text/image labels.
+        for event,handler in [('<Enter>',self.show),('<FocusIn>',self.show),('<Leave>',self.hide),
+                              ('<FocusOut>',self.hide),('<Destroy>',self.hide)]:
+            tk.Misc.bind(widget,event,handler,add='+')
 
     def show(self, event=None):
         if self.window is None and self.widget.winfo_exists():

@@ -26,7 +26,7 @@ class Audits(ctk.CTkFrame):
         self.search_field.grid(row=0,column=0,padx=(0,8))
         self.search=entry(toolbar,'Search audits')
         self.search.grid(row=0,column=1,sticky='ew',padx=(0,8))
-        self.search.bind('<Return>',lambda e: self.apply())
+        self.search.bind('<Return>',lambda e=None: self.apply())
         self.apply_button=button(toolbar,'Search',self.apply,True,width=80)
         self.apply_button.grid(row=0,column=2,padx=(0,8))
         button(toolbar,'Filters',self.toggle_filters,width=80).grid(row=0,column=3)

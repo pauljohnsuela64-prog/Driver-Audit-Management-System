@@ -26,9 +26,12 @@ def native_app():
     from tests.desktop.visual_support import DemoTransport
     result = Application(ApiClient(Config(), DemoTransport()))
     result.callback_errors=[]
+    result.tk.createcommand('bhli_test_bgerror',lambda message:result.callback_errors.append(('TclError',message)))
+    result.tk.eval('proc bgerror {message} {bhli_test_bgerror $message}')
     original=result.report_callback_exception
     def capture_callback(exc,value,tb):
-        result.callback_errors.append(exc.__name__)
+        import traceback
+        result.callback_errors.append((exc.__name__,str(value),[(f.name,f.lineno) for f in traceback.extract_tb(tb)]))
         original(exc,value,tb)
     result.report_callback_exception=capture_callback
     result.update()
@@ -192,3 +195,17 @@ def test_native_compact_window_auto_collapses_sidebar(app):
         app.update()
         time.sleep(.02)
     assert app.shell.collapsed
+
+
+def test_native_destroy_cancels_widget_owned_timers(app):
+    import customtkinter as ctk
+    from desktop.components.common import destroy_view
+    frame=ctk.CTkFrame(app)
+    fired=[]
+    timer=frame.after(100,lambda:fired.append('obsolete screen'))
+    destroy_view(frame)
+    assert timer not in app.tk.call('after','info')
+    for _ in range(8):
+        app.update()
+        time.sleep(.02)
+    assert fired==[]

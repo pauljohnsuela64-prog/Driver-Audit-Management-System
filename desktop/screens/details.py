@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from desktop.components.common import button, label, StatePanel
+from desktop.components.common import button, label, StatePanel, destroy_view
 from desktop.theme import color, font
 
 
@@ -24,14 +24,14 @@ class Details(ctk.CTkFrame):
         self.loaded=False
         self.record=None
         for child in self.body.winfo_children():
-            child.destroy()
+            destroy_view(child)
         StatePanel(self.body,'Loading audit details').grid(row=0,column=0,sticky='ew')
         client,token,audit_id=self.app.client,self.app.session.login.token,self.audit_id
         self.app.request(lambda:client.get_audit(token,audit_id),self.finished)
 
     def finished(self,record,error):
         for child in self.body.winfo_children():
-            child.destroy()
+            destroy_view(child)
         if error:
             StatePanel(self.body,'Audit unavailable',str(error),self.refresh).grid(row=0,column=0,sticky='ew')
             return
