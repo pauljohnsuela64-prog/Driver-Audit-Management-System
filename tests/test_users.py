@@ -52,7 +52,8 @@ def test_duplicates_and_concurrent_creation(accounts):
     c, engine, auth = accounts
     barrier = Barrier(2)
     def overlap(connection,cursor,statement,parameters,context,executemany):
-        if statement.startswith("INSERT INTO users"):
+        if statement == "BEGIN IMMEDIATE" or ("SELECT users.id" in statement
+                and "ORDER BY users.id" in statement and "FOR UPDATE" in statement):
             barrier.wait(timeout=10)
     def create(_):
         return c.post("/users",headers=auth,json=PAYLOAD)

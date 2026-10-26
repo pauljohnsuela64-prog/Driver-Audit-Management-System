@@ -9,7 +9,9 @@ from backend.models import AuthSession, User
 from backend.services.activity import write_activity
 
 
-def create_user(session, payload, actor_id):
+def create_user(session, payload, identity):
+    lock_account_guard(session)
+    actor = current_locked_admin(session, identity)
     user = User(username=payload.username, full_name=payload.full_name, role=payload.role,
                 password_hash=hash_password(payload.password.get_secret_value()), is_active=True)
     session.add(user)
@@ -21,7 +23,7 @@ def create_user(session, payload, actor_id):
         if username_conflict(session, exc):
             raise ServiceError(409, "username_exists", "Username already exists") from None
         raise
-    write_activity(session, actor_id, user, "CREATE")
+    write_activity(session, actor.id, user, "CREATE")
     return user
 
 
@@ -48,8 +50,9 @@ def username_conflict(session, exc):
             or (session.bind.dialect.name == "mysql" and exc.orig.args[0] == 1062))
 
 
-def update_user(session, user_id, payload, actor_id):
+def update_user(session, user_id, payload, identity):
     lock_account_guard(session)
+    actor = current_locked_admin(session, identity)
     previous = session.scalar(select(User).where(User.id == user_id).with_for_update()
                               .execution_options(populate_existing=True))
     if previous is None:
@@ -71,7 +74,7 @@ def update_user(session, user_id, payload, actor_id):
     # also bypasses an older MySQL REPEATABLE READ snapshot.
     user = session.scalar(select(User).where(User.id == user_id).with_for_update()
                           .execution_options(populate_existing=True))
-    write_activity(session, actor_id, user, "PROFILE_UPDATE", before)
+    write_activity(session, actor.id, user, "PROFILE_UPDATE", before)
     return user
 
 

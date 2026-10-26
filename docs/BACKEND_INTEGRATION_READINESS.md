@@ -127,7 +127,8 @@ Full regression and hosted Actions execution are deferred to final publication.
   registry values or logs. Clear client tokens on logout/401/password change.
 - **Hosted CI:** both jobs passed at the original Phase 2C checkpoint. The latest
   activity-extension HEAD must pass both jobs; consult PR #4 checks for current evidence.
-- Already-authorized in-flight requests are not retroactively canceled. History
+- Account mutations revalidate authorization under lock; other already-authorized
+  in-flight requests are not retroactively canceled. History
   is append-only for runtime accounts, not tamper-proof against database admins.
 
 There is no confirmed backend-code blocker for starting local Windows-client work.

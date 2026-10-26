@@ -13,7 +13,7 @@ Search = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, m
 
 @router.post("", response_model=AccountResponse, status_code=201)
 def create(payload: UserCreate, session: DatabaseSession, identity: Identity):
-    return AccountResponse.model_validate(create_user(session, payload, identity[1].id))
+    return AccountResponse.model_validate(create_user(session, payload, identity))
 
 
 @router.get("", response_model=AccountPage)
@@ -32,7 +32,7 @@ def read(user_id: Annotated[int, Path(ge=1)], session: DatabaseSession):
 
 @router.patch("/{user_id}", response_model=AccountResponse)
 def edit(user_id: Annotated[int, Path(ge=1)], payload: UserPatch, session: DatabaseSession, identity: Identity):
-    return AccountResponse.model_validate(update_user(session, user_id, payload, identity[1].id))
+    return AccountResponse.model_validate(update_user(session, user_id, payload, identity))
 
 
 @router.patch("/{user_id}/access", response_model=AccountResponse)

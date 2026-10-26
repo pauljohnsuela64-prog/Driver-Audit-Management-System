@@ -63,7 +63,9 @@ rows are retained; an explicitly authorized maintenance policy can archive them 
 Bearer credentials can be replayed while valid: protect client storage with native
 OS secure storage and TLS. Every protected request checks the stored session,
 expiration, revocation and the current user's active status and role. Disabled
-users and revoked tokens are rejected on subsequent requests; already-authorized
+users and revoked tokens are rejected on subsequent requests. Account mutations
+recheck the session and role under the account lock before writing; revocation or
+demotion that wins that lock prevents the mutation. Other already-authorized
 in-flight requests are not retroactively canceled. Recovery revokes every existing
 session for that administrator. Logout leaves other sessions valid.
 
