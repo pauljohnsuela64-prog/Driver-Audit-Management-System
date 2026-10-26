@@ -99,7 +99,9 @@ def test_mysql_runtime_permissions(live_database):
             'DELETE FROM audit_events WHERE 1=0',
             "UPDATE audit_events SET action='UPDATE' WHERE 1=0",
             'CREATE TABLE runtime_ddl_probe (id INT PRIMARY KEY)',
-            'SELECT * FROM driver_audit_db.users LIMIT 0',
+            # This existing system table makes denial meaningful on a disposable
+            # server without requiring a production-named database or any grants.
+            'SELECT * FROM mysql.user LIMIT 0',
         ]
         for statement in denied:
             with runtime.connect() as connection:

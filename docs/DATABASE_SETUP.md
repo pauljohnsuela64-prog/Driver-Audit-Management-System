@@ -1,5 +1,25 @@
 # MySQL setup
 
+## Disposable GitHub Actions MySQL
+
+The mysql-tests job starts mysql:8.0 using Docker with an ephemeral port bound only
+to runner loopback. scripts/ci_mysql.py refuses non-GitHub-hosted environments,
+generates separate temporary administrator/migration/runtime passwords, masks
+them and both test URLs, and exports only the test URLs through GITHUB_ENV.
+It creates driver_audit_test_phase1 and the two test accounts, grants migration
+rights only on that exact database (escaping underscores), and applies the same
+table-specific runtime grants documented in database/README.md. No runtime DELETE,
+DDL or audit-event UPDATE rights are granted. A migration roundtrip establishes
+the grants and leaves the schema empty before the complete pytest --mysql suite.
+The container is removed even after test failure; no production secrets are used.
+
+Docker bridge clients authenticate as dams_test_app@%; the host assertion accepts
+that exact configured identity only in GitHub Actions. Local verification still
+requires dams_test_app@localhost. Cross-database denial probes mysql.user, which
+exists on both disposable and local servers, avoiding a production-named database.
+The existing credential-free SQLite job remains unchanged. Hosted execution is
+verified only after this branch is published; local Docker is not required.
+
 Use MySQL 8.0.16 or newer (enforced CHECK constraints). Live Phase 1 verification completed on MySQL 8.0.46 with MySQL80 running.
 Both dedicated databases and all four accounts are provisioned; see
 [LIVE_MYSQL_REVIEW.md](LIVE_MYSQL_REVIEW.md) for the execution record.

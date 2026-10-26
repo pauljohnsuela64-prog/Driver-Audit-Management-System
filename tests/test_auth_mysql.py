@@ -30,7 +30,9 @@ def test_runtime_bootstrap_serializes_concurrent_creators(live_database):
     runtime = make_engine(url)
     try:
         with runtime.connect() as c:
-            assert c.scalar(text("SELECT CURRENT_USER()")) == "dams_test_app@localhost"
+            account_host = os.getenv("DAMS_TEST_ACCOUNT_HOST", "localhost")
+            assert account_host == "localhost" or (account_host == "%" and os.getenv("GITHUB_ACTIONS") == "true")
+            assert c.scalar(text("SELECT CURRENT_USER()")) == f"dams_test_app@{account_host}"
         def create(name):
             data = BootstrapRequest(username=name, full_name="Test", password="concurrency test passphrase!")
             try:
