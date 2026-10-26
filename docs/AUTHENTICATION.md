@@ -2,7 +2,9 @@
 
 The application factory is `backend.main:create_app`. Routes call services and
 repositories; models, database transactions and revision 0001 remain from Phase 1.
-No audit CRUD, user-management API, GUI, mobile screens or exports exist yet.
+Audit CRUD and account-management APIs are now available; see
+[backend integration readiness](BACKEND_INTEGRATION_READINESS.md). GUI, mobile
+screens and exports remain outside the implemented backend scope.
 
 ## Local configuration and launch
 
