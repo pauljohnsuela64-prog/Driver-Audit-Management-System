@@ -4,8 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.exc import StaleDataError
 from starlette.exceptions import HTTPException
 
+from backend.api.audits import router as audit_router
 from backend.api.auth import router
 from backend.core.config import runtime_database_url
 from backend.core.database import make_engine
@@ -51,6 +53,10 @@ def create_app(*, engine=None):
     async def service_error(request, exc):
         return error(exc.status, exc.code, exc.message)
 
+    @app.exception_handler(StaleDataError)
+    async def stale_error(request, exc):
+        return error(409, "conflict", "Audit changed concurrently")
+
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request, exc):
         return error(503, "service_unavailable", "Service temporarily unavailable")
@@ -69,4 +75,5 @@ def create_app(*, engine=None):
         return {"status": "ok"}
 
     app.include_router(router)
+    app.include_router(audit_router)
     return app

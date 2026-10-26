@@ -2,11 +2,11 @@
 
 Planned topology: Windows desktop and Android clients communicate over HTTPS
 with FastAPI; the backend alone connects to MySQL. Clients must never receive
-database credentials. FastAPI is installed, but no routes or authentication
-implementation exist in this phase.
+database credentials. FastAPI provides session authentication and the Phase 2B
+audit API; desktop and Android clients are not yet implemented.
 
 The backend separates configuration/transactions, SQLAlchemy entities, Pydantic
-schemas, and a reserved repository package. Alembic is the production schema
+schemas, authentication repositories and transactional services. Alembic is the production schema
 authority: application startup must not call `create_all`.
 
 ## Schema
@@ -28,8 +28,8 @@ clients should generate normalized opaque idempotency keys (for example UUIDs).
 The business fields remain Driver Name, Helper Name, Audit Date, Station, Plate
 Number, Remarks, and Audited By. Helper Name and Remarks are optional; the other
 five are required and text fields must not be blank. Audited By is a stored name
-snapshot (`audited_by_name`) linked to `audited_by_user_id`; future authenticated
-services must supply it. No checklists, photos, GPS or pass/fail fields exist.
+snapshot (`audited_by_name`) linked to `audited_by_user_id`; the authenticated
+audit service supplies both and preserves them during edits. No checklists, photos, GPS or pass/fail fields exist.
 
 Timestamps use MySQL DATETIME(6) storing UTC. Connection initialization sets UTC
 and strict SQL mode; the custom type rejects naive inputs and returns aware UTC
@@ -38,8 +38,9 @@ updates refresh `updated_at` and enforce optimistic `version`; direct SQL writer
 must explicitly maintain these fields. Audit Date is a calendar date.
 
 Deletion uses a paired timestamp/user reference. Idempotency uniqueness is enforced
-when a key is supplied. Future services must atomically write an audit and its
-event, verify authorization, and hash passwords/tokens; none is implemented here.
+when a key is supplied. The audit service atomically writes each mutation and its
+event, checks account ownership, and requires version preconditions. Authentication
+hashes passwords and stores only token digests. See [audit API](AUDIT_API.md).
 Runtime grants prohibit changing/deleting events. Administrators/migrators retain
 DDL rights, so this is not tamper-proof storage.
 
