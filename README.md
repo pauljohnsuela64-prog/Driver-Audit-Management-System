@@ -4,8 +4,9 @@ Phase 1 provides the Python foundation, MySQL schema, Alembic migration and test
 Phase 2A adds the FastAPI application, bearer-session authentication, role
 dependencies and secure local administrator bootstrap/recovery. See
 [authentication setup and API](docs/AUTHENTICATION.md).
-Official directory: `C:\BHLI-Audit`. The existing empty `app.py` and `database.py`
-are preserved. No audit CRUD, desktop GUI, Android application or reporting is implemented.
+Phase 2B adds the [audit records REST API](docs/AUDIT_API.md), atomic history,
+version preconditions and idempotent creation. Official directory: `C:\BHLI-Audit`.
+Desktop GUI, Android application and reporting remain future work.
 
 ## Setup (PowerShell)
 
@@ -35,10 +36,11 @@ See [architecture](docs/ARCHITECTURE.md) and [verification record](docs/VERIFICA
 
 `backend/core` owns configuration, connection and transaction lifecycle;
 `backend/models` contains the four tables; `backend/schemas` validates the seven
-business fields; `backend/repositories` reserves the future persistence layer.
+business fields; `backend/repositories` contains authentication persistence, and `backend/services`
+contains authentication and audit transaction rules.
 `database`, `migrations`, `scripts`, `tests`, and `docs` contain setup, versioned
 DDL, operator tools, checks, and documentation. `desktop` and `mobile` document
 future clients without implementing them.
 
-Phase 1 is merged. Phase 2A is developed on `feat/dams-backend-auth` for a draft
-PR and independent engineering review. Phase 2B is not included.
+Phases 1 and 2A are merged. Phase 2B is developed on `feat/dams-audit-records`
+for a draft PR and engineering review.
