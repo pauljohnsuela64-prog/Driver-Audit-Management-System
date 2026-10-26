@@ -71,3 +71,53 @@ def test_native_login_failure_and_password_not_retained(app):
     assert app.state.login is None
     assert app.screen.password.get() == ''
     assert 'secret only in memory' not in app.screen.status.cget('text')
+
+
+def test_native_audits_filters_details_and_return_state(app):
+    sign_in(app)
+    pump(app, lambda: getattr(app.screen,'loaded',False))
+    assert app.screen.total == 3
+    app.navigate('Driver Audits')
+    pump(app, lambda: getattr(app.screen,'loaded',False))
+    assert len(app.screen.table.tree.get_children()) == 3
+    app.screen.search.insert(0,'Example')
+    app.screen.apply()
+    pump(app, lambda: app.screen.loaded)
+    assert app.query.driver_name == 'Example'
+    app.screen.table.tree.selection_set('1')
+    app.screen.open_selected()
+    pump(app, lambda: getattr(app.screen,'loaded',False))
+    assert app.destination == 'Audit Details'
+    assert app.screen.record.audited_by_name == 'Original Reviewer'
+    app.escape()
+    pump(app, lambda: getattr(app.screen,'loaded',False))
+    assert app.query.driver_name == 'Example'
+    assert app.screen.table.tree.selection() == ('1',)
+
+
+def test_native_offline_empty_and_retry(app):
+    sign_in(app)
+    transport=app.client.transport
+    transport.mode='offline'
+    app.navigate('Driver Audits')
+    pump(app, lambda: getattr(app.screen,'last_error',None) is not None)
+    assert 'private' not in app.screen.notice.cget('text')
+    assert not app.screen.table.tree.get_children()
+    transport.mode='empty'
+    app.screen.refresh()
+    pump(app, lambda: app.screen.loaded)
+    assert not app.screen.table.tree.get_children()
+    assert 'No matching' in app.screen.notice.cget('text')
+    transport.mode='normal'
+
+
+def test_native_invalid_date_is_local_and_does_not_request(app):
+    sign_in(app)
+    app.navigate('Driver Audits')
+    pump(app, lambda: getattr(app.screen,'loaded',False))
+    before=len(app.client.transport.requests)
+    app.screen.date_from.insert(0,'2026-02-30')
+    app.screen.apply()
+    pump(app)
+    assert len(app.client.transport.requests) == before
+    assert app.screen.notice.cget('text')
