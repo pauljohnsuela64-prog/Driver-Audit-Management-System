@@ -209,3 +209,12 @@ def test_native_destroy_cancels_widget_owned_timers(app):
         app.update()
         time.sleep(.02)
     assert fired==[]
+
+
+def test_native_primary_action_has_distinct_keyboard_focus(app):
+    app.set_theme('Light')
+    target=app.screen.submit_button
+    before=target.cget('border_color')[0]
+    target._canvas.event_generate('<FocusIn>')
+    app.update()
+    assert target.cget('border_color')[0]!=before

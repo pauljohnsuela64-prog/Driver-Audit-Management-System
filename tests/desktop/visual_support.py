@@ -9,6 +9,7 @@ class DemoTransport:
         self.role = 'ADMIN'
         self.requests = []
         self.mode = 'normal'
+        self.gate = None
 
     def __call__(self, method, path, headers, body):
         self.requests.append((method, path))
@@ -23,6 +24,8 @@ class DemoTransport:
         if path == '/auth/logout':
             return reply(status=204)
         if path.startswith('/audits?'):
+            if self.gate is not None:
+                self.gate.wait(5)
             if self.mode == 'offline':
                 raise OSError('private diagnostic must stay hidden')
             query = parse_qs(urlsplit(path).query)

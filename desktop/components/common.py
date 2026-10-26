@@ -38,7 +38,7 @@ def button(parent, text, command, primary=False, **kwargs):
     b._canvas.configure(takefocus=1)
     b.bind('<Return>', lambda event=None: b.invoke())
     b.bind('<space>', lambda event=None: b.invoke())
-    b.bind('<FocusIn>', lambda event=None: b.configure(border_color=color('focus')))
+    b.bind('<FocusIn>', lambda event=None: b.configure(border_color=color('on_primary' if primary else 'focus')))
     b.bind('<FocusOut>', lambda event=None: b.configure(border_color=color('primary' if primary else 'border')))
     return b
 
@@ -58,7 +58,8 @@ def option_menu(parent,**kwargs):
     widget.configure(button_color=color('primary'),button_hover_color=color('hover'),
                      dropdown_fg_color=color('surface'),dropdown_text_color=color('text'),
                      dropdown_hover_color=color('raised'))
-    widget._canvas.configure(takefocus=1)
+    widget._canvas.configure(takefocus=1,highlightthickness=2,
+                             highlightbackground=resolved('primary'),highlightcolor=resolved('on_primary'))
     widget.bind('<Return>',lambda e=None:widget._open_dropdown_menu())
     widget.bind('<space>',lambda e=None:widget._open_dropdown_menu())
     widget.bind('<FocusIn>',lambda e=None:widget.configure(button_color=color('focus')))
