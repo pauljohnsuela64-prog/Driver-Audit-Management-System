@@ -91,3 +91,47 @@ def test_backlog_is_bounded_and_shutdown_skips_queued_work():
     gate.set()
     time.sleep(.05)
     assert ran == []
+
+
+def test_superseded_callbacks_are_released_without_navigation():
+    t=Tasks(workers=1)
+    gate,started=Event(),Event()
+    t.submit('screen',lambda:started.set() or gate.wait(2),lambda *_:None)
+    assert started.wait(1)
+    seen=[]
+    t.submit('screen',lambda:2,lambda *_:seen.append(2))
+    gate.set()
+    spin(t,lambda:bool(seen))
+    assert t._callbacks=={}
+    t.close()
+
+
+def test_completed_worker_releases_request_captures():
+    import gc
+    import weakref
+    class Secret:
+        pass
+    secret=Secret()
+    reference=weakref.ref(secret)
+    t=Tasks(workers=1)
+    seen=[]
+    t.submit('login',lambda captured=secret:True,lambda *_:seen.append(True))
+    del secret
+    spin(t,lambda:bool(seen))
+    gc.collect()
+    assert reference() is None
+    t.close()
+
+
+def test_rejected_replacement_still_invalidates_previous_query():
+    t=Tasks(workers=1,capacity=1)
+    gate,started=Event(),Event()
+    seen=[]
+    t.submit('screen',lambda:started.set() or gate.wait(2),lambda *_:seen.append('old query'))
+    assert started.wait(1)
+    assert not t.submit('screen',lambda:'new',lambda *_:seen.append('new query'))
+    gate.set()
+    time.sleep(.05)
+    t.drain()
+    assert seen==[]
+    t.close()

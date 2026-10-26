@@ -126,5 +126,8 @@ class AuditPage:
         items = data['items']
         if not isinstance(items, list) or len(items) > 100:
             raise ValueError('Invalid items')
-        return cls(tuple(Audit.parse(item) for item in items), integer(data['total'], 0),
-                   integer(data['page']), integer(data['page_size']))
+        records=tuple(Audit.parse(item) for item in items)
+        total,page,size=integer(data['total'],0),integer(data['page']),integer(data['page_size'])
+        if len({r.id for r in records})!=len(records) or len(records)>min(total,size) or page>10000 or size>100:
+            raise ValueError('Invalid audit page')
+        return cls(records,total,page,size)

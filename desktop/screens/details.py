@@ -26,7 +26,7 @@ class Details(ctk.CTkFrame):
         for child in self.body.winfo_children():
             child.destroy()
         StatePanel(self.body,'Loading audit details').grid(row=0,column=0,sticky='ew')
-        client,token,audit_id=self.app.client,self.app.state.login.token,self.audit_id
+        client,token,audit_id=self.app.client,self.app.session.login.token,self.audit_id
         self.app.request(lambda:client.get_audit(token,audit_id),self.finished)
 
     def finished(self,record,error):

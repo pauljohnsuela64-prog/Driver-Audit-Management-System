@@ -22,13 +22,15 @@ MESSAGES = {
     500: ('internal_error', 'The service could not complete the request. Try again.'),
     503: ('service_unavailable', 'The service is temporarily unavailable. Try again.'),
 }
+ERROR_CODES = {409: {'conflict','username_exists','access_conflict','self_access_change','last_admin',
+                     'self_reset','password_reuse'}, 412: {'version_mismatch'}, 428: {'precondition_required'}}
 
 
 class ApiError(Exception):
-    def __init__(self, status=0, code='network_error', message=None, retry_after=0):
+    def __init__(self, status=0, code=None, message=None, retry_after=0):
         default = MESSAGES.get(status, ('unexpected_response', 'The service returned an unexpected response.'))
         self.status = status
-        self.code = default[0] if status else code
+        self.code = code or (default[0] if status else 'network_error')
         self.retry_after = retry_after
         super().__init__(message or (default[1] if status else 'Unable to reach the service. Check your connection and try again.'))
 
@@ -94,8 +96,15 @@ class ApiClient:
             raise ApiError(502, message='The service returned an invalid response.') from None
         response_headers = {k.lower(): v for k, v in reply.headers.items()}
         if not 200 <= reply.status < 300:
-            # Envelope text is deliberately not surfaced; status + known code are sufficient.
-            raise ApiError(reply.status, retry_after=retry_seconds(response_headers.get('retry-after', '60')) if reply.status == 429 else 0)
+            # Preserve known conflict semantics, never arbitrary codes/messages or submitted data.
+            code=None
+            try:
+                candidate=json.loads(reply.body)['error']['code']
+                if candidate in ERROR_CODES.get(reply.status,set()):
+                    code=candidate
+            except (ValueError,KeyError,TypeError,RecursionError):
+                pass
+            raise ApiError(reply.status, code=code, retry_after=retry_seconds(response_headers.get('retry-after', '60')) if reply.status == 429 else 0)
         if reply.status == 204:
             return None, response_headers
         try:
@@ -103,7 +112,7 @@ class ApiClient:
             if not isinstance(data, dict):
                 raise ValueError
             return data, response_headers
-        except (ValueError, UnicodeError, TypeError):
+        except (ValueError, UnicodeError, TypeError, RecursionError):
             raise ApiError(502, message='The service returned an invalid response.') from None
 
     def _parse(self, parser, data, *args):

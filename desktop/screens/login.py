@@ -1,6 +1,7 @@
 import time
 import customtkinter as ctk
-from desktop.components.common import button, entry, label, Notice
+import tkinter as tk
+from desktop.components.common import button, entry, label, Notice, checkbox
 from desktop.theme import color, font
 
 
@@ -40,7 +41,7 @@ class LoginScreen(ctk.CTkFrame):
         label(self.card,'Password').grid(row=4,column=0,sticky='w',padx=28)
         self.password = entry(self.card,show='•')
         self.password.grid(row=5,column=0,sticky='ew',padx=28,pady=(4,8))
-        self.reveal = ctk.CTkCheckBox(self.card,text='Show password',font=font(12),
+        self.reveal = checkbox(self.card,text='Show password',font=font(12),
                                      command=lambda: self.password.configure(show='' if self.reveal.get() else '•'))
         self.reveal.grid(row=6,column=0,sticky='w',padx=28,pady=(0,16))
         self.status = Notice(self.card)
@@ -53,12 +54,12 @@ class LoginScreen(ctk.CTkFrame):
             row=9,column=0,padx=20,pady=(0,24))
         self.username.bind('<Return>',lambda e: self.submit())
         self.password.bind('<Return>',lambda e: self.submit())
-        self.bind('<Configure>',self.resize)
+        tk.Misc.bind(self,'<Configure>',self.resize,add='+')
         self.username.focus_set()
 
     def resize(self, event):
         if event.widget is self:
-            if event.width < 950:
+            if event.width/self._get_widget_scaling() < 950:
                 self.brand.grid_remove()
                 self.right.grid_configure(column=0,columnspan=2,padx=32)
             else:

@@ -26,11 +26,14 @@ class Tasks:
         self._outstanding = 0
         self._capacity = capacity
         self._closed = False
+        self._workers = workers
         for _ in range(workers):
             Thread(target=self._worker, daemon=True, name='bhli-http').start()
 
     def submit(self, key, work, done, dispose=None):
         with self._lock:
+            previous=self._current.pop(key,None)
+            self._callbacks.pop(previous,None)
             if self._closed or self._outstanding >= self._capacity:
                 return False
             self._serial += 1
@@ -60,6 +63,7 @@ class Tasks:
             result, error = None, None
             try:
                 if not self._valid(job):
+                    self._results.put((job, None, None))
                     continue
                 try:
                     result = job.work()
@@ -74,9 +78,14 @@ class Tasks:
                         self._results.put((job, result, error))
                 if not valid:
                     self._dispose(job, result)
+                    self._results.put((job, None, None))
             finally:
+                # Release login/password closures before an idle worker waits again.
+                job.work = None
+                result = error = None
                 with self._lock:
                     self._outstanding -= 1
+                job = None
 
     def drain(self):
         if get_ident() != self.owner:
@@ -87,6 +96,9 @@ class Tasks:
             except Empty:
                 break
             if self._valid(job):
+                with self._lock:
+                    if self._current.get(job.key) == job.serial:
+                        self._current.pop(job.key, None)
                 callback = self._callbacks.pop(job.serial, None)
                 if callback:
                     callback(result, error)
@@ -117,5 +129,5 @@ class Tasks:
         self._callbacks.clear()
         self._discard_results()
         # Wake all idle workers, without waiting for pending network requests.
-        for _ in range(4):
+        for _ in range(self._workers):
             self._queue.put(None)

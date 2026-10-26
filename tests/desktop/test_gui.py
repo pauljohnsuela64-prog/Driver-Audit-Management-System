@@ -25,6 +25,12 @@ def native_app():
     from desktop.config import Config
     from tests.desktop.visual_support import DemoTransport
     result = Application(ApiClient(Config(), DemoTransport()))
+    result.callback_errors=[]
+    original=result.report_callback_exception
+    def capture_callback(exc,value,tb):
+        result.callback_errors.append(exc.__name__)
+        original(exc,value,tb)
+    result.report_callback_exception=capture_callback
     result.update()
     yield result
     if result.winfo_exists():
@@ -35,14 +41,16 @@ def native_app():
 def app(native_app):
     native_app.logout('Native test setup')
     pump(native_app)
-    return native_app
+    native_app.callback_errors.clear()
+    yield native_app
+    assert native_app.callback_errors==[]
 
 
 def sign_in(app, username='admin'):
     app.screen.username.insert(0, username)
     app.screen.password.insert(0, 'fictional test passphrase')
     app.screen.submit()
-    pump(app, lambda: app.state.login is not None)
+    pump(app, lambda: app.session.login is not None)
 
 
 def test_native_login_shell_roles_theme_resize_logout(app):
@@ -57,10 +65,10 @@ def test_native_login_shell_roles_theme_resize_logout(app):
     pump(app)
     assert app.screen.winfo_exists()
     app.logout()
-    pump(app, lambda: app.state.login is None)
+    pump(app, lambda: app.session.login is None)
     sign_in(app, 'auditor')
     assert 'Employee Accounts' not in app.shell.nav_buttons
-    assert app.state.login.user.role == 'AUDITOR'
+    assert app.session.login.user.role == 'AUDITOR'
 
 
 def test_native_login_failure_and_password_not_retained(app):
@@ -68,7 +76,7 @@ def test_native_login_failure_and_password_not_retained(app):
     app.screen.password.insert(0, 'secret only in memory')
     app.screen.submit()
     pump(app, lambda: app.screen.submit_button.cget('state') == 'normal')
-    assert app.state.login is None
+    assert app.session.login is None
     assert app.screen.password.get() == ''
     assert 'secret only in memory' not in app.screen.status.cget('text')
 
@@ -121,3 +129,66 @@ def test_native_invalid_date_is_local_and_does_not_request(app):
     pump(app)
     assert len(app.client.transport.requests) == before
     assert app.screen.notice.cget('text')
+
+
+def test_native_station_search_keeps_single_filter_value(app):
+    sign_in(app)
+    app.navigate('Driver Audits')
+    pump(app,lambda:app.screen.loaded)
+    s=app.screen
+    s.search_field.set('Station')
+    s.search_changed('Station')
+    s.search.insert(0,'North')
+    s.apply()
+    pump(app,lambda:s.loaded)
+    s.search_field.set('Driver')
+    s.search_changed('Driver')
+    s.search.delete(0,'end')
+    s.search.insert(0,'Example')
+    s.apply()
+    assert app.query.station=='North'
+
+
+def test_native_read_requests_honor_rate_limit(app):
+    from desktop.api import ApiError
+    sign_in(app)
+    pump(app,lambda:app.screen.loaded)
+    app.request(lambda: (_ for _ in ()).throw(ApiError(429,retry_after=60)),lambda *_:None)
+    pump(app,lambda:app.retry_until>0)
+    calls=[]
+    app.request(lambda:calls.append('sent'),lambda *_:None)
+    pump(app)
+    assert calls==[]
+    app.retry_until=0
+
+
+def test_native_logout_survives_saturated_screen_queue(app,monkeypatch):
+    sign_in(app)
+    pump(app,lambda:app.screen.loaded)
+    # Allow any previous session's asynchronous logout to settle first.
+    for _ in range(10):
+        app.update()
+        time.sleep(.01)
+    monkeypatch.setattr(app.tasks,'submit',lambda *args,**kwargs:False)
+    before=sum(path=='/auth/logout' for _,path in app.client.transport.requests)
+    app.logout()
+    pump(app,lambda:sum(path=='/auth/logout' for _,path in app.client.transport.requests)>before)
+
+
+def test_native_window_state_method_remains_available_for_dpi_tracker(app):
+    assert callable(app.state)
+    assert app.state() in ('normal','zoomed','iconic','withdrawn')
+
+
+def test_native_compact_window_auto_collapses_sidebar(app):
+    sign_in(app)
+    app.geometry('1200x650')
+    for _ in range(5):
+        app.update()
+        time.sleep(.02)
+    app.shell.set_collapsed(False)
+    app.geometry('800x600')
+    for _ in range(12):
+        app.update()
+        time.sleep(.02)
+    assert app.shell.collapsed

@@ -118,3 +118,56 @@ def test_logout_204_and_header_injection():
     with pytest.raises(ApiError):
         ApiClient(Config(), t).me('bad\r\nAuthorization: evil')
     assert len(t.requests) == 1
+
+
+def test_conflict_envelope_preserves_known_code_without_server_message():
+    t=Transport(reply({'error':{'code':'version_mismatch','message':'token=private'}},412))
+    with pytest.raises(ApiError) as e:
+        ApiClient(Config(),t).me(TOKEN)
+    assert e.value.code=='version_mismatch'
+    assert 'private' not in str(e.value)
+
+
+def test_http_date_retry_header():
+    from email.utils import format_datetime
+    t=Transport(reply(status=429,**{'Retry-After':format_datetime(datetime.now(timezone.utc)+timedelta(seconds=30))}))
+    with pytest.raises(ApiError) as e:
+        ApiClient(Config(),t).me(TOKEN)
+    assert 29<=e.value.retry_after<=31
+
+
+def test_duplicate_record_ids_in_page_are_invalid():
+    t=Transport(reply(dict(items=[AUDIT,AUDIT],total=2,page=1,page_size=25)))
+    with pytest.raises(ApiError):
+        ApiClient(Config(),t).list_audits(TOKEN,AuditQuery())
+
+
+def test_real_http_transport_refuses_redirect_and_times_out():
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    from threading import Thread
+    import time
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self,*args):
+            pass
+        def do_GET(self):
+            if self.server.slow:
+                time.sleep(.15)
+            self.send_response(302)
+            self.send_header('Location','https://example.com/never-follow')
+            self.end_headers()
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    server.slow=False
+    thread=Thread(target=server.serve_forever,daemon=True)
+    thread.start()
+    try:
+        client=ApiClient(Config(f'http://127.0.0.1:{server.server_port}',read_timeout=.03))
+        with pytest.raises(ApiError) as e:
+            client.me(TOKEN)
+        assert e.value.status==302
+        server.slow=True
+        with pytest.raises(ApiError) as e:
+            client.me(TOKEN)
+        assert e.value.code=='network_error'
+    finally:
+        server.shutdown()
+        server.server_close()

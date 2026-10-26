@@ -1,6 +1,6 @@
 from dataclasses import replace
 import customtkinter as ctk
-from desktop.components.common import button, entry, label, Notice
+from desktop.components.common import button, entry, label, Notice, option_menu, checkbox
 from desktop.components.table import AuditTable
 from desktop.models import AuditQuery
 from desktop.theme import color, font
@@ -15,12 +15,13 @@ class Audits(ctk.CTkFrame):
         self.loaded=False
         self.last_error=None
         self.total=0
+        self.search_mode='Driver'
         self.columnconfigure(0,weight=1)
         self.rowconfigure(4,weight=1)
         toolbar=ctk.CTkFrame(self,fg_color='transparent')
         toolbar.grid(row=0,column=0,sticky='ew',pady=(0,12))
         toolbar.columnconfigure(1,weight=1)
-        self.search_field=ctk.CTkOptionMenu(toolbar,values=['Driver','Plate','Station'],width=110,font=font(),
+        self.search_field=option_menu(toolbar,values=['Driver','Plate','Station'],width=110,font=font(),
             command=self.search_changed,fg_color=color('primary'),text_color=color('on_primary'))
         self.search_field.grid(row=0,column=0,padx=(0,8))
         self.search=entry(toolbar,'Search audits')
@@ -36,7 +37,7 @@ class Audits(ctk.CTkFrame):
         self.station=self.field(self.options,'Station',0,0)
         self.date_from=self.field(self.options,'From · YYYY-MM-DD',0,1)
         self.date_to=self.field(self.options,'To · YYYY-MM-DD',0,2)
-        self.mine=ctk.CTkCheckBox(self.options,text='My audits',font=font())
+        self.mine=checkbox(self.options,text='My audits',font=font())
         self.mine.grid(row=2,column=0,sticky='w',padx=12,pady=12)
         button(self.options,'Apply filters',self.apply,True,width=120).grid(row=2,column=1,padx=8,pady=12,sticky='e')
         button(self.options,'Clear all',self.clear,width=100).grid(row=2,column=2,padx=12,pady=12,sticky='e')
@@ -44,7 +45,7 @@ class Audits(ctk.CTkFrame):
         ordering=ctk.CTkFrame(self,fg_color='transparent')
         ordering.grid(row=2,column=0,sticky='ew',pady=(0,8))
         ordering.columnconfigure(1,weight=1)
-        self.sort=ctk.CTkOptionMenu(ordering,values=list(SORTS),command=lambda v: self.apply(),font=font(12),
+        self.sort=option_menu(ordering,values=list(SORTS),command=lambda v: self.apply(),font=font(12),
             width=155,fg_color=color('primary'),text_color=color('on_primary'))
         self.sort.grid(row=0,column=0,sticky='w')
         self.refresh_button=button(ordering,'Refresh',self.refresh,width=95)
@@ -60,7 +61,7 @@ class Audits(ctk.CTkFrame):
         pager.columnconfigure(0,weight=1)
         self.range=label(pager,'Loading…',12,True)
         self.range.grid(row=0,column=0,sticky='w')
-        self.size=ctk.CTkOptionMenu(pager,values=['25','50','100'],command=lambda v:self.apply(),width=70,
+        self.size=option_menu(pager,values=['25','50','100'],command=lambda v:self.apply(),width=70,
             font=font(12),fg_color=color('primary'),text_color=color('on_primary'))
         self.size.grid(row=0,column=1,padx=8)
         self.previous=button(pager,'Previous',lambda:self.page(-1),width=85)
@@ -87,17 +88,24 @@ class Audits(ctk.CTkFrame):
             self.mine.select()
         if q.plate_number:
             self.search_field.set('Plate')
+            self.search_mode='Plate'
             self.search.insert(0,q.plate_number)
         elif q.driver_name:
             self.search.insert(0,q.driver_name)
 
     def search_changed(self,value):
+        if self.search_mode=='Station':
+            self.station.configure(state='normal')
+            self.station.delete(0,'end')
+            self.station.insert(0,self.search.get())
+        self.search_mode=value
         if value=='Station':
             self.search.delete(0,'end')
             self.search.insert(0,self.station.get())
             self.station.configure(state='disabled')
         else:
             self.station.configure(state='normal')
+            self.search.delete(0,'end')
 
     def toggle_filters(self):
         if self.options.winfo_ismapped():
@@ -107,12 +115,17 @@ class Audits(ctk.CTkFrame):
 
     def apply(self):
         term=self.search.get().strip()
+        if self.search_field.get()=='Station':
+            self.station.configure(state='normal')
+            self.station.delete(0,'end')
+            self.station.insert(0,term)
+            self.station.configure(state='disabled')
         values=dict(driver_name='',plate_number='',station=self.station.get().strip())
         values[{'Driver':'driver_name','Plate':'plate_number','Station':'station'}[self.search_field.get()]]=term
         try:
             query=AuditQuery(page_size=int(self.size.get()),sort=SORTS[self.sort.get()],
                 date_from=self.date_from.get().strip(),date_to=self.date_to.get().strip(),
-                audited_by_user_id=self.app.state.login.user.id if self.mine.get() else None,**values)
+                audited_by_user_id=self.app.session.login.user.id if self.mine.get() else None,**values)
         except ValueError:
             self.notice.show('Check search length (200 maximum) and dates (YYYY-MM-DD, start before end).')
             return
@@ -142,7 +155,7 @@ class Audits(ctk.CTkFrame):
         self.notice.show('Loading driver audits…',False)
         for b in (self.previous,self.next,self.detail_button):
             b.configure(state='disabled')
-        client,token,query=self.app.client,self.app.state.login.token,self.app.query
+        client,token,query=self.app.client,self.app.session.login.token,self.app.query
         self.app.request(lambda:client.list_audits(token,query),self.finished)
 
     def finished(self,page,error):

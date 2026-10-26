@@ -13,7 +13,7 @@ class Dashboard(ctk.CTkScrollableFrame):
         self.total=None
         self.columnconfigure(0,weight=1)
         label(self,'Your audit workspace',28).grid(row=0,column=0,sticky='w',pady=(0,4))
-        description=('Administrator workspace · View all active driver audits.' if app.state.login.user.role=='ADMIN'
+        description=('Administrator workspace · View all active driver audits.' if app.session.login.user.role=='ADMIN'
                      else 'Auditor workspace · Browse active audits across your team.')
         label(self,description,muted=True,wraplength=600,justify='left').grid(row=1,column=0,sticky='w',pady=(0,24))
         self.body=ctk.CTkFrame(self,fg_color='transparent')
@@ -26,7 +26,7 @@ class Dashboard(ctk.CTkScrollableFrame):
         for child in self.body.winfo_children():
             child.destroy()
         StatePanel(self.body,'Loading dashboard','Retrieving the latest audit overview…').grid(row=0,column=0,sticky='ew')
-        client,token=self.app.client,self.app.state.login.token
+        client,token=self.app.client,self.app.session.login.token
         self.app.request(lambda: client.list_audits(token,AuditQuery(page_size=5)),self.finished)
 
     def finished(self,page,error):
@@ -51,7 +51,7 @@ class Dashboard(ctk.CTkScrollableFrame):
             button(self.body,'View selected audit',lambda: self.open_selected(table),width=180).grid(row=3,column=0,sticky='w',pady=12)
         else:
             StatePanel(self.body,'No active audits yet','New records will appear here when available.').grid(row=2,column=0,sticky='ew')
-        if self.app.state.login.user.role=='ADMIN':
+        if self.app.session.login.user.role=='ADMIN':
             label(self.body,'Administration',20).grid(row=4,column=0,sticky='w',pady=(20,4))
             label(self.body,'Employee Accounts and Administrator Activity desktop modules are coming in a later phase.',
                   muted=True,wraplength=560,justify='left').grid(row=5,column=0,sticky='w')

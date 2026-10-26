@@ -1,5 +1,7 @@
 """Composition and main-thread lifecycle. Network work is always delegated."""
 from threading import Thread
+import math
+import time
 import customtkinter as ctk
 
 from desktop.api import ApiError
@@ -16,8 +18,12 @@ class Application(ctk.CTk):
     def __init__(self,client):
         super().__init__()
         self.client=client
-        self.state=SessionState()
+        self.session=SessionState()
         self.tasks=Tasks()
+        self.revocations=Tasks(workers=1,capacity=8)
+        self.revocation_serial=0
+        self.retry_until=0
+        self._retry_display=0
         self.closing=False
         self.shell=None
         self.screen=None
@@ -25,7 +31,8 @@ class Application(ctk.CTk):
         self.query=AuditQuery()
         self.selected_id=None
         self.title('BHLI Audit')
-        width,height=min(1280,self.winfo_screenwidth()-40),min(800,self.winfo_screenheight()-80)
+        scale=self._get_window_scaling()
+        width,height=min(1280,int(self.winfo_screenwidth()/scale)-40),min(800,int(self.winfo_screenheight()/scale)-80)
         self.geometry(f'{width}x{height}')
         self.minsize(min(800,width),min(600,height))
         self.configure(fg_color=color('bg'))
@@ -47,7 +54,12 @@ class Application(ctk.CTk):
         if self.closing:
             return
         self.tasks.drain()
-        if self.state.login and self.state.expired():
+        self.revocations.drain()
+        remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
+        if self.shell and remaining!=self._retry_display:
+            self.shell.notice.show(f'Too many requests. Retry available in {remaining}s.' if remaining else '',bool(remaining))
+        self._retry_display=remaining
+        if self.session.login and self.session.expired():
             self.logout('Your session expired. Please sign in again.')
         self.after(30,self.poll)
 
@@ -67,7 +79,7 @@ class Application(ctk.CTk):
             if error:
                 finished(None,error)
                 return
-            self.state.set(result)
+            self.session.set(result)
             self.screen.destroy()
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
@@ -77,21 +89,27 @@ class Application(ctk.CTk):
             finished(None,ApiError(message='Requests are busy. Please try again.'))
 
     def request(self,work,done):
-        generation=self.state.generation
+        remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
+        if remaining:
+            done(None,ApiError(429,retry_after=remaining))
+            return
+        generation=self.session.generation
         def completed(result,error):
-            if generation != self.state.generation:
+            if generation != self.session.generation:
                 return
             if error and error.status == 401:
                 self.logout('Your session is no longer valid. Please sign in again.')
             else:
+                if error and error.status==429:
+                    self.retry_until=time.monotonic()+error.retry_after
                 done(result,error)
         if not self.tasks.submit('screen',work,completed):
             done(None,ApiError(message='Requests are busy. Please try again shortly.'))
 
     def navigate(self,destination,audit_id=None):
-        if not self.state.login:
+        if not self.session.login:
             return
-        if destination not in self.state.destinations and destination != 'Audit Details':
+        if destination not in self.session.destinations and destination != 'Audit Details':
             return
         self.tasks.invalidate()
         if self.screen and self.screen.winfo_exists():
@@ -129,12 +147,15 @@ class Application(ctk.CTk):
                 # Worker touches only the completion queue, never Tk.
                 return error
         if notify:
-            self.tasks.submit('logout',work,lambda error,_: self.screen.status.show(str(error)) if error and not self.state.login and hasattr(self.screen,'status') else None)
+            self.revocation_serial+=1
+            if not self.revocations.submit(str(self.revocation_serial),work,
+                lambda error,_: self.screen.status.show(str(error)) if error and not self.session.login and hasattr(self.screen,'status') else None):
+                self.screen.status.show('Signed out locally. Server revocation could not be queued; the session may remain until expiry.')
         else:
             Thread(target=work,daemon=True,name='bhli-signout').start()
 
     def logout(self,message='Signed out. Please sign in to continue.'):
-        old=self.state.clear()
+        old=self.session.clear()
         self.tasks.invalidate()
         self.query=AuditQuery()
         self.selected_id=None
@@ -143,8 +164,11 @@ class Application(ctk.CTk):
             self._revoke(old.token,notify=True)
 
     def set_theme(self,appearance):
+        # CTk restores focus asynchronously after changing the Windows titlebar.
+        # Capture the persistent root, never a screen that is about to be destroyed.
+        self.focus_set()
         ctk.set_appearance_mode(appearance)
-        if self.state.login:
+        if self.session.login:
             destination=self.destination
             audit_id=getattr(self.screen,'audit_id',None)
             self.tasks.invalidate()
@@ -173,8 +197,9 @@ class Application(ctk.CTk):
         if self.closing:
             return
         self.closing=True
-        old=self.state.clear()
+        old=self.session.clear()
         self.tasks.close()
+        self.revocations.close()
         if old:
             self._revoke(old.token)
         self.destroy()

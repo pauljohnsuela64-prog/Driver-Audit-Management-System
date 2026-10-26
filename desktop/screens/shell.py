@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from desktop.components.common import button, label, Notice, Tip
+import tkinter as tk
+from desktop.components.common import button, label, Notice, Tip, option_menu
 from desktop.theme import color, font, icon
 
 
@@ -19,7 +20,7 @@ class Shell(ctk.CTkFrame):
         self.toggle = button(self.sidebar,'Collapse navigation',self.collapse,width=200)
         self.toggle.grid(row=1,column=0,padx=12,pady=(0,24),sticky='ew')
         self.nav_buttons,self.images = {},[]
-        for row,destination in enumerate(app.state.destinations,2):
+        for row,destination in enumerate(app.session.destinations,2):
             image=icon(self,destination)
             self.images.append(image)
             b=button(self.sidebar,destination,lambda d=destination: app.navigate(d),image=image,
@@ -38,15 +39,19 @@ class Shell(ctk.CTkFrame):
         header.grid(row=0,column=0,sticky='ew')
         header.columnconfigure(0,weight=1)
         self.heading=label(header,'Dashboard',20)
-        self.heading.grid(row=0,column=0,sticky='w',padx=24,pady=20)
-        self.appearance=ctk.CTkOptionMenu(header,values=['Light','Dark'],command=app.set_theme,width=88,
+        self.heading.grid(row=0,column=0,sticky='w',padx=24,pady=(12,0))
+        user=app.session.login.user
+        display_name=user.full_name if len(user.full_name)<=28 else user.full_name[:27]+'…'
+        self.identity=label(header,f'{display_name} · {user.role}',12,True)
+        self.identity.grid(row=1,column=0,sticky='w',padx=24,pady=(0,12))
+        self.appearance=option_menu(header,values=['Light','Dark'],command=app.set_theme,width=88,
                                         font=font(12),fg_color=color('primary'),text_color=color('on_primary'))
         self.appearance.set(ctk.get_appearance_mode())
-        self.appearance.grid(row=0,column=1,padx=8)
+        self.appearance.grid(row=0,column=1,rowspan=2,padx=8)
         self.account=button(header,'Account',self.toggle_menu,width=100)
-        self.account.grid(row=0,column=2,padx=(0,16))
+        self.account.grid(row=0,column=2,rowspan=2,padx=(0,16))
         self.menu=ctk.CTkFrame(main,fg_color=color('surface'))
-        user=app.state.login.user
+        user=app.session.login.user
         label(self.menu,f'{user.full_name} · {user.role}',wraplength=450).pack(side='left',padx=16)
         button(self.menu,'My Account',lambda: app.navigate('My Account'),width=110).pack(side='left',padx=4,pady=8)
         button(self.menu,'Sign Out',app.logout,width=100).pack(side='left',padx=4,pady=8)
@@ -54,7 +59,7 @@ class Shell(ctk.CTkFrame):
         self.content.grid(row=2,column=0,sticky='nsew',padx=24,pady=16)
         self.notice=Notice(main)
         self.notice.grid(row=3,column=0,sticky='ew',padx=24,pady=(0,12))
-        self.bind('<Configure>',self.resize)
+        tk.Misc.bind(self,'<Configure>',self.resize,add='+')
 
     def collapse(self):
         self.set_collapsed(not self.collapsed)
@@ -69,7 +74,7 @@ class Shell(ctk.CTkFrame):
         self.footer.configure(text='' if value else 'Phase 3A · Read-only workspace')
 
     def resize(self,event):
-        if event.widget is self and event.width < 1050 and not self.collapsed:
+        if event.widget is self and event.width/self._get_widget_scaling() < 1050 and not self.collapsed:
             self.set_collapsed(True)
 
     def select(self,name):
