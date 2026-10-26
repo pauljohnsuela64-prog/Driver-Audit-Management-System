@@ -1,8 +1,8 @@
-# Employee accounts: Assignments 1A and 1B
+# Employee accounts: Assignments 1A, 1B and 1C
 
 All account routes require a valid bearer session and current ADMIN role. AUDITOR
-receives 403; missing/invalid sessions receive 401. Only username/full-name editing is supported. Role changes,
-activation/deactivation and password resets are not implemented.
+receives 403; missing/invalid sessions receive 401. Profile editing and dedicated role/status management are supported.
+Password resets are not implemented.
 
 | Route | Result |
 | --- | --- |
@@ -10,6 +10,7 @@ activation/deactivation and password resets are not implemented.
 | GET /users | Paginated accounts, including inactive accounts |
 | GET /users/{id} | Safe details, or 404 when absent |
 | PATCH /users/{id} | ADMIN-only partial username/full_name edit |
+| PATCH /users/{id}/access | ADMIN-only role/status changes |
 
 Creation body (fictional example):
 
@@ -74,3 +75,35 @@ ORM update expression; clients cannot supply timestamps.
 
 Profile checks are in tests/test_user_profiles.py. Run them with the existing
 user, schema and authentication tests in default and isolated --mysql modes.
+
+
+## Role and account-status management (Assignment 1C)
+
+PATCH /users/{id}/access accepts role (exactly ADMIN or AUDITOR), is_active (JSON
+true/false), or both. Empty/null payload fields, string/integer booleans and all
+other fields return 422. Responses use the same five safe account fields. Missing
+accounts return 404. The profile endpoint still rejects role and status changes.
+
+Administrators cannot demote or deactivate themselves (409). The last active
+ADMIN is protected. Access transactions first lock the lowest user ID as a common
+guard; accounts cannot be physically deleted. SQLite tests use BEGIN IMMEDIATE.
+After acquiring the guard, current locking reads revalidate the caller's session,
+active status and role, then the target and active-admin count. This prevents two
+administrators from removing each other using authority cached before waiting.
+An already-revoked caller gets 401; a caller without ADMIN permission gets 403.
+
+Requests capture target role/status before waiting; if either changed while they
+waited, return 409 access_conflict and require a reload before retrying. Access
+changes therefore do not silently overwrite overlapping changes. This is not an
+If-Match API: a new request observes the state when it starts. No-op requests return
+200 without revoking sessions.
+
+An actual role/status change revokes all unrevoked, unexpired sessions for that
+account in the same transaction. Insert/update/commit failures roll back both
+account and session changes. Disabled accounts cannot log in; reactivation permits
+login with the existing password, but never restores old sessions. Account IDs,
+password hashes and historical audit attribution are preserved. Runtime grants
+suffice; no migration, production data change or password-reset endpoint is added.
+
+Access-specific tests are in tests/test_user_access.py, including forced concurrent
+cross-administrator changes, same-target conflicts and session-revocation failures.
