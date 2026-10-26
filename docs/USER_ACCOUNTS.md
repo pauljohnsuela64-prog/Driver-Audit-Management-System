@@ -135,7 +135,8 @@ MySQL login locks the same user row before password verification/session creatio
 SQLite login uses BEGIN IMMEDIATE for equivalent serialization. A login with the
 old password that completes first has its token revoked by reset; one following
 reset fails password verification. Existing bootstrap/recovery is unchanged.
-Self-service password changes and email recovery are outside this assignment.
+Self-service changes use POST /auth/change-password; see AUTHENTICATION.md.
+Email recovery remains outside scope.
 
 Focused tests: tests/test_password_reset.py in default and isolated --mysql modes,
 followed by the affected authentication, bootstrap and user-management regressions.

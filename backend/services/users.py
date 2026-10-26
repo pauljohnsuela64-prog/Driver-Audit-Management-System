@@ -105,7 +105,7 @@ def lock_account_guard(session):
 
 
 
-def current_locked_admin(session, identity):
+def current_locked_user(session, identity):
     # Authentication may have happened before waiting for the guard. Revalidate
     # the caller and token with current locking reads before granting authority.
     pair = session.execute(select(AuthSession, User).join(User, User.id == AuthSession.user_id)
@@ -113,9 +113,13 @@ def current_locked_admin(session, identity):
                            .with_for_update().execution_options(populate_existing=True)).first()
     now = utcnow()
     if (pair is None or pair[0].revoked_at is not None or pair[0].expires_at <= now
-            or not pair[1].is_active):
+            or not pair[1].is_active or pair[1].role not in {"ADMIN", "AUDITOR"}):
         raise unauthorized()
-    actor = pair[1]
+    return pair[1]
+
+
+def current_locked_admin(session, identity):
+    actor = current_locked_user(session, identity)
     if actor.role != "ADMIN":
         raise ServiceError(403, "forbidden", "Insufficient permission")
     return actor
@@ -144,3 +148,17 @@ def reset_user_password(session, user_id, payload, identity):
     target.password_hash = hash_password(payload.new_password.get_secret_value())
     session.flush()
     revoke_user_sessions(session, target.id, utcnow())
+
+
+def change_own_password(session, payload, identity):
+    lock_account_guard(session)
+    user = current_locked_user(session, identity)
+    current = payload.current_password.get_secret_value()
+    replacement = payload.new_password.get_secret_value()
+    if not verify_password(user.password_hash, current):
+        raise unauthorized()
+    if replacement == current:
+        raise ServiceError(409, "password_reuse", "Choose a different password")
+    user.password_hash = hash_password(replacement)
+    session.flush()
+    revoke_user_sessions(session, user.id, utcnow())

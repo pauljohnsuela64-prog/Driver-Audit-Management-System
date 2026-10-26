@@ -47,6 +47,7 @@ never creates tables, runs migrations or creates an administrator.
 | POST /auth/login | JSON username/password; returns access_token, token_type=bearer, expires_at |
 | GET /auth/me | Bearer token; returns id, username, full_name, role |
 | POST /auth/logout | Bearer token; revokes only that session and returns 204 |
+| POST /auth/change-password | Bearer token; current_password/new_password; revokes all own sessions and returns 204 |
 
 Send `Authorization: Bearer <token>` from native clients. Tokens are not cookies,
 JWTs or URL parameters. Login rejects additional fields, so clients cannot supply
@@ -62,6 +63,30 @@ expiration, revocation and the current user's active status and role. Disabled
 users and revoked tokens are rejected on subsequent requests; already-authorized
 in-flight requests are not retroactively canceled. Recovery revokes every existing
 session for that administrator. Logout leaves other sessions valid.
+
+## Self-service password change (Phase 2C, Assignment 1E)
+
+ADMIN and AUDITOR may POST /auth/change-password with exactly current_password and
+new_password. The account comes only from the authenticated session; a target ID
+or any extra field is rejected. Both fields use SecretStr. Current passwords are
+bounded to 1..128 characters; replacements must be nonblank, 15..128 characters,
+and different from the verified current password. Password characters are not
+trimmed. Missing/invalid fields return sanitized 422; incorrect current passwords
+or invalid/disabled sessions return 401; password reuse returns 409.
+
+Success returns 204 with no body and requires a fresh login. Argon2id replacement
+and revocation of every unrevoked account session, including the current and expired
+sessions, commit atomically. Failures roll back both changes. No credentials or
+tokens are returned. Account role/status, ownership IDs and audit history stay intact.
+
+The existing account transaction guard serializes changes with administrator
+resets and access changes. Current locking reads revalidate the session after
+waiting. Login locks the same account before password verification/session insert
+(SQLite uses BEGIN IMMEDIATE). A login using the old password that finishes first
+is revoked by the change; one that follows it fails. An administrator reset that
+wins first invalidates a waiting change request; one following a completed change
+replaces that password and revokes its sessions. Focused coverage is in
+tests/test_password_change.py, in SQLite and isolated MySQL modes.
 
 ## Roles and authorization
 
