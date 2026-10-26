@@ -59,8 +59,11 @@ def sign_in(app, username='admin'):
 def test_native_login_shell_roles_theme_resize_logout(app):
     sign_in(app)
     assert 'Employee Accounts' in app.shell.nav_buttons
+    initial_collapsed=app.shell.collapsed
     app.shell.collapse()
-    assert app.shell.collapsed
+    assert app.shell.collapsed is not initial_collapsed
+    app.shell.collapse()
+    assert app.shell.collapsed is initial_collapsed
     app.set_theme('Dark')
     app.geometry('800x600')
     pump(app)
