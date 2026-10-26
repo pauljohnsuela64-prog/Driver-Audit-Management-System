@@ -1,0 +1,4 @@
+# Separate desktop environment; backend pins remain in requirements.txt.
+customtkinter==6.0.0
+darkdetect==0.8.0
+packaging==26.3
