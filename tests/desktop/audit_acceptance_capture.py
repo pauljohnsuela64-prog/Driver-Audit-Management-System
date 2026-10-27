@@ -33,7 +33,9 @@ def main():
                 app.update()
                 if predicate():return
                 time.sleep(.01)
-            raise AssertionError('Native audit workflow did not settle')
+            raise AssertionError(f'Native audit workflow did not settle: screen={app.destination}, '
+                f'pending={app.mutation_pending}, draft_errors={list(app.draft.errors) if app.draft else []}, '
+                f'uncertain={app.draft.uncertain if app.draft else False}, callbacks={errors}')
         def capture(name,dialog=False):
             app.lift();app.attributes('-topmost',True)
             if dialog and app.dialog:app.dialog.lift()

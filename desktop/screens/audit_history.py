@@ -61,12 +61,15 @@ class AuditHistory(ctk.CTkFrame):
         self.count.configure(text=f'{page.total:,} events · Page {page.page}')
         self.previous.configure(state='normal' if page.page>1 else 'disabled')
         self.next.configure(state='normal' if page.page*25<page.total and page.page<10000 else 'disabled')
+        self.event_buttons={}
         for i,event in enumerate(page.items):
             card=ctk.CTkFrame(self.body,fg_color=color('raised'),corner_radius=8)
             card.grid(row=i,column=0,sticky='ew',padx=12,pady=8)
             card.columnconfigure(0,weight=1)
             title=f'{event.action} · {event.created_at:%Y-%m-%d %H:%M:%S UTC} · User #{event.actor_user_id}'
-            button(card,title,lambda event=event:self.select(event)).grid(row=0,column=0,sticky='ew',padx=12,pady=12)
+            event_button=button(card,title,lambda event=event:self.select(event))
+            event_button.grid(row=0,column=0,sticky='ew',padx=12,pady=12)
+            self.event_buttons[event.id]=event_button
             if self.selected==event.id or self.selected is None and i==0:
                 self.render_event(card,event)
 
@@ -76,6 +79,11 @@ class AuditHistory(ctk.CTkFrame):
         for child in self.body.winfo_children():
             destroy_view(child)
         self.finished(page,None)
+        self.event_buttons[event.id].focus_set()
+        selected=self.event_buttons[event.id].master
+        region=self.body._parent_canvas.bbox('all')
+        if region:
+            self.body._parent_canvas.yview_moveto(max(0,selected.winfo_y()-8)/max(1,region[3]))
 
     def render_event(self,parent,event):
         before,after=event.before_data,event.after_data
@@ -83,7 +91,7 @@ class AuditHistory(ctk.CTkFrame):
         for key in (*FIELDS,'audited_by_name'):
             old=getattr(before,key) if before else None
             new=getattr(after,key)
-            if before is None or old!=new:
+            if before is None or event.action=='DELETE' or old!=new:
                 lines.extend(['',LABELS.get(key,'Audited By'),
                               'Before: '+(old or 'Not provided') if before else 'Before: No record',
                               'After: '+(new or 'Not provided')])

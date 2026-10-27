@@ -35,6 +35,10 @@ class Details(ctk.CTkFrame):
         self.app.request(lambda:client.get_audit(token,audit_id,include_deleted=True) if include_deleted else client.get_audit(token,audit_id),self.finished)
 
     def finished(self,record,error):
+        self.loaded=False
+        self.record=None
+        for child in self.actions.winfo_children():
+            destroy_view(child)
         for child in self.body.winfo_children():
             destroy_view(child)
         if error:

@@ -13,6 +13,7 @@ def confirm_delete(app,record):
 
     def resolved(current,error):
         if error:
+            app.audit_unavailable(audit_id,error)
             app.shell.notice.show(str(error)+' Deletion was not confirmed. Reload and review before trying again.')
         elif current.deleted_at:
             app.navigate('Driver Audits',force=True)
@@ -30,6 +31,7 @@ def confirm_delete(app,record):
                 app.shell.notice.show('The record changed. Review the updated identity and confirm again.')
                 app.request(lambda:client.get_audit(token,audit_id),resolved)
             else:
+                app.audit_unavailable(audit_id,error)
                 app.shell.notice.show(str(error)+' Deletion was not confirmed.')
             return
         app.navigate('Driver Audits',force=True)
@@ -47,6 +49,7 @@ def confirm_delete(app,record):
 
     def loaded(current,error):
         if error:
+            app.audit_unavailable(audit_id,error)
             app.shell.notice.show(str(error))
         else:
             show_confirmation(current)

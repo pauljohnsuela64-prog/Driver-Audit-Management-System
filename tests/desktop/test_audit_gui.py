@@ -156,3 +156,72 @@ def test_compact_form_uses_available_width_and_wide_form_has_two_columns(app):
         pump(app);time.sleep(.02)
     assert app.screen._columns==2
     assert app.screen.groups['driver_name'].grid_info()['row']==app.screen.groups['helper_name'].grid_info()['row']
+
+
+def test_compare_latest_validates_invalid_draft_without_freezing(app):
+    sign_in(app)
+    app.open_edit(Audit.parse(AUDIT,'"2"'))
+    pump(app,lambda:hasattr(app.screen,'inputs'))
+    app.screen.inputs['driver_name'].delete(0,'end')
+    app.screen.fetch_latest()
+    pump(app)
+    assert app.draft.errors.get('driver_name')
+    assert not app.draft.uncertain
+    assert app.screen.inputs['driver_name'].cget('state')=='normal'
+
+
+def test_remarks_tab_traverses_and_focused_field_scrolls_into_view(app):
+    sign_in(app)
+    app.geometry('800x600');app.open_create();pump(app)
+    remarks=app.screen.inputs['remarks']
+    app.focus_force();remarks.focus_set();pump(app)
+    canvas=app.screen.body._parent_canvas
+    assert canvas.yview()[0]>0
+    remarks._textbox.event_generate('<Tab>');pump(app)
+    assert '\t' not in remarks.get('1.0','end-1c')
+    assert app.focus_get() is not remarks._textbox
+
+
+def test_delete_history_shows_retained_business_snapshot(app):
+    from desktop.models import EventPage
+    from tests.desktop.test_audit_api import event
+    sign_in(app)
+    deleted=dict(AUDIT,deleted_at='2026-10-27T01:00:00Z')
+    app.client.audit_history=lambda *args,**kw:EventPage.parse(dict(
+        items=[event(action='DELETE',after_data=deleted)],total=1,page=1,page_size=25),1)
+    app.navigate('Audit History',1);pump(app,lambda:app.screen.loaded)
+    def texts(widget):
+        import customtkinter as ctk
+        result=[widget.get('1.0','end-1c')] if isinstance(widget,ctk.CTkTextbox) else []
+        for child in widget.winfo_children():result.extend(texts(child))
+        return result
+    content='\n'.join(texts(app.screen.body))
+    assert AUDIT['driver_name'] in content and AUDIT['plate_number'] in content
+
+
+@pytest.mark.parametrize('action,status',[('edit',404),('delete',403)])
+def test_fresh_action_denial_clears_stale_details(app,action,status):
+    sign_in(app)
+    app.navigate('Audit Details',1);pump(app,lambda:app.screen.loaded)
+    original=app.screen.record
+    def unavailable(*args,**kw):raise ApiError(status)
+    app.client.get_audit=unavailable
+    if action=='edit':app.open_edit(original)
+    else:app.confirm_delete(original)
+    pump(app,lambda:not app.screen.loaded)
+    assert app.screen.record is None and not app.screen.actions.winfo_children()
+
+
+@pytest.mark.parametrize('status',[403,404])
+def test_unavailable_edit_blocks_repeat_submission(app,status):
+    sign_in(app)
+    app.open_edit(Audit.parse(AUDIT,'"2"'));pump(app,lambda:hasattr(app.screen,'inputs'))
+    field=app.screen.inputs['driver_name'];field.delete(0,'end');field.insert(0,'Local draft')
+    calls=[]
+    def denied(*args):calls.append(args);raise ApiError(status)
+    app.client.update_audit=denied
+    app.screen.save();pump(app,lambda:not app.mutation_pending)
+    app.screen.save();pump(app)
+    assert len(calls)==1
+    assert app.screen.save_button.cget('state')=='disabled'
+    assert app.draft.values['driver_name']=='Local draft'

@@ -37,6 +37,10 @@ class AuditForm(ctk.CTkFrame):
                 widget=entry(group,'YYYY-MM-DD' if key=='audit_date' else '')
                 widget.insert(0,draft.values.get(key) or '')
             widget.grid(row=1,column=0,sticky='ew')
+            widget.bind('<FocusIn>',lambda event,key=key:self.reveal(key),add='+')
+            if key=='remarks':
+                widget.bind('<Tab>',lambda event:self.traverse(event,False),add='+')
+                widget.bind('<Shift-Tab>',lambda event:self.traverse(event,True),add='+')
             hint_text='YYYY-MM-DD · years 1000–9999' if key=='audit_date' else f'Maximum {LIMITS[key]:,} characters'
             label(group,hint_text,12,True).grid(row=2,column=0,sticky='w',pady=(4,0))
             error=label(group,'',12,justify='left',anchor='w',wraplength=300)
@@ -89,16 +93,34 @@ class AuditForm(ctk.CTkFrame):
                 self.draft.errors=remaining
                 self.draft.message='Please correct: '+', '.join(LABELS.get(key,'Form') for key in remaining)+'.' if remaining else ''
 
+    def reveal(self,key):
+        canvas=self.body._parent_canvas
+        group=self.groups[key]
+        top=canvas.canvasy(0)
+        height=canvas.winfo_height()
+        y=group.winfo_y()
+        bottom=y+group.winfo_height()
+        region=canvas.bbox('all')
+        if region and region[3]>height and (y<top or bottom>top+height):
+            target=max(0,y-12) if y<top or group.winfo_height()>height else bottom-height+12
+            canvas.yview_moveto(target/max(1,region[3]))
+
+    @staticmethod
+    def traverse(event,previous):
+        target=event.widget.tk_focusPrev() if previous else event.widget.tk_focusNext()
+        target.focus_set()
+        return 'break'
+
     def render_state(self):
         draft=self.draft
-        frozen=draft.pending or draft.uncertain or draft.latest is not None
+        frozen=draft.pending or draft.uncertain or draft.latest is not None or draft.unavailable
         for key,widget in self.inputs.items():
             widget.configure(state='disabled' if frozen else 'normal')
             self.errors[key].configure(text=draft.errors.get(key,''))
         self.notice.show(draft.message or ('Saving… Do not close this window until the result is known.' if draft.pending else
             'Fields marked * are required. Audited By is supplied by the server.'),bool(draft.message))
         self.save_button.configure(text='Saving…' if draft.pending else 'Retry same creation' if draft.intent and draft.uncertain else 'Save audit',
-            state='disabled' if draft.pending or draft.baseline and (draft.uncertain or draft.latest is not None) else 'normal')
+            state='disabled' if draft.pending or draft.unavailable or draft.baseline and (draft.uncertain or draft.latest is not None) else 'normal')
         self.reload_button.configure(state='normal' if draft.baseline and not draft.pending else 'disabled')
         snapshot=draft.baseline.audited_by_name if draft.baseline else self.app.session.login.user.full_name
         self.attribution.configure(text=f'Audited By (read-only): {snapshot}'+(' · server confirms on save' if not draft.baseline else '\nOriginal historical attribution is preserved.'))
@@ -120,7 +142,7 @@ class AuditForm(ctk.CTkFrame):
 
     def save(self):
         draft=self.draft
-        if draft.pending or draft.latest is not None or draft.baseline and draft.uncertain:
+        if draft.pending or draft.unavailable or draft.latest is not None or draft.baseline and draft.uncertain:
             return
         self.capture()
         draft.errors={}
@@ -152,6 +174,7 @@ class AuditForm(ctk.CTkFrame):
             if error:
                 draft.message=str(error)
                 if draft.baseline:
+                    draft.unavailable=error.status in (403,404)
                     draft.uncertain=ambiguous(error) or error.status in (409,412)
                 else:
                     # Preserve an already-ambiguous intent even when a later retry is rate limited.
@@ -178,12 +201,21 @@ class AuditForm(ctk.CTkFrame):
         if draft.pending or not draft.baseline:
             return
         self.capture()
+        try:
+            normalize(draft.values)
+        except ValidationError as error:
+            draft.errors=error.errors
+            draft.message='Correct the indicated fields before comparing the latest record.'
+            self.render_state();self.notice.focus_set()
+            return
         app,client,token,audit_id=self.app,self.app.client,self.app.session.login.token,draft.baseline.id
         draft.uncertain=True
         def loaded(record,error):
             if error:
+                draft.unavailable=error.status in (403,404)
                 draft.message=str(error)+' Your draft is retained; saving is blocked until the record can be reviewed.'
             else:
+                draft.unavailable=False
                 draft.latest=record
                 draft.message='Compare original, your draft, and latest server values below.'
             app.render_draft()

@@ -86,6 +86,7 @@ class AuditDraft:
     intent: CreationIntent | None = None
     pending: bool = False
     uncertain: bool = False
+    unavailable: bool = False
     latest: object = None
     message: str = ''
     errors: dict = field(default_factory=dict)

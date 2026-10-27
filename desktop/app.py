@@ -287,6 +287,7 @@ class Application(ctk.CTk):
             client,token,audit_id=self.client,self.session.login.token,record.id
             def loaded(latest,error):
                 if error:
+                    self.audit_unavailable(audit_id,error)
                     self.shell.notice.show(str(error));return
                 if not can_edit(latest,self.session.login.user.id,self.session.login.user.role):
                     self.shell.notice.show('You no longer have permission to edit this audit.');return
@@ -327,3 +328,7 @@ class Application(ctk.CTk):
     def confirm_delete(self,record):
         from desktop.audit_actions import confirm_delete
         confirm_delete(self,record)
+
+    def audit_unavailable(self,audit_id,error):
+        if error.status in (403,404) and self.destination=='Audit Details' and getattr(self.screen,'audit_id',None)==audit_id:
+            self.screen.finished(None,error)
