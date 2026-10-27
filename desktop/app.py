@@ -23,6 +23,10 @@ class Application(ctk.CTk):
         except BaseException:
             self.collector.close()
             raise
+        # Tk lazily sources focus procedures. Load them before Python callbacks
+        # invoke traversal during the first native Tab event.
+        self.tk.call('auto_load','tk_focusNext')
+        self.tk.call('auto_load','tk_focusPrev')
         self.client=client
         self.session=SessionState()
         self.tasks=Tasks()
@@ -30,6 +34,7 @@ class Application(ctk.CTk):
         self.mutations=Tasks(workers=1,capacity=1)
         self.mutation_pending=False
         self.draft=None
+        self.account_action=None
         self.dialog=None
         self.revocation_serial=0
         self.retry_until=0
@@ -80,6 +85,7 @@ class Application(ctk.CTk):
                 self.after(30,self.poll)
 
     def show_login(self,message=''):
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.shell:
             destroy_view(self.shell)
             self.shell=None
@@ -90,17 +96,22 @@ class Application(ctk.CTk):
         self.screen.pack(fill='both',expand=True)
 
     def sign_in(self,username,password,finished):
+        from desktop.account_operations import desktop_sign_in
         client=self.client
         def accepted(result,error):
             if error:
                 finished(None,error)
+                return
+            if result.user.role!='ADMIN':
+                self._revoke(result.token)
+                finished(None,ApiError(403,message='This Windows application requires an HR administrator account.'))
                 return
             self.session.set(result)
             destroy_view(self.screen)
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
             self.navigate('Dashboard',force=True)
-        if not self.tasks.submit('login',lambda: client.sign_in(username,password),accepted,
+        if not self.tasks.submit('login',lambda: desktop_sign_in(client,username,password),accepted,
                                  lambda result: client.logout(result.token)):
             finished(None,ApiError(message='Requests are busy. Please try again.'))
 
@@ -125,11 +136,15 @@ class Application(ctk.CTk):
     def navigate(self,destination,audit_id=None,force=False):
         if not self.session.login:
             return
+        if self.session.login.user.role!='ADMIN':
+            self.logout('This Windows application requires an HR administrator account.',force=True)
+            return
         if destination not in self.session.destinations and destination not in ('Audit Details','Create Audit','Edit Audit','Audit History'):
             return
         if not force and not self.leave_form(lambda:self.navigate(destination,audit_id,force=True)):
             return
         self.tasks.invalidate()
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.screen and self.screen.winfo_exists():
             destroy_view(self.screen)
         self.destination=destination
@@ -181,18 +196,19 @@ class Application(ctk.CTk):
         else:
             Thread(target=work,daemon=True,name='bhli-signout').start()
 
-    def logout(self,message='Signed out. Please sign in to continue.',force=False):
+    def logout(self,message='Signed out. Please sign in to continue.',force=False,revoke=True):
         if not force and not self.leave_form(lambda:self.logout(message,force=True),allow_pending=True):
             return
         if self.dialog:
             self.dialog.dismiss()
         old=self.session.clear()
+        self.account_action=None
         self.draft=None
         self.tasks.invalidate()
         self.query=AuditQuery()
         self.selected_id=None
         self.show_login(message)
-        if old:
+        if old and revoke:
             self._revoke(old.token,notify=True)
 
     def set_theme(self,appearance):
@@ -206,6 +222,7 @@ class Application(ctk.CTk):
             destination=self.destination
             audit_id=getattr(self.screen,'audit_id',None)
             self.tasks.invalidate()
+            if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
             destroy_view(self.shell)
             self.screen=None
             self.shell=Shell(self,self)
@@ -235,6 +252,7 @@ class Application(ctk.CTk):
         if self.dialog:
             self.dialog.dismiss()
         self.closing=True
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         old=self.session.clear()
         self.tasks.close()
         self.revocations.close()
@@ -320,6 +338,11 @@ class Application(ctk.CTk):
         def completed(result,error):
             self.mutation_pending=False
             if generation!=self.session.generation or not self.session.login:
+                # Release current-view controls, without delivering any obsolete
+                # operation result or data from another account's session.
+                if self.session.login and self.destination=='My Account':
+                    self.screen.render_action()
+                    self.screen.refresh()
                 return
             if error and error.status==401:
                 self.logout('Your session is no longer valid. A submitted operation may have completed; inspect records after signing in.',force=True)

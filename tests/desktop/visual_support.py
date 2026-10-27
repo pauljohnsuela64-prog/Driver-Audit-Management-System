@@ -10,17 +10,20 @@ class DemoTransport:
         self.requests = []
         self.mode = 'normal'
         self.gate = None
+        self.username='admin'
 
     def __call__(self, method, path, headers, body):
         self.requests.append((method, path))
         if path == '/auth/login':
             username = json.loads(body)['username']
+            self.username=username
             if username == 'wrong':
                 return reply(status=401)
             self.role = 'AUDITOR' if username == 'auditor' else 'ADMIN'
             return reply(dict(access_token=TOKEN, token_type='bearer', expires_at='2099-01-01T00:00:00Z'))
         if path == '/auth/me':
-            return reply(dict(USER, role=self.role, full_name='Example Employee'))
+            return reply(dict(USER,id=2 if self.username=='admin2' else 1,username=self.username,
+                              role=self.role,full_name='Example Employee'))
         if path == '/auth/logout':
             return reply(status=204)
         if path.startswith('/audits?'):

@@ -23,7 +23,7 @@ class LoginScreen(ctk.CTkFrame):
         ctk.CTkLabel(copy,text='BHLI  /  AUDIT',text_color='#5EEAD4',font=font(16,'bold')).pack(anchor='w')
         ctk.CTkLabel(copy,text='Clarity for every\ndriver audit.',justify='left',text_color='#F1F5F9',
                      font=font(36,'bold')).pack(anchor='w',pady=(24,16))
-        ctk.CTkLabel(copy,text='A secure workspace for your audit operations.\nSign in with your employee account.',
+        ctk.CTkLabel(copy,text='A secure workspace for your audit operations.\nSign in with your HR administrator account.',
                      justify='left',text_color='#B8C5D6',font=font(14),wraplength=350).pack(anchor='w')
         self.right = ctk.CTkFrame(self,fg_color='transparent')
         self.right.grid(row=0,column=1,sticky='nsew',padx=32,pady=32)

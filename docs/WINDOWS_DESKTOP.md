@@ -1,11 +1,14 @@
-# BHLI Audit desktop — Phase 3B
+# BHLI Audit desktop — Phase 3C
 
 Windows desktop foundation: employee sign-in, role-aware collapsible navigation,
 dashboard with real active-audit totals, searchable/filterable/paginated audit table,
 separate details, audit creation/editing, ADMIN soft deletion, chronological history,
 My Account, appearance selection and sign-out.
-Employee Accounts and Administrator Activity are clearly labeled future modules.
+The three primary destinations are Dashboard, Driver Audits and My Account.
+The desktop admits individually authenticated ADMIN accounts only.
 The desktop preserves the seven audit business fields and original auditor snapshot.
+
+See the [current Phase 3C verification and before/after screenshots](WINDOWS_DESKTOP_PHASE3C_VERIFICATION.md).
 
 See the [Phase 3B verification and screenshots](WINDOWS_DESKTOP_PHASE3B_VERIFICATION.md)
 for independent-review corrections, complete local test results and native evidence.
@@ -65,9 +68,11 @@ windows collapse navigation, while tables scroll horizontally and long details
 scroll vertically. The window starts within the available screen dimensions after
 conversion to logical DPI units. Focus indicators and errors do not rely on color alone.
 
-ADMIN sees Dashboard, Driver Audits, two future administration modules and My Account.
-AUDITOR sees Dashboard, Driver Audits and My Account. Both roles can read all active
-audits; “My audits” filters by the authenticated stable account ID, not display name.
+Every HR administrator sees Dashboard, Driver Audits and My Account. Dashboard has
+a prominent New Audit action, including empty/offline states. Both shared tables
+use 38-logical-pixel rows (previously 44), 8-pixel heading padding, alternating theme
+surfaces and balanced columns; only Driver/Audited By absorb extra width.
+“My audits” filters by the authenticated stable account ID, not display name.
 The dashboard total is for all active visible records, never a fabricated personal metric.
 
 Search by driver, plate or station; expand Filters for station/date range/My audits.
@@ -79,7 +84,8 @@ and selected ID. Details display Driver Name, optional Helper Name, Audit Date,
 Station, Plate Number, optional Remarks and original Audited By.
 
 New audit opens a validated six-field form; the server supplies Audited By. ADMIN
-can edit any active audit; AUDITOR can edit only their stable user ID's records.
+can edit any active audit. Backend AUDITOR ownership permissions remain unchanged
+for compatible clients; AUDITOR identities are not admitted to this Windows UI.
 Only changed fields are submitted with the exact GET ETag. A stale/ambiguous edit
 requires explicit original/draft/latest comparison and review before another Save.
 ADMIN deletion fetches current identity/version and requires confirmation; stale
@@ -103,6 +109,24 @@ must be assessed with Windows assistive technology; native Tk accessibility is n
 equivalent to browser ARIA support.
 
 ## Architecture and security
+
+My Account contains Change My Password and an expandable Manage Admin Accounts
+section: view ADMIN accounts, add another ADMIN, reset another's password with
+current-password reauthentication, or disable another after fresh confirmation.
+There is no role picker, account-count limit, employee directory, profile editor,
+activation control or account deletion. Backend self/last-active-admin guards and
+transactional session revocation remain authoritative. Own password change revokes
+all own sessions and requires sign-in again. Resetting a disabled account preserves
+its disabled status. Existing operator recovery procedures remain available.
+
+Windows admission checks the `/auth/me` role on a worker before creating session/UI
+state. A non-ADMIN token is revoked; failed revocation is disclosed without exposing
+the token. Backend roles, legacy accounts, records and immutable attribution are
+not converted or removed. Administrator discovery filters all `/users` pages before
+view delivery, with cancellation and serialized scans. Password inputs are masked,
+cleared on submission/navigation/theme/logout and never stored in application drafts.
+Account writes have no idempotency contract: ambiguous outcomes are not automatically
+replayed. Refresh/check status or explicitly retry with reauthentication as appropriate.
 
 `desktop/api.py` owns HTTP, bounded 16 MiB response size (including full Unicode pages), 5-second connection and 15-second
 read timeouts, strict data parsing and sanitized errors. `models.py` owns immutable
@@ -179,9 +203,10 @@ manual demonstration, maximized-window checks and subsequent engineering correct
 
 ## Remaining work
 
-Phase 3B may add audit mutations with ETag/If-Match and idempotency handling, subject
-to its own assignment. Employee/activity/password interfaces, packaging/installers,
-code signing, update distribution and client acceptance are future work. Production
+Packaging/installers, code signing, update distribution and additional client
+acceptance remain outside this assignment. Production
 HTTPS/network policy, gateway rate limits, backups, service supervision and revision
-0002 rollout remain operator prerequisites. No GUI mutation, reporting or Android
-implementation is included here.
+0002 rollout remain operator prerequisites. No production rollout, reporting or
+Android implementation is included here. Earlier phase verification documents are
+historical evidence; the revised Phase 3C specification supersedes their desktop
+roadmap references.

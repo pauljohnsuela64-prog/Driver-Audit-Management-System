@@ -4,7 +4,7 @@ Run `python -m scripts.desktop_demo` in a local console. Normal authentication,
 authorization and audit services are used; no production configuration is read.
 """
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 from datetime import date,timedelta
 from getpass import getpass,GetPassWarning
 from pathlib import Path
@@ -13,6 +13,7 @@ from tempfile import TemporaryDirectory
 from threading import Thread
 import time
 import warnings
+import secrets
 from uuid import uuid4
 
 import uvicorn
@@ -30,22 +31,25 @@ class Demo:
     origin: str
     port: int
     database_file: Path
+    legacy_password: str = field(repr=False)
 
 
-def _seed(origin,admin_password,auditor_password):
+def _seed(origin,admin_password,second_admin_password,legacy_password):
     client=ApiClient(Config(origin))
     admin=client.sign_in('demo_admin',admin_password)
-    auditor=None
+    second_admin=None
     def request(method,path,token,payload):
         # Developer fixture setup uses the same bounded direct HTTP transport:
         # no environment proxy routing and no redirect-based credential forwarding.
         return client._request(method,path,token,payload)[0]
     try:
-        account=request('POST','/users',admin.token,dict(username='demo_auditor',
-            full_name='Fictional Auditor (original)',role='AUDITOR',password=auditor_password))
-        auditor=client.sign_in('demo_auditor',auditor_password)
+        account=request('POST','/users',admin.token,dict(username='demo_admin2',
+            full_name='Fictional HR Two (original)',role='ADMIN',password=second_admin_password))
+        request('POST','/users',admin.token,dict(username='demo_auditor',full_name='Legacy Auditor',
+            role='AUDITOR',password=legacy_password))
+        second_admin=client.sign_in('demo_admin2',second_admin_password)
         for index in range(60):
-            token=admin.token if index%3==0 else auditor.token
+            token=admin.token if index%3==0 else second_admin.token
             request('POST','/audits',token,dict(driver_name=f'Fictional Driver {index+1:03}',
                 helper_name=None if index%2 else f'Fictional Helper {index+1:03}',
                 audit_date=(date.today()-timedelta(days=index)).isoformat(),
@@ -55,27 +59,27 @@ def _seed(origin,admin_password,auditor_password):
                     ('Long remarks exercise wrapping and scrolling. '*80 if index==59 else '')))
         # A separate archived example leaves the existing 60 active / 40 owned
         # records intact while exercising all three history actions via REST.
-        archived=client.create_audit(auditor.token,dict(driver_name='Fictional Deleted Example',
+        archived=client.create_audit(second_admin.token,dict(driver_name='Fictional Deleted Example',
             audit_date=date.today().isoformat(),station='Fictional Archive',plate_number='DEMO-ARCHIVE',
             remarks='Original fictional remarks.'),str(uuid4()))
         archived=client.update_audit(admin.token,archived.id,{'remarks':'Administrator reviewed this fictional example.'},archived.etag)
         client.delete_audit(admin.token,archived.id,archived.etag)
         # Show that current profile names cannot rewrite historical audit snapshots.
-        request('PATCH',f'/users/{account["id"]}',admin.token,dict(full_name='Demo Auditor'))
+        request('PATCH',f'/users/{account["id"]}',admin.token,dict(full_name='Demo Administrator Two'))
     finally:
-        if auditor:
-            client.logout(auditor.token)
+        if second_admin:
+            client.logout(second_admin.token)
         client.logout(admin.token)
 
 
 @contextmanager
-def demonstration(admin_password,auditor_password):
+def demonstration(admin_password,second_admin_password):
     """Own a fresh loopback HTTP server and SQLite directory; accept no DB URL/path."""
     # Validate before allocating resources, using the established password contract.
-    for password in (admin_password,auditor_password):
+    for password in (admin_password,second_admin_password):
         if not isinstance(password,str) or not 15<=len(password)<=128 or not password.strip():
             raise ValueError('Choose nonblank demo passwords of 15–128 characters')
-    if admin_password==auditor_password:
+    if admin_password==second_admin_password:
         raise ValueError('Choose separate ADMIN and AUDITOR demo passwords')
     with TemporaryDirectory(prefix='dams-desktop-demo-') as directory:
         database=Path(directory).resolve()/'demo.sqlite3'
@@ -101,9 +105,10 @@ def demonstration(admin_password,auditor_password):
                 time.sleep(.02)
             if not server.started:
                 raise RuntimeError('Disposable API could not start')
-            _seed(origin,admin_password,auditor_password)
-            admin_password=auditor_password=None
-            yield Demo(origin,port,database)
+            legacy_password=secrets.token_urlsafe(24)
+            _seed(origin,admin_password,second_admin_password,legacy_password)
+            admin_password=second_admin_password=None
+            yield Demo(origin,port,database,legacy_password)
         finally:
             if server:
                 server.should_exit=True
@@ -123,10 +128,10 @@ def main():
             # Follow the existing administrator CLI: never fall back to echoed stdin.
             warnings.simplefilter('error',GetPassWarning)
             admin_password=getpass('ADMIN demo password (15–128 characters): ')
-            auditor_password=getpass('AUDITOR demo password (15–128 characters): ')
-        with demonstration(admin_password,auditor_password) as demo:
-            admin_password=auditor_password=None
-            print('Accounts: demo_admin (ADMIN), demo_auditor (AUDITOR). All 60 audits are fictional.')
+            second_admin_password=getpass('Second ADMIN demo password (15–128 characters): ')
+        with demonstration(admin_password,second_admin_password) as demo:
+            admin_password=second_admin_password=None
+            print('Accounts: demo_admin and demo_admin2 (individual ADMIN accounts). All 60 active audits are fictional.')
             print('Close the application to stop this API and remove its temporary database.')
             from desktop.app import Application
             Application(ApiClient(Config(demo.origin))).mainloop()

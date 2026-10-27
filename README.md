@@ -7,7 +7,8 @@ dependencies and secure local administrator bootstrap/recovery. See
 Phase 2B adds the [audit records REST API](docs/AUDIT_API.md), atomic history,
 version preconditions and idempotent creation. Official directory: `C:\BHLI-Audit`.
 Phase 2C adds administrator account management, account activity history and CI.
-Phase 3A adds the read-only Windows desktop. Android and reporting remain future work.
+The Windows desktop provides ADMIN-only audit management and minimal administrator
+account actions. Android and reporting remain outside the current assignment.
 
 ## Setup (PowerShell)
 
@@ -43,7 +44,7 @@ contains authentication and audit transaction rules.
 DDL, operator tools, checks, and documentation. `desktop` implements the Windows
 REST client and audit-management workspace; `mobile` remains future work.
 
-Phases 1–3A are merged. Phase 3B is developed on `feat/dams-audit-management`
+Phases 1–3B are merged. Revised Phase 3C is developed on `feat/dams-desktop-simplification`
 for a draft PR and engineering review.
 
 ## Windows desktop

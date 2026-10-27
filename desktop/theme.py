@@ -32,14 +32,12 @@ def icon(master, name, ink='#F1F5F9'):
     shapes = {
         'Dashboard': [(3,3,8,8),(12,3,17,8),(3,12,8,17),(12,12,17,17)],
         'Driver Audits': [(4,2,16,18),(7,6,13,6),(7,10,13,10),(7,14,13,14)],
-        'Employee Accounts': [(7,2,13,8),(3,12,17,18)],
-        'Administrator Activity': [(3,3,17,17),(6,10,9,13),(9,13,14,6)],
         'My Account': [(7,3,13,9),(4,13,16,17)],
     }
     def line(x0,y0,x1,y1):
         draw.line((x0*4,y0*4,x1*4,y1*4),fill=ink,width=6)
     for x0,y0,x1,y1 in shapes[name]:
-        if x0 != x1 and y0 != y1 and name != 'Administrator Activity':
+        if x0 != x1 and y0 != y1:
             for coords in [(x0,y0,x1,y0),(x1,y0,x1,y1),(x1,y1,x0,y1),(x0,y1,x0,y0)]:
                 line(*coords)
         else:

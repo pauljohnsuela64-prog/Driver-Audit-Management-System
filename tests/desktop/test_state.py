@@ -22,13 +22,13 @@ def spin(tasks, predicate):
 def test_session_roles_expiry_and_cleanup():
     s = SessionState()
     s.set(login())
-    assert 'Employee Accounts' in s.destinations
+    assert s.destinations==('Dashboard','Driver Audits','My Account')
     assert 'x'*43 not in repr(s)
     generation = s.generation
     s.clear()
     assert s.login is None and s.generation > generation
     s.set(login('AUDITOR'))
-    assert 'Employee Accounts' not in s.destinations
+    assert s.destinations==()
     assert not s.expired()
     assert s.expired(datetime.now(timezone.utc)+timedelta(hours=9))
 

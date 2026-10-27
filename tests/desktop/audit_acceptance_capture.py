@@ -57,7 +57,7 @@ def main():
             assert widget.winfo_rooty()+widget.winfo_height()<=app.winfo_rooty()+app.winfo_height()
         try:
             app.geometry('1280x760+10+10');app.set_theme('Light');wait()
-            login('demo_auditor',passwords[1]);auditor_id=app.session.login.user.id
+            login('demo_admin2',passwords[1]);auditor_id=app.session.login.user.id
             app.open_create();wait();capture('01-create-light')
             app.screen.save();wait();assert app.draft.errors;capture('02-validation')
             for key,value in dict(driver_name='Fictional Desktop Driver',helper_name='',audit_date='2026-10-27',
@@ -73,7 +73,7 @@ def main():
             field('driver_name','Fictional Revised Driver');app.screen.save()
             wait(lambda:app.destination=='Audit Details' and app.screen.loaded)
             assert app.screen.record.driver_name=='Fictional Revised Driver'
-            assert app.screen.record.audited_by_name=='Demo Auditor'
+            assert app.screen.record.audited_by_name=='Demo Administrator Two'
             app.navigate('Audit History',created.id);wait(lambda:app.screen.loaded)
             assert [event.action for event in app.screen.events.items]==['CREATE','UPDATE']
             capture('06-auditor-history')
