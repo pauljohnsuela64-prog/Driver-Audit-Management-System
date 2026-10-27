@@ -39,7 +39,7 @@ class AuditForm(ctk.CTkFrame):
             widget.grid(row=1,column=0,sticky='ew')
             hint_text='YYYY-MM-DD · years 1000–9999' if key=='audit_date' else f'Maximum {LIMITS[key]:,} characters'
             label(group,hint_text,12,True).grid(row=2,column=0,sticky='w',pady=(4,0))
-            error=label(group,'',12,justify='left',wraplength=300)
+            error=label(group,'',12,justify='left',anchor='w',wraplength=300)
             error.configure(text_color=color('error'))
             error.grid(row=3,column=0,sticky='ew')
             self.inputs[key],self.groups[key],self.errors[key]=widget,group,error
@@ -51,7 +51,8 @@ class AuditForm(ctk.CTkFrame):
         self.save_button=button(footer,'Save audit',self.save,True,width=180)
         self.save_button.pack(side='right')
         self.reload_button=button(footer,'Compare latest',self.fetch_latest,width=160)
-        self.reload_button.pack(side='right',padx=8)
+        if draft.baseline:
+            self.reload_button.pack(side='right',padx=8)
         self._columns=None
         tk.Misc.bind(self,'<Configure>',self.resize,add='+')
         self.layout(1)
@@ -67,6 +68,8 @@ class AuditForm(ctk.CTkFrame):
         if columns==self._columns:
             return
         self._columns=columns
+        self.body.columnconfigure(0,weight=1,uniform='form' if columns==2 else '')
+        self.body.columnconfigure(1,weight=1 if columns==2 else 0,uniform='form' if columns==2 else '',minsize=0)
         for i,key in enumerate(FIELDS):
             self.groups[key].grid(row=i//columns,column=i%columns,sticky='nsew',padx=16,pady=(4,0))
         row=(len(FIELDS)+columns-1)//columns
@@ -77,6 +80,14 @@ class AuditForm(ctk.CTkFrame):
         if not self.draft.pending and not (self.draft.intent and self.draft.uncertain):
             self.draft.values={key:(widget.get('1.0','end-1c') if key=='remarks' else widget.get())
                                for key,widget in self.inputs.items()}
+            if self.draft.errors:
+                try:
+                    normalize(self.draft.values)
+                    remaining={}
+                except ValidationError as error:
+                    remaining={key:value for key,value in error.errors.items() if key in self.draft.errors}
+                self.draft.errors=remaining
+                self.draft.message='Please correct: '+', '.join(LABELS.get(key,'Form') for key in remaining)+'.' if remaining else ''
 
     def render_state(self):
         draft=self.draft

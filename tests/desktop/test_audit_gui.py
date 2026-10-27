@@ -141,3 +141,18 @@ def test_history_deleted_readonly_and_auditor_no_delete(app):
     app.logout(force=True);sign_in(app,'auditor')
     app.confirm_delete(Audit.parse(AUDIT,'"2"'))
     assert app.dialog is None and app.destination=='Dashboard'
+
+
+def test_compact_form_uses_available_width_and_wide_form_has_two_columns(app):
+    sign_in(app)
+    app.geometry('800x600');app.open_create()
+    for _ in range(8):
+        pump(app)
+    assert app.screen._columns==1
+    assert app.screen.inputs['driver_name'].winfo_width()>app.screen.body.winfo_width()*.8
+    app.geometry('1400x800')
+    import time
+    for _ in range(8):
+        pump(app);time.sleep(.02)
+    assert app.screen._columns==2
+    assert app.screen.groups['driver_name'].grid_info()['row']==app.screen.groups['helper_name'].grid_info()['row']

@@ -41,9 +41,9 @@ business fields; `backend/repositories` contains authentication persistence, and
 contains authentication and audit transaction rules.
 `database`, `migrations`, `scripts`, `tests`, and `docs` contain setup, versioned
 DDL, operator tools, checks, and documentation. `desktop` implements the Windows
-read-only REST client; `mobile` remains future work.
+REST client and audit-management workspace; `mobile` remains future work.
 
-Phases 1–2C are merged. Phase 3A is developed on `feat/dams-windows-desktop`
+Phases 1–3A are merged. Phase 3B is developed on `feat/dams-audit-management`
 for a draft PR and engineering review.
 
 ## Windows desktop

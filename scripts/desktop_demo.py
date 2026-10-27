@@ -13,6 +13,7 @@ from tempfile import TemporaryDirectory
 from threading import Thread
 import time
 import warnings
+from uuid import uuid4
 
 import uvicorn
 from backend.core.database import make_engine
@@ -52,6 +53,13 @@ def _seed(origin,admin_password,auditor_password):
                 plate_number=f'DEMO-{index//2+1:03}',
                 remarks=None if index%4==0 else 'Disposable demonstration record. No business data. '+
                     ('Long remarks exercise wrapping and scrolling. '*80 if index==59 else '')))
+        # A separate archived example leaves the existing 60 active / 40 owned
+        # records intact while exercising all three history actions via REST.
+        archived=client.create_audit(auditor.token,dict(driver_name='Fictional Deleted Example',
+            audit_date=date.today().isoformat(),station='Fictional Archive',plate_number='DEMO-ARCHIVE',
+            remarks='Original fictional remarks.'),str(uuid4()))
+        archived=client.update_audit(admin.token,archived.id,{'remarks':'Administrator reviewed this fictional example.'},archived.etag)
+        client.delete_audit(admin.token,archived.id,archived.etag)
         # Show that current profile names cannot rewrite historical audit snapshots.
         request('PATCH',f'/users/{account["id"]}',admin.token,dict(full_name='Demo Auditor'))
     finally:
