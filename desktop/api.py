@@ -7,9 +7,10 @@ import json
 import re
 import ssl
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from desktop.config import Config
-from desktop.models import Audit, AuditPage, Login, User, timestamp
+from desktop.models import Audit, AuditPage, EventPage, Login, User, timestamp, integer
 
 MESSAGES = {
     401: ('unauthorized', 'Your credentials or session are no longer valid. Please sign in.'),
@@ -83,8 +84,10 @@ class ApiClient:
     def __init__(self, config: Config, transport=None):
         self.transport = transport or HttpTransport(config)
 
-    def _request(self, method, path, token=None, payload=None):
+    def _request(self, method, path, token=None, payload=None, conditional=None):
         headers = {'Accept': 'application/json'}
+        if conditional:
+            headers.update(conditional)
         if token is not None:
             if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
                 raise ApiError(401)
@@ -158,13 +161,51 @@ class ApiClient:
 
     def list_audits(self, token, query):
         data, _ = self._request('GET', '/audits?' + query.encoded(), token)
-        return self._parse(AuditPage.parse, data)
+        return self._parse(AuditPage.parse, data, query.include_deleted)
 
-    def get_audit(self, token, audit_id):
+    def get_audit(self, token, audit_id, include_deleted=False):
         if type(audit_id) is not int or audit_id < 1:
             raise ApiError(422)
-        data, headers = self._request('GET', '/audits/' + str(audit_id), token)
+        if type(include_deleted) is not bool:
+            raise ApiError(422)
+        data, headers = self._request('GET', '/audits/' + str(audit_id) + ('?include_deleted=true' if include_deleted else ''), token)
         etag = headers.get('etag')
         if etag is not None and not re.fullmatch(r'"[1-9][0-9]{0,9}"', etag):
             raise ApiError(502)
-        return self._parse(Audit.parse, data, etag)
+        return self._parse(Audit.parse, data, etag, include_deleted)
+
+    @staticmethod
+    def _condition(audit_id,etag):
+        if type(audit_id) is not int or audit_id<1 or not isinstance(etag,str) or not re.fullmatch(r'"[1-9][0-9]{0,9}"',etag):
+            raise ApiError(428,message='Reload this record to obtain its current version before saving.')
+        return {'If-Match':etag}
+
+    def create_audit(self,token,payload,key):
+        from desktop.audit_operations import normalize, ValidationError
+        try:
+            key=str(UUID(key))
+            payload=normalize(payload)
+        except (ValueError,TypeError,AttributeError,ValidationError):
+            raise ApiError(422) from None
+        data,headers=self._request('POST','/audits',token,payload,{'Idempotency-Key':key})
+        return self._parse(Audit.parse,data,headers.get('etag'))
+
+    def update_audit(self,token,audit_id,payload,etag):
+        from desktop.audit_operations import FIELDS
+        condition=self._condition(audit_id,etag)
+        if not payload or set(payload)-set(FIELDS):
+            raise ApiError(422)
+        data,headers=self._request('PATCH','/audits/'+str(audit_id),token,payload,condition)
+        return self._parse(Audit.parse,data,headers.get('etag'))
+
+    def delete_audit(self,token,audit_id,etag):
+        data,_=self._request('DELETE','/audits/'+str(audit_id),token,conditional=self._condition(audit_id,etag))
+        if data is not None:
+            raise ApiError(502)
+
+    def audit_history(self,token,audit_id,page=1,include_deleted=False):
+        if type(audit_id) is not int or audit_id<1 or type(page) is not int or not 1<=page<=10000 or type(include_deleted) is not bool:
+            raise ApiError(422)
+        path=f'/audits/{audit_id}/history?page={page}&page_size=25'+('&include_deleted=true' if include_deleted else '')
+        data,_=self._request('GET',path,token)
+        return self._parse(EventPage.parse,data,audit_id)
