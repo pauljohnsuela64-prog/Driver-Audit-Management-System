@@ -32,6 +32,18 @@ class Audits(ctk.CTkFrame):
         button(toolbar,'Filters',self.toggle_filters,width=80).grid(row=0,column=3)
         self.create_button=button(toolbar,'New audit',app.open_create,True,width=130)
         self.create_button.grid(row=1,column=0,columnspan=4,sticky='w',pady=(8,0))
+        from desktop.export_ui import choose_export,open_folder
+        self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
+        self.export_button.grid(row=1,column=1,sticky='w',padx=(30,0),pady=(8,0))
+        export_status=ctk.CTkFrame(self,fg_color='transparent')
+        export_status.grid(row=6,column=0,sticky='ew',pady=(8,0))
+        export_status.columnconfigure(0,weight=1)
+        self.export_status=label(export_status,'',12,True,anchor='w',justify='left',wraplength=420)
+        self.export_status.grid(row=0,column=0,sticky='ew')
+        self.cancel_export=button(export_status,'Cancel export',app.export_job.cancel,width=120)
+        self.cancel_export.grid(row=0,column=1,padx=(8,0))
+        self.export_folder=button(export_status,'Open folder',lambda:open_folder(app),width=110)
+        self.export_folder.grid(row=0,column=2,padx=(8,0))
         self.options=ctk.CTkFrame(self,fg_color=color('surface'),corner_radius=12)
         self.options.grid(row=1,column=0,sticky='ew',pady=(0,8))
         for col in range(3):
@@ -75,7 +87,22 @@ class Audits(ctk.CTkFrame):
         self.next=button(pager,'Next',lambda:self.page(1),width=75)
         self.next.grid(row=0,column=3,padx=(4,0))
         self.restore_query()
+        self.applied_filters=self.filter_state()
+        self.render_export()
         self.refresh()
+
+    def filter_state(self):
+        return (self.search_field.get(),self.search.get(),self.station.get(),self.date_from.get(),
+                self.date_to.get(),self.mine.get(),self.sort.get(),self.include_deleted.get() if self.include_deleted else 0)
+
+    def render_export(self):
+        job=self.app.export_job
+        self.export_button.configure(state='disabled' if job.pending else 'normal')
+        self.export_status.configure(text=job.message)
+        if job.pending:self.cancel_export.grid()
+        else:self.cancel_export.grid_remove()
+        if job.result and job.result.count:self.export_folder.grid()
+        else:self.export_folder.grid_remove()
 
     @staticmethod
     def field(parent,title,row,col):
@@ -139,6 +166,7 @@ class Audits(ctk.CTkFrame):
             self.notice.show('Check search length (200 maximum) and dates (YYYY-MM-DD, start before end).')
             return
         self.app.query=query
+        self.applied_filters=self.filter_state()
         self.app.selected_id=None
         self.refresh()
 

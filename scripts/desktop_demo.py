@@ -50,12 +50,13 @@ def _seed(origin,admin_password,second_admin_password,legacy_password):
         second_admin=client.sign_in('demo_admin2',second_admin_password)
         for index in range(60):
             token=admin.token if index%3==0 else second_admin.token
-            request('POST','/audits',token,dict(driver_name=f'Fictional Driver {index+1:03}',
+            request('POST','/audits',token,dict(driver_name='Fictional José 李 059' if index==58 else f'Fictional Driver {index+1:03}',
                 helper_name=None if index%2 else f'Fictional Helper {index+1:03}',
                 audit_date=(date.today()-timedelta(days=index)).isoformat(),
                 station=['Fictional North','Fictional Central','Fictional South'][index%3],
-                plate_number=f'DEMO-{index//2+1:03}',
-                remarks=None if index%4==0 else 'Disposable demonstration record. No business data. '+
+                plate_number='000123' if index==58 else f'DEMO-{index//2+1:03}',
+                remarks='=SUM(1,2)\nFictional formula-like text, not an Excel formula.' if index==58 else
+                    None if index%4==0 else 'Disposable demonstration record. No business data. '+
                     ('Long remarks exercise wrapping and scrolling. '*80 if index==59 else '')))
         # A separate archived example leaves the existing 60 active / 40 owned
         # records intact while exercising all three history actions via REST.

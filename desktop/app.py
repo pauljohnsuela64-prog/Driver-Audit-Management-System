@@ -43,6 +43,8 @@ class Application(ctk.CTk):
         self.shell=None
         self.screen=None
         self.destination=''
+        from desktop.export_ui import ExportJob
+        self.export_job=ExportJob(self)
         self.query=AuditQuery()
         self.selected_id=None
         self.title('BHLI Audit')
@@ -72,6 +74,7 @@ class Application(ctk.CTk):
             self.tasks.drain()
             self.revocations.drain()
             self.mutations.drain()
+            self.export_job.poll()
             self.collector.poll()
             remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
             if self.shell and remaining!=self._retry_display:
@@ -201,6 +204,7 @@ class Application(ctk.CTk):
             return
         if self.dialog:
             self.dialog.dismiss()
+        self.export_job.clear_session()
         old=self.session.clear()
         self.account_action=None
         self.draft=None
@@ -230,6 +234,11 @@ class Application(ctk.CTk):
             self.navigate(destination,audit_id,force=True)
 
     def escape(self,event=None):
+        if self.dialog:
+            return
+        if self.destination=='Driver Audits' and self.export_job.pending:
+            self.export_job.cancel()
+            return 'break'
         if self.shell and self.shell.menu.winfo_ismapped():
             self.shell.hide_menu()
         elif self.destination in ('Audit Details','Create Audit','Edit Audit','Audit History'):
@@ -252,6 +261,7 @@ class Application(ctk.CTk):
         if self.dialog:
             self.dialog.dismiss()
         self.closing=True
+        self.export_job.close()
         if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         old=self.session.clear()
         self.tasks.close()
