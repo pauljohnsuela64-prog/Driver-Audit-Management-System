@@ -7,6 +7,9 @@ My Account, appearance selection and sign-out.
 Employee Accounts and Administrator Activity are clearly labeled future modules.
 The desktop preserves the seven audit business fields and original auditor snapshot.
 
+See the [Phase 3B verification and screenshots](WINDOWS_DESKTOP_PHASE3B_VERIFICATION.md)
+for independent-review corrections, complete local test results and native evidence.
+
 ## Setup and launch
 
 For safe manual inspection without MySQL or existing server configuration, use the
