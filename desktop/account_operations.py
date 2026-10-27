@@ -43,6 +43,16 @@ class AccountAction:
     pending: bool = True
     message: str = ''
     uncertain: bool = False
+    failed: bool = False
+
+
+def target_admin(client,token,actor_id,target_id):
+    if actor_id==target_id:
+        raise ApiError(409,message='Use Change My Password for your own account; you cannot disable yourself.')
+    target=client.get_user(token,target_id)
+    if target.role!='ADMIN':
+        raise ApiError(403,message='This account is not an administrator. Refresh the account list.')
+    return target
 
 
 def account_error(error):

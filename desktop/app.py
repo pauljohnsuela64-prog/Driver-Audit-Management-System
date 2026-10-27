@@ -30,6 +30,7 @@ class Application(ctk.CTk):
         self.mutations=Tasks(workers=1,capacity=1)
         self.mutation_pending=False
         self.draft=None
+        self.account_action=None
         self.dialog=None
         self.revocation_serial=0
         self.retry_until=0
@@ -80,6 +81,7 @@ class Application(ctk.CTk):
                 self.after(30,self.poll)
 
     def show_login(self,message=''):
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.shell:
             destroy_view(self.shell)
             self.shell=None
@@ -130,11 +132,15 @@ class Application(ctk.CTk):
     def navigate(self,destination,audit_id=None,force=False):
         if not self.session.login:
             return
+        if self.session.login.user.role!='ADMIN':
+            self.logout('This Windows application requires an HR administrator account.',force=True)
+            return
         if destination not in self.session.destinations and destination not in ('Audit Details','Create Audit','Edit Audit','Audit History'):
             return
         if not force and not self.leave_form(lambda:self.navigate(destination,audit_id,force=True)):
             return
         self.tasks.invalidate()
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.screen and self.screen.winfo_exists():
             destroy_view(self.screen)
         self.destination=destination
@@ -186,18 +192,19 @@ class Application(ctk.CTk):
         else:
             Thread(target=work,daemon=True,name='bhli-signout').start()
 
-    def logout(self,message='Signed out. Please sign in to continue.',force=False):
+    def logout(self,message='Signed out. Please sign in to continue.',force=False,revoke=True):
         if not force and not self.leave_form(lambda:self.logout(message,force=True),allow_pending=True):
             return
         if self.dialog:
             self.dialog.dismiss()
         old=self.session.clear()
+        self.account_action=None
         self.draft=None
         self.tasks.invalidate()
         self.query=AuditQuery()
         self.selected_id=None
         self.show_login(message)
-        if old:
+        if old and revoke:
             self._revoke(old.token,notify=True)
 
     def set_theme(self,appearance):
@@ -211,6 +218,7 @@ class Application(ctk.CTk):
             destination=self.destination
             audit_id=getattr(self.screen,'audit_id',None)
             self.tasks.invalidate()
+            if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
             destroy_view(self.shell)
             self.screen=None
             self.shell=Shell(self,self)
@@ -240,6 +248,7 @@ class Application(ctk.CTk):
         if self.dialog:
             self.dialog.dismiss()
         self.closing=True
+        if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         old=self.session.clear()
         self.tasks.close()
         self.revocations.close()
