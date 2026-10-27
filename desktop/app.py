@@ -1,6 +1,5 @@
 """Composition and main-thread lifecycle. Network work is always delegated."""
 from threading import Thread
-import gc
 import math
 import time
 import customtkinter as ctk
@@ -8,6 +7,7 @@ import customtkinter as ctk
 from desktop.api import ApiError
 from desktop.components.common import StatePanel, destroy_view
 from desktop.models import AuditQuery
+from desktop.lifecycle import UiCollector
 from desktop.screens.login import LoginScreen
 from desktop.screens.shell import Shell
 from desktop.session import SessionState
@@ -17,7 +17,12 @@ from desktop.theme import color
 
 class Application(ctk.CTk):
     def __init__(self,client):
-        super().__init__()
+        self.collector=UiCollector()
+        try:
+            super().__init__()
+        except BaseException:
+            self.collector.close()
+            raise
         self.client=client
         self.session=SessionState()
         self.tasks=Tasks()
@@ -62,6 +67,7 @@ class Application(ctk.CTk):
             self.tasks.drain()
             self.revocations.drain()
             self.mutations.drain()
+            self.collector.poll()
             remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
             if self.shell and remaining!=self._retry_display:
                 self.shell.notice.show(f'Too many requests. Retry available in {remaining}s.' if remaining else '',bool(remaining))
@@ -241,7 +247,7 @@ class Application(ctk.CTk):
         # here, on Tk's owner thread, before a later API worker allocation runs GC.
         self.screen=None
         self.shell=None
-        gc.collect()
+        self.collector.close()
 
     def leave_form(self,accepted,allow_pending=False):
         from desktop.components.audit_dialogs import confirm

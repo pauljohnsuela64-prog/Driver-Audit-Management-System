@@ -124,6 +124,11 @@ Independent bounded revocation work cannot be canceled by navigation or
 starved by a full screen queue. Closing suppresses late UI callbacks and performs
 best-effort revocation without waiting indefinitely.
 
+While the single application is open, automatic cyclic collection is replaced by
+UI-thread collection every two seconds. This prevents detached Tk font/image cycles
+from finalizing on HTTP/API workers; reference counting remains enabled. Closing
+collects remaining views on the UI thread and restores the previous GC setting.
+
 Logout clears local identity, token and audit views immediately and requests server
 revocation. Unconfirmed revocation is reported: a server session may remain until
 expiry after a network failure/process exit. Abandoned successful logins are best-

@@ -19,6 +19,7 @@ MESSAGES = {
     409: ('conflict', 'This operation conflicts with the current server state.'),
     412: ('precondition_failed', 'This record has changed. Refresh before continuing.'),
     422: ('invalid_request', 'Check the supplied values and try again.'),
+    428: ('precondition_required', 'Reload this record to obtain its current version before saving.'),
     429: ('rate_limited', 'Too many requests. Wait before trying again.'),
     500: ('internal_error', 'The service could not complete the request. Try again.'),
     503: ('service_unavailable', 'The service is temporarily unavailable. Try again.'),

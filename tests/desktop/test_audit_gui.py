@@ -225,3 +225,33 @@ def test_unavailable_edit_blocks_repeat_submission(app,status):
     assert len(calls)==1
     assert app.screen.save_button.cget('state')=='disabled'
     assert app.draft.values['driver_name']=='Local draft'
+
+
+def test_ui_resource_cycles_never_finalize_on_network_worker(app):
+    sign_in(app)
+    import gc
+    from threading import get_ident
+    owner=get_ident();finalizers=[];finished=[];collection_threads=[]
+    def collection(phase,info):
+        if phase=='start':collection_threads.append(get_ident())
+    class UiResource:
+        def __init__(self):self.cycle=self
+        def __del__(self):finalizers.append(get_ident())
+    held={'resource':UiResource()}
+    thresholds=gc.get_threshold()
+    gc.callbacks.append(collection)
+    try:
+        gc.set_threshold(10,10,10)
+        def work():
+            held.pop('resource')
+            for _ in range(2000):
+                item=[];item.append(item)
+            return True
+        app.mutate(work,lambda value,error:finished.append(value))
+        pump(app,lambda:bool(finished))
+        gc.collect()
+        assert finalizers==[owner]
+        assert set(collection_threads)<={owner}
+    finally:
+        gc.callbacks.remove(collection)
+        gc.set_threshold(*thresholds)
