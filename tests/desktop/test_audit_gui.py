@@ -77,11 +77,8 @@ def test_edit_partial_changes_and_conflict_requires_review(app):
     assert calls[1][0]['driver_name']=='Edited'
 
 
-def test_form_navigation_requires_discard_and_auditor_cannot_edit_other_owner(app):
-    sign_in(app,'auditor')
-    app.open_edit(Audit.parse(dict(AUDIT,audited_by_user_id=999),'"2"'))
-    pump(app)
-    assert app.destination=='Dashboard'
+def test_form_navigation_requires_discard(app):
+    sign_in(app)
     app.open_create();fill(app.screen)
     app.navigate('Driver Audits')
     assert app.dialog is not None and app.destination=='Create Audit'
@@ -130,7 +127,7 @@ def test_delete_ambiguous_success_reconciles_without_replay(app):
     assert len(calls)==1 and 'deleted' in app.shell.notice.cget('text').lower()
 
 
-def test_history_deleted_readonly_and_auditor_no_delete(app):
+def test_history_deleted_readonly(app):
     from desktop.models import EventPage
     from tests.desktop.test_audit_api import event
     sign_in(app)
@@ -138,9 +135,6 @@ def test_history_deleted_readonly_and_auditor_no_delete(app):
     app.navigate('Audit History',1)
     pump(app,lambda:app.screen.loaded)
     assert app.screen.events.items[0].actor_user_id==2
-    app.logout(force=True);sign_in(app,'auditor')
-    app.confirm_delete(Audit.parse(AUDIT,'"2"'))
-    assert app.dialog is None and app.destination=='Dashboard'
 
 
 def test_compact_form_uses_available_width_and_wide_form_has_two_columns(app):

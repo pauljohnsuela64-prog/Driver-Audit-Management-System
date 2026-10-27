@@ -90,17 +90,22 @@ class Application(ctk.CTk):
         self.screen.pack(fill='both',expand=True)
 
     def sign_in(self,username,password,finished):
+        from desktop.account_operations import desktop_sign_in
         client=self.client
         def accepted(result,error):
             if error:
                 finished(None,error)
+                return
+            if result.user.role!='ADMIN':
+                self._revoke(result.token)
+                finished(None,ApiError(403,message='This Windows application requires an HR administrator account.'))
                 return
             self.session.set(result)
             destroy_view(self.screen)
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
             self.navigate('Dashboard',force=True)
-        if not self.tasks.submit('login',lambda: client.sign_in(username,password),accepted,
+        if not self.tasks.submit('login',lambda: desktop_sign_in(client,username,password),accepted,
                                  lambda result: client.logout(result.token)):
             finished(None,ApiError(message='Requests are busy. Please try again.'))
 

@@ -51,6 +51,36 @@ class Login:
 
 
 @dataclass(frozen=True)
+class Account(User):
+    is_active: bool
+
+    @classmethod
+    def parse(cls,data):
+        user=User.parse(data)
+        if type(data.get('is_active')) is not bool:
+            raise ValueError('Invalid active status')
+        return cls(user.id,user.username,user.full_name,user.role,data['is_active'])
+
+
+@dataclass(frozen=True)
+class AccountPage:
+    items: tuple[Account,...]
+    total: int
+    page: int
+    page_size: int
+
+    @classmethod
+    def parse(cls,data):
+        items=data['items']
+        total,page,size=integer(data['total'],0),integer(data['page']),integer(data['page_size'])
+        if not isinstance(items,list) or len(items)>min(total,size) or not 1<=size<=100 or page>10000:
+            raise ValueError('Invalid account page')
+        users=tuple(Account.parse(item) for item in items)
+        if len({user.id for user in users})!=len(users):raise ValueError('Duplicate account')
+        return cls(users,total,page,size)
+
+
+@dataclass(frozen=True)
 class Audit:
     id: int
     version: int

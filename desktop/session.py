@@ -22,8 +22,6 @@ class SessionState:
 
     @property
     def destinations(self):
-        if self.login is None:
+        if self.login is None or self.login.user.role!='ADMIN':
             return ()
-        common = ('Dashboard', 'Driver Audits')
-        admin = ('Employee Accounts', 'Administrator Activity') if self.login.user.role == 'ADMIN' else ()
-        return common + admin + ('My Account',)
+        return ('Dashboard','Driver Audits','My Account')

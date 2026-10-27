@@ -40,7 +40,7 @@ def sign_in(app, username='admin'):
 
 def test_native_login_shell_roles_theme_resize_logout(app):
     sign_in(app)
-    assert 'Employee Accounts' in app.shell.nav_buttons
+    assert tuple(app.shell.nav_buttons)==('Dashboard','Driver Audits','My Account')
     initial_collapsed=app.shell.collapsed
     app.shell.collapse()
     assert app.shell.collapsed is not initial_collapsed
@@ -54,9 +54,13 @@ def test_native_login_shell_roles_theme_resize_logout(app):
     assert app.screen.winfo_exists()
     app.logout()
     pump(app, lambda: app.session.login is None)
-    sign_in(app, 'auditor')
-    assert 'Employee Accounts' not in app.shell.nav_buttons
-    assert app.session.login.user.role == 'AUDITOR'
+    app.screen.username.insert(0,'auditor')
+    app.screen.password.insert(0,'fictional test passphrase')
+    app.screen.submit()
+    pump(app,lambda:not app.screen.pending)
+    assert app.session.login is None and app.shell is None
+    assert 'administrator account' in app.screen.status.cget('text')
+    assert app.client.transport.requests[-1]==('POST','/auth/logout')
 
 
 def test_native_login_failure_and_password_not_retained(app):

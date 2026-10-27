@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 from desktop.config import Config
-from desktop.models import Audit, AuditPage, EventPage, Login, User, timestamp, integer
+from desktop.models import Audit, AuditPage, EventPage, Login, User, Account, AccountPage, timestamp, integer
 
 MESSAGES = {
     401: ('unauthorized', 'Your credentials or session are no longer valid. Please sign in.'),
@@ -159,6 +159,53 @@ class ApiClient:
 
     def logout(self, token):
         self._request('POST', '/auth/logout', token)
+
+    @staticmethod
+    def _password(value,new=True):
+        if not isinstance(value,str) or not (15 if new else 1)<=len(value)<=128 or new and not value.strip():
+            raise ApiError(422)
+        return value
+
+    @staticmethod
+    def _user_id(value):
+        if type(value) is not int or value<1:raise ApiError(422)
+        return str(value)
+
+    def list_users(self,token,page=1):
+        if type(page) is not int or not 1<=page<=10000:raise ApiError(422)
+        data,_=self._request('GET',f'/users?page={page}&page_size=100',token)
+        return self._parse(AccountPage.parse,data)
+
+    def get_user(self,token,user_id):
+        data,_=self._request('GET','/users/'+self._user_id(user_id),token)
+        result=self._parse(Account.parse,data)
+        if result.id!=user_id:raise ApiError(502)
+        return result
+
+    def create_admin(self,token,username,full_name,password):
+        if not isinstance(username,str) or not 1<=len(username.strip())<=100 or not isinstance(full_name,str) or not 1<=len(full_name.strip())<=200:
+            raise ApiError(422)
+        payload=dict(username=username.strip(),full_name=full_name.strip(),role='ADMIN',password=self._password(password))
+        data,_=self._request('POST','/users',token,payload)
+        result=self._parse(Account.parse,data)
+        if result.role!='ADMIN':raise ApiError(502)
+        return result
+
+    def reset_admin_password(self,token,user_id,admin_password,new_password):
+        payload=dict(admin_password=self._password(admin_password,False),new_password=self._password(new_password))
+        data,_=self._request('POST','/users/'+self._user_id(user_id)+'/reset-password',token,payload)
+        if data is not None:raise ApiError(502)
+
+    def disable_admin(self,token,user_id):
+        data,_=self._request('PATCH','/users/'+self._user_id(user_id)+'/access',token,{'is_active':False})
+        result=self._parse(Account.parse,data)
+        if result.id!=user_id or result.is_active:raise ApiError(502)
+        return result
+
+    def change_password(self,token,current_password,new_password):
+        payload=dict(current_password=self._password(current_password,False),new_password=self._password(new_password))
+        data,_=self._request('POST','/auth/change-password',token,payload)
+        if data is not None:raise ApiError(502)
 
     def list_audits(self, token, query):
         data, _ = self._request('GET', '/audits?' + query.encoded(), token)
