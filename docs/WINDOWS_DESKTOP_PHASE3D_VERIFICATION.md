@@ -26,6 +26,8 @@ The four default-mode skips explicitly require live MySQL: authentication/schema
 
 Local logs remain under ignored `artifacts/phase3d-full-default-final.txt`, `phase3d-full-mysql-final.txt`, `phase3d-native-final.txt`, `phase3d-close-export.txt` and `phase3d-excel.txt`. Hosted Windows/SQLite/MySQL results and final published SHA are recorded on the draft PR and in the completion report, after the publication checkpoint.
 
+The first hosted Windows run exposed a test-only DPI assumption: a fixed 660×465-device-pixel confirmation may fit its content and therefore has nothing to scroll. The keyboard regression now uses the dialog's own compact minimum, asserts actual overflow, and verifies Page Down at two widget/window scaling factors. All seven focused native export checks passed after this correction. Application code and full-suite test counts are unchanged; final hosted jobs verify the corrected test on the published HEAD.
+
 ## Microsoft Excel and native visuals
 
 Microsoft Excel **16.0** opened the fictional **61-record** workbook read-only with macros/link updates disabled. Confirmed leading-zero plate `000123` stored as text, Unicode, literal `=SUM(1,2)`, long remarks (3,730 characters), frozen heading, autofilter, no formulas and no hyperlinks. ZIP/XML contract tests additionally verify full supported 10,000-character remarks and all nine cell types. No real business workbook or production data was opened.

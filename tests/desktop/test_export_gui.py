@@ -77,9 +77,21 @@ def test_logout_cancels_pending_export(app,tmp_path,monkeypatch):
 
 
 def test_confirmation_disclosure_can_be_read_with_keyboard(app):
-    ready(app);app.screen.export_button.invoke();pump(app)
-    dialog=app.dialog;dialog.geometry('660x465');pump(app)
-    first=dialog.body._parent_canvas.yview()[0]
-    dialog.cancel_button.focus_force();dialog.cancel_button.event_generate('<Next>');pump(app)
-    assert dialog.body._parent_canvas.yview()[0]>first
-    dialog.cancel()
+    import customtkinter as ctk
+    ready(app)
+    try:
+        for scaling in (2/3,1.0):
+            ctk.set_widget_scaling(scaling);ctk.set_window_scaling(scaling)
+            app.screen.export_button.invoke();pump(app)
+            dialog=app.dialog
+            # Device pixels vary with OS DPI. Use the dialog's own compact
+            # minimum and verify overflow before asserting keyboard scrolling.
+            width,height=dialog.minsize();dialog.geometry(f'{width}x{height}')
+            pump(app,lambda:dialog.body._parent_canvas.yview()[1]<1)
+            first=dialog.body._parent_canvas.yview()[0]
+            dialog.cancel_button.focus_force();dialog.cancel_button.event_generate('<Next>')
+            pump(app,lambda:dialog.body._parent_canvas.yview()[0]>first)
+            dialog.cancel()
+    finally:
+        if app.dialog:app.dialog.cancel()
+        ctk.set_widget_scaling(1.0);ctk.set_window_scaling(1.0)
