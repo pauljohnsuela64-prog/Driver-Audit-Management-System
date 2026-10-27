@@ -148,3 +148,75 @@ def test_disk_publication_failure_preserves_destination(tmp_path,monkeypatch):
 def test_zero_records_no_workbook(tmp_path):
     result=reports.export_audits(Client([]),'t',AuditQuery(),reports.Destination.capture(tmp_path/'x.xlsx'),reports.ExportControl(),lambda p:None)
     assert result.count==0 and not list(tmp_path.iterdir())
+
+
+def test_successful_publication_and_cancel_after_commit(tmp_path):
+    path=tmp_path/'x.xlsx';control=reports.ExportControl()
+    result=reports.export_audits(Client([row()]),'t',AuditQuery(),reports.Destination.capture(path),control,lambda p:None)
+    control.cancel();control.check()
+    assert zipfile.is_zipfile(path) and result.count==1 and control.published
+
+
+def test_existing_workbook_is_never_replaced(tmp_path):
+    path=tmp_path/'x.xlsx';path.write_bytes(b'old')
+    with pytest.raises(reports.ExportError,match='new file'):
+        reports.export_audits(Client([row()]),'t',AuditQuery(),reports.Destination.capture(path),reports.ExportControl(),lambda p:None)
+    assert path.read_bytes()==b'old'
+
+
+def test_cleanup_failure_preserves_401_status(tmp_path,monkeypatch):
+    original=reports.shutil.rmtree;remaining=[];client=Client([])
+    def fail(path):remaining.append(path);raise OSError()
+    def denied(*args):raise ApiError(401)
+    client.list_audits=denied;monkeypatch.setattr(reports.shutil,'rmtree',fail)
+    try:
+        with pytest.raises(ApiError) as e:
+            reports.export_audits(client,'t',AuditQuery(),reports.Destination.capture(tmp_path/'x.xlsx'),reports.ExportControl(),lambda p:None)
+        assert e.value.status==401 and 'temporary' in str(e.value)
+    finally:
+        for path in remaining:original(path)
+
+
+def test_cancel_at_finalization_never_publishes(tmp_path):
+    control=reports.ExportControl()
+    def progress(p):
+        if p[1]=='Finalizing workbook':control.cancel()
+    with pytest.raises(reports.ExportError,match='cancel'):
+        reports.export_audits(Client([row()]),'t',AuditQuery(),reports.Destination.capture(tmp_path/'x.xlsx'),control,progress)
+    assert not list(tmp_path.iterdir())
+
+
+def test_expired_session_blocks_final_publication(tmp_path):
+    control=reports.ExportControl()
+    def progress(p):control.deadline=0
+    with pytest.raises(ApiError) as e:
+        reports.export_audits(Client([row()]),'t',AuditQuery(),reports.Destination.capture(tmp_path/'x.xlsx'),control,progress)
+    assert e.value.status==401 and not list(tmp_path.iterdir())
+
+
+def test_workbook_close_failure_preserves_old_file(tmp_path,monkeypatch):
+    path=tmp_path/'x.xlsx';path.write_bytes(b'old')
+    original=reports.xlsxwriter.Workbook.close
+    def fail(book):original(book);raise OSError('private details')
+    monkeypatch.setattr(reports.xlsxwriter.Workbook,'close',fail)
+    with pytest.raises(reports.ExportError) as e:
+        reports.export_audits(Client([row()]),'t',AuditQuery(),reports.Destination.capture(path),reports.ExportControl(),lambda p:None)
+    assert 'private details' not in str(e.value) and path.read_bytes()==b'old'
+
+
+def test_cleanup_failure_is_disclosed(tmp_path,monkeypatch):
+    original=reports.shutil.rmtree;remaining=[]
+    def fail(path):remaining.append(path);raise OSError()
+    monkeypatch.setattr(reports.shutil,'rmtree',fail)
+    try:
+        with pytest.raises(reports.ExportError,match='could not be removed'):run(tmp_path)
+    finally:
+        for path in remaining:original(path)
+
+
+def test_readable_metadata_contains_no_token(tmp_path):
+    path,_=run(tmp_path)
+    _,values=cells(path,2)
+    assert any('offset pagination' in cell for line in values for cell in line)
+    with zipfile.ZipFile(path) as z:
+        assert not any(b'secret-token' in z.read(name) for name in z.namelist())

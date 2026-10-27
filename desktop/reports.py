@@ -8,6 +8,7 @@ import re
 import shutil
 import tempfile
 import time
+import sys
 
 import xlsxwriter
 
@@ -59,15 +60,17 @@ class Destination:
 
 class ExportControl:
     """Cancellation and publication share one lock; publication is the commit point."""
-    def __init__(self):self._lock=Lock();self._cancelled=False;self.published=False
+    def __init__(self):self._lock=Lock();self._cancelled=False;self.published=False;self.deadline=None
     def cancel(self):
         with self._lock:
             if not self.published:self._cancelled=True
     def check(self):
         with self._lock:
+            if self.deadline is not None and time.monotonic()>=self.deadline:raise ApiError(401)
             if self._cancelled:raise ExportError('Export cancelled. No report was saved.')
     def commit(self,source,destination):
         with self._lock:
+            if self.deadline is not None and time.monotonic()>=self.deadline:raise ApiError(401)
             if self._cancelled:raise ExportError('Export cancelled. No report was saved.')
             publish(source,destination)
             self.published=True
@@ -76,11 +79,10 @@ class ExportControl:
 def publish(source,destination):
     if fingerprint(destination.path)!=destination.stamp:
         raise ExportError('The destination changed during export. Choose the file again before retrying.')
-    if destination.stamp is None:
-        # Hard-link creation is atomic and cannot overwrite a file created meanwhile.
-        os.link(source,destination.path)
-    else:
-        os.replace(source,destination.path)
+    if destination.stamp is not None:
+        raise ExportError('Choose a new filename. Existing workbooks are never replaced.')
+    # Atomic no-clobber publication, including a file created after fingerprint().
+    os.link(source,destination.path)
 
 
 @dataclass(frozen=True)
@@ -171,6 +173,9 @@ def export_audits(client,token,query,destination,control,progress,limits=Limits(
         raise ExportError('Export could not be saved. Check the folder, free space and whether the file is open, then retry.') from None
     finally:
         if work:
+            active=sys.exception()
             try:shutil.rmtree(work)
             except OSError:
-                raise ExportError('Export temporary files could not be removed. Inspect the .dams-export- folder in the selected destination; a complete report may already have been saved.') from None
+                message='Export temporary files could not be removed. Inspect the .dams-export- folder in the selected destination; a complete report may already have been saved.'
+                if isinstance(active,ApiError):raise ApiError(active.status,message=str(active)+' '+message) from None
+                raise ExportError(message) from None

@@ -50,3 +50,5 @@ Files: extend demo data and native capture, update desktop docs and verification
 ## Execution ledger
 
 - Baseline verified from approved design. Plan approval already covered by user's complete implementation authorization; no repeated routine approval gate.
+- Ruling: require a new destination filename rather than overwrite existing workbooks. Independent review reproduced a fingerprint/replace race; no ordinary filesystem compare-and-swap supports safe cross-process overwrite. Atomic no-clobber hard-link publication preserves every existing workbook, at the cost of requiring a new filename. UI and documentation disclose this deliberate safety restriction.
+- Review correction: preserve an active 401 status if temporary-file cleanup also fails, and show the cleanup warning at login.
