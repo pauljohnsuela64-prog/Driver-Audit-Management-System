@@ -2,6 +2,7 @@
 import secrets
 from threading import Event
 import time
+import weakref
 
 from desktop.api import ApiClient
 from desktop.app import Application
@@ -32,6 +33,7 @@ def main():
         app.update()
         app.screen.username.insert(0,'admin')
         app.screen.password.insert(0,secrets.token_urlsafe(24))
+        font_reference=weakref.ref(app.screen.username._font)
         app.screen.submit()
         deadline=time.monotonic()+3
         while not started.is_set() and time.monotonic()<deadline:
@@ -42,6 +44,7 @@ def main():
         app.close()
         assert time.monotonic()-before<2
         assert app.session.login is None and app.closing
+        assert font_reference() is None,'Closed UI still retains a Tk font that could finalize on a worker thread'
         gate.set()
         assert disposed.wait(3),'Abandoned login was not revoked after native window close'
         assert not errors,errors

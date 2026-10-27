@@ -1,5 +1,6 @@
 """Composition and main-thread lifecycle. Network work is always delegated."""
 from threading import Thread
+import gc
 import math
 import time
 import customtkinter as ctk
@@ -210,3 +211,8 @@ class Application(ctk.CTk):
         if old:
             self._revoke(old.token)
         destroy_view(self)
+        # Detached views contain widget/font/image cycles. Release and collect them
+        # here, on Tk's owner thread, before a later API worker allocation runs GC.
+        self.screen=None
+        self.shell=None
+        gc.collect()
