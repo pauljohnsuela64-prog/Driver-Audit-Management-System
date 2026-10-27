@@ -13,6 +13,18 @@ ROOT=Path(__file__).resolve().parents[1]
 FORBIDDEN={'backend','database','migrations','scripts','tests','pytest','sqlalchemy','pymysql','fastapi','uvicorn','dotenv'}
 
 
+def copy_notices(dist,destination):
+    for file in dist.files or []:
+        relative=Path(file)
+        if ('licen' in relative.name.lower() or relative.name.lower().startswith(('copying','notice'))):
+            source=Path(dist.locate_file(file))
+            if source.is_file():
+                # Retain vendor subdirectories: several dependencies use LICENSE.
+                target=destination/dist.metadata['Name']/relative
+                target.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copyfile(source,target)
+
+
 def inspect_bundle(bundle):
     from PyInstaller.archive.readers import CArchiveReader
     archive=CArchiveReader(str(bundle/'BHLIAudit.exe'))
@@ -36,12 +48,7 @@ def build(iscc):
     dependencies=[]
     for dist in metadata.distributions():
         name=dist.metadata['Name'];dependencies.append({'name':name,'version':dist.version})
-        for file in dist.files or []:
-            if 'licen' in Path(file).name.lower() or Path(file).name.lower()=='copying':
-                source=Path(dist.locate_file(file))
-                if source.is_file():
-                    target=licenses/name/Path(file).name;target.parent.mkdir(parents=True,exist_ok=True)
-                    shutil.copyfile(source,target)
+        copy_notices(dist,licenses)
     python_license=Path(sys.base_prefix)/'LICENSE.txt'
     if python_license.is_file():shutil.copyfile(python_license,licenses/'CPython-LICENSE.txt')
     source_sha=subprocess.check_output(['git','-c',f'safe.directory={ROOT.as_posix()}','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
