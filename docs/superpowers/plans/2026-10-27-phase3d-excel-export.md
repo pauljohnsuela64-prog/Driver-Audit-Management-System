@@ -1,0 +1,52 @@
+# Phase 3D Excel Export Implementation Plan
+
+> Execute inline using superpowers:executing-plans, with TDD and a fresh independent whole-branch review before publication.
+
+**Goal:** Export all matching audits safely to a genuine Excel workbook from Driver Audits.
+**Architecture:** A Tk-independent report module owns validated pagination, streaming XLSX writing and atomic publication. An application-owned job bridges progress/completion to existing UI polling; screens only render safe job state.
+**Tech stack:** Existing Python/CustomTkinter/REST client; XlsxWriter==3.3.0 desktop-only.
+**Spec:** docs/superpowers/specs/2026-10-27-phase3d-audit-reports-design.md (approved).
+
+## Global constraints
+
+- Work in requested `C:\BHLI-Audit` / `feat/dams-audit-reports`; preserve all prior commits. No separate worktree needed for this explicitly assigned checkout.
+- No backend/schema/grants/production changes, PDF, packaging or new sidebar destination.
+- Seven business fields plus Record ID/Status, 38-logical-pixel table unchanged.
+- 20,000 rows / 200 pages / 100 MiB text / 256 MiB workspace / 10 minutes; fail rather than truncate.
+- Passwords/tokens never logged or persisted. One export, memory-only session, no automatic retry.
+
+## Review focus
+
+- Destination replacement races and cancellation at publication: preserve old file; test explicit publication gate.
+- Offset pagination drift including duplicate IDs and same-date ordering: abort detected drift and disclose undetectable drift.
+- Unicode/control characters and formula-like strings: explicit XLSX text cells with complete supported values.
+- Session/theme/navigation/close changes: no worker Tk access or stale widget callbacks.
+- Disk failure at workbook close or cleanup: no misleading success, preserve destination and report cleanup failure.
+
+## Task 1: Export module
+
+Files: create `desktop/reports.py`, `tests/desktop/test_reports.py`; modify `requirements-desktop.txt`.
+Interface: `export_audits(client, token, query, destination, control, progress, limits=Limits()) -> ExportResult`; `Destination.capture(path)` records overwrite consent fingerprint; `ExportControl.cancel()` serializes with publication.
+- [ ] Write contract tests for workbook ZIP/XML, all fields/text safety, multipage filters, ordering, cancellation, drift, limits and file failures; observe RED.
+- [ ] Implement streaming writer, page validation, cancellation and safe publication; verify focused tests GREEN.
+- [ ] Verify dependency integrity, commit meaningful export milestone.
+
+## Task 2: Desktop job and controls
+
+Files: create `desktop/export_ui.py`, `tests/desktop/test_export_gui.py`; modify `desktop/app.py`, `desktop/screens/audits.py`.
+Interface: application-owned `ExportJob` state and `start_export` / `poll` / `cancel`; no widget references in worker closures. Screen exposes applied-filter fingerprint and export status.
+- [ ] Add RED native tests for off-thread generation, unapplied filters, save cancellation, navigation/theme persistence, session invalidation and close.
+- [ ] Implement confirm/save/progress/cancel/success/open-folder, clear failures and focus restoration; verify GREEN plus affected desktop regressions.
+- [ ] Commit UI milestone.
+
+## Task 3: Acceptance, review and publication
+
+Files: extend demo data and native capture, update desktop docs and verification evidence.
+- [ ] Exercise actual disposable REST API with two ADMIN accounts; generate fictional workbook and inspect in installed spreadsheet application if available.
+- [ ] Native screenshots light/dark, compact/maximized, keyboard/progress/error; independent engineering/UI review and regression fixes.
+- [ ] Full default + native and isolated MySQL + native suites; no production access. Record actual skip counts.
+- [ ] Commit evidence, push normally, one draft PR, verify hosted Windows/SQLite/MySQL CI; keep unmerged.
+
+## Execution ledger
+
+- Baseline verified from approved design. Plan approval already covered by user's complete implementation authorization; no repeated routine approval gate.
