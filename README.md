@@ -6,7 +6,8 @@ dependencies and secure local administrator bootstrap/recovery. See
 [authentication setup and API](docs/AUTHENTICATION.md).
 Phase 2B adds the [audit records REST API](docs/AUDIT_API.md), atomic history,
 version preconditions and idempotent creation. Official directory: `C:\BHLI-Audit`.
-Desktop GUI, Android application and reporting remain future work.
+Phase 2C adds administrator account management, account activity history and CI.
+Phase 3A adds the read-only Windows desktop. Android and reporting remain future work.
 
 ## Setup (PowerShell)
 
@@ -35,12 +36,21 @@ See [architecture](docs/ARCHITECTURE.md) and [verification record](docs/VERIFICA
 ## Layout
 
 `backend/core` owns configuration, connection and transaction lifecycle;
-`backend/models` contains the four tables; `backend/schemas` validates the seven
+`backend/models` contains the five application tables; `backend/schemas` validates the seven
 business fields; `backend/repositories` contains authentication persistence, and `backend/services`
 contains authentication and audit transaction rules.
 `database`, `migrations`, `scripts`, `tests`, and `docs` contain setup, versioned
-DDL, operator tools, checks, and documentation. `desktop` and `mobile` document
-future clients without implementing them.
+DDL, operator tools, checks, and documentation. `desktop` implements the Windows
+read-only REST client; `mobile` remains future work.
 
-Phases 1 and 2A are merged. Phase 2B is developed on `feat/dams-audit-records`
+Phases 1–2C are merged. Phase 3A is developed on `feat/dams-windows-desktop`
 for a draft PR and engineering review.
+
+## Windows desktop
+
+Install `requirements-desktop.txt` separately, then run `python -m desktop` from
+`C:\BHLI-Audit`. See [desktop setup, security, testing and limitations](docs/WINDOWS_DESKTOP.md)
+and the [approved visual/architecture design](docs/superpowers/specs/2026-10-26-phase3a-desktop-design.md).
+
+For a safe local demonstration without MySQL, run `python -m scripts.desktop_demo`
+from a local console. See [demo accounts and inspection steps](docs/WINDOWS_DESKTOP_DEMO.md).
