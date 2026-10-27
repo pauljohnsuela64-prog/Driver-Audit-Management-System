@@ -74,3 +74,12 @@ def test_logout_cancels_pending_export(app,tmp_path,monkeypatch):
     path=tmp_path/'x.xlsx';accept_export(app,monkeypatch,path);pump(app,entered.is_set)
     app.logout(force=True);release.set();pump(app)
     assert not path.exists() and app.session.login is None
+
+
+def test_confirmation_disclosure_can_be_read_with_keyboard(app):
+    ready(app);app.screen.export_button.invoke();pump(app)
+    dialog=app.dialog;dialog.geometry('660x465');pump(app)
+    first=dialog.body._parent_canvas.yview()[0]
+    dialog.cancel_button.focus_force();dialog.cancel_button.event_generate('<Next>');pump(app)
+    assert dialog.body._parent_canvas.yview()[0]>first
+    dialog.cancel()

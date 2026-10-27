@@ -91,7 +91,7 @@ def choose_export(screen):
             app.export_job.render()
         else:app.export_job.start(query,destination)
     confirm(app,'Export all matching audits',
-        'Export all pages using these applied filters:\n\n'+query_summary(query)+'\n\n'+CAVEAT+
+        'Export all pages using these applied filters:\n\n'+query_summary(query,app.session.login.user.id)+'\n\n'+CAVEAT+
         '\n\nReports are unencrypted local files. Choose a protected folder. Limits: 20,000 records and 10 minutes.',
         choose,'Choose save location')
 

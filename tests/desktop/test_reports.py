@@ -1,6 +1,6 @@
 from dataclasses import replace
 from pathlib import Path
-from threading import Event
+from threading import Event,Thread
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -220,3 +220,53 @@ def test_readable_metadata_contains_no_token(tmp_path):
     assert any('offset pagination' in cell for line in values for cell in line)
     with zipfile.ZipFile(path) as z:
         assert not any(b'secret-token' in z.read(name) for name in z.namelist())
+
+
+def test_workspace_budget_reserves_finalization_headroom(tmp_path):
+    rows=[row(i,remarks='x'*10000) for i in range(80,0,-1)]
+    with pytest.raises(reports.ExportError,match='temporary-file'):
+        run(tmp_path,rows,limits=replace(reports.Limits(),workspace=1_200_000))
+    assert not list(tmp_path.iterdir())
+
+
+def test_elapsed_deadline_is_rechecked_after_disk_flush(tmp_path,monkeypatch):
+    clock=[0.0];monkeypatch.setattr(reports.time,'monotonic',lambda:clock[0])
+    monkeypatch.setattr(reports.os,'fsync',lambda fd:clock.__setitem__(0,601))
+    with pytest.raises(reports.ExportError,match='time limit'):run(tmp_path)
+    assert not list(tmp_path.iterdir())
+
+
+def test_racing_new_destination_is_not_clobbered(tmp_path,monkeypatch):
+    link=reports.os.link;path=tmp_path/'report.xlsx'
+    def collide(source,target):
+        target.write_bytes(b'external workbook');link(source,target)
+    monkeypatch.setattr(reports.os,'link',collide)
+    with pytest.raises(reports.ExportError):run(tmp_path)
+    assert path.read_bytes()==b'external workbook'
+
+
+def test_large_export_completes_without_truncation(tmp_path):
+    path,result=run(tmp_path,[row(i) for i in range(20_000,0,-1)])
+    assert result.count==20_000 and len(cells(path)[1])==20_001
+
+
+def test_filter_summary_uses_hr_labels():
+    summary=reports.query_summary(AuditQuery(audited_by_user_id=2,include_deleted=True,sort='-audit_date'),2)
+    assert 'Auditor: My audits' in summary and 'Archived records: Included' in summary
+    assert 'Audit date: newest first' in summary and 'audited_by_user_id' not in summary
+
+
+def test_cancellation_never_blocks_ui_during_publication(tmp_path,monkeypatch):
+    entered=Event();release=Event();cancelled=Event();control=reports.ExportControl()
+    source=tmp_path/'source';source.write_bytes(b'completed workbook')
+    destination=reports.Destination.capture(tmp_path/'report.xlsx')
+    original=reports.os.link
+    def slow_link(*args):entered.set();release.wait(4);original(*args)
+    monkeypatch.setattr(reports.os,'link',slow_link)
+    writer=Thread(target=lambda:control.commit(source,destination));writer.start()
+    assert entered.wait(2)
+    canceller=Thread(target=lambda:(control.cancel(),cancelled.set()));canceller.start()
+    try:assert cancelled.wait(.3),'UI cancellation waited for disk publication'
+    finally:release.set();writer.join(3);canceller.join(3)
+    assert control.published and destination.path.read_bytes()==source.read_bytes()
+    control.check()

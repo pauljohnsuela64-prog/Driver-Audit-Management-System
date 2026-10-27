@@ -2,7 +2,7 @@
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Event
 import os
 import re
 import shutil
@@ -59,19 +59,20 @@ class Destination:
 
 
 class ExportControl:
-    """Cancellation and publication share one lock; publication is the commit point."""
-    def __init__(self):self._lock=Lock();self._cancelled=False;self.published=False;self.deadline=None
+    """The final cancellation check is the commit decision; UI never waits on IO."""
+    def __init__(self):self._lock=Lock();self._cancelled=Event();self.published=False;self.deadline=None
     def cancel(self):
-        with self._lock:
-            if not self.published:self._cancelled=True
+        self._cancelled.set()
     def check(self):
         with self._lock:
             if self.deadline is not None and time.monotonic()>=self.deadline:raise ApiError(401)
-            if self._cancelled:raise ExportError('Export cancelled. No report was saved.')
-    def commit(self,source,destination):
+            if self._cancelled.is_set() and not self.published:raise ExportError('Export cancelled. No report was saved.')
+    def commit(self,source,destination,deadline=None):
         with self._lock:
             if self.deadline is not None and time.monotonic()>=self.deadline:raise ApiError(401)
-            if self._cancelled:raise ExportError('Export cancelled. No report was saved.')
+            if deadline is not None and time.monotonic()>=deadline:
+                raise ExportError('Export time limit reached. Narrow the filters and retry.')
+            if self._cancelled.is_set():raise ExportError('Export cancelled. No report was saved.')
             publish(source,destination)
             self.published=True
 
@@ -91,9 +92,13 @@ class ExportResult:
     count: int
 
 
-def query_summary(query):
-    values=vars(replace(query,page=1,page_size=100))
-    return '\n'.join(f'{key}: {value}' for key,value in values.items() if key not in ('page','page_size'))
+def query_summary(query,current_user_id=None):
+    sorts={'-id':'Newest created','id':'Oldest created','-audit_date':'Audit date: newest first','audit_date':'Audit date: oldest first'}
+    auditor=('All auditors' if query.audited_by_user_id is None else
+             'My audits' if query.audited_by_user_id==current_user_id else 'Selected auditor')
+    return '\n'.join((f'Driver search: {query.driver_name or "Any"}',f'Plate search: {query.plate_number or "Any"}',
+        f'Station: {query.station or "All stations"}',f'Dates: {query.date_from or "Any start"} to {query.date_to or "Any end"}',
+        f'Auditor: {auditor}',f'Order: {sorts[query.sort]}',f'Archived records: {"Included" if query.include_deleted else "Excluded"}'))
 
 
 def export_audits(client,token,query,destination,control,progress,limits=Limits()):
@@ -104,7 +109,10 @@ def export_audits(client,token,query,destination,control,progress,limits=Limits(
         control.check()
         if time.monotonic()-clock>=limits.seconds:
             raise ExportError('Export time limit reached. Narrow the filters and retry.')
-        if work and sum(p.stat().st_size for p in work.iterdir() if p.is_file())>limits.workspace:
+        # Finalization duplicates row XML and builds the ZIP while XML still
+        # exists. Reserve 3x measured bytes plus 1 MiB per copy for buffered last
+        # rows, workbook metadata and ZIP framing; fail before entering close.
+        if work and 3*(sum(p.stat().st_size for p in work.iterdir() if p.is_file())+1024*1024)>limits.workspace:
             raise ExportError('Export temporary-file limit reached. Narrow the filters and retry.')
     try:
         check()
@@ -166,7 +174,7 @@ def export_audits(client,token,query,destination,control,progress,limits=Limits(
         if count:
             # Ensure bytes reach the filesystem before exposing the final name.
             with output.open('r+b') as stream:os.fsync(stream.fileno())
-            control.commit(output,destination)
+            control.commit(output,destination,clock+limits.seconds)
         return ExportResult(destination.path,count)
     except (ApiError,ExportError):raise
     except Exception:

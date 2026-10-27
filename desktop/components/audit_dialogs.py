@@ -22,7 +22,7 @@ class Confirmation(tk.Toplevel):
         self.columnconfigure(0,weight=1)
         self.rowconfigure(1,weight=1)
         label(self,title,22).grid(row=0,column=0,sticky='w',padx=24,pady=(24,12))
-        body=ctk.CTkScrollableFrame(self,fg_color=color('surface'))
+        body=self.body=ctk.CTkScrollableFrame(self,fg_color=color('surface'))
         body.grid(row=1,column=0,sticky='nsew',padx=16,pady=(0,16))
         body.columnconfigure(0,weight=1)
         self.message=label(body,message,justify='left',anchor='nw',wraplength=430)
@@ -39,7 +39,21 @@ class Confirmation(tk.Toplevel):
         self.bind('<Escape>',lambda e:self.cancel() or 'break')
         self.protocol('WM_DELETE_WINDOW',self.cancel)
         self.bind('<Configure>',self.resize,add='+')
+        # Action buttons retain a simple Tab loop; disclosure remains readable
+        # without a mouse even in compact/DPI-scaled confirmation windows.
+        for key,amount,unit in (('<Next>',1,'pages'),('<Prior>',-1,'pages'),('<Down>',1,'units'),('<Up>',-1,'units')):
+            self.bind(key,lambda e,n=amount,u=unit:self.scroll(n,u))
+        self.bind('<Home>',lambda e:self.scroll_to(0))
+        self.bind('<End>',lambda e:self.scroll_to(1))
         self.after_idle(self.activate)
+
+    def scroll(self,amount,unit):
+        self.body._parent_canvas.yview_scroll(amount,unit)
+        return 'break'
+
+    def scroll_to(self,fraction):
+        self.body._parent_canvas.yview_moveto(fraction)
+        return 'break'
 
     def resize(self,event):
         if event.widget is self:
