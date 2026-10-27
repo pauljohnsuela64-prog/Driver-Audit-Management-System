@@ -44,7 +44,7 @@ Interface: application-owned `ExportJob` state and `start` / `poll` / `cancel` /
 Files: extend demo data and native capture, update desktop docs and verification evidence.
 - [x] Exercise actual disposable REST API with two ADMIN accounts; generate fictional workbook and inspect in installed Microsoft Excel 16.
 - [x] Native screenshots light/dark, compact/maximized, keyboard/progress/error; independent engineering/UI review and regression fixes.
-- [ ] Full default + native and isolated MySQL + native suites; no production access. Record actual skip counts.
+- [x] Full default + native and isolated MySQL + native suites; no production access. Record actual skip counts.
 - [ ] Commit evidence, push normally, one draft PR, verify hosted Windows/SQLite/MySQL CI; keep unmerged.
 
 ## Execution ledger
@@ -55,3 +55,5 @@ Files: extend demo data and native capture, update desktop docs and verification
 - Independent engineering review: reproduced and corrected workspace-finalization headroom, elapsed deadline after fsync, and cancellation blocking during slow publication. Final reviewer source check found no unresolved findings.
 - Independent UI review: reproduced and corrected internal filter labels and keyboard-inaccessible overflowing disclosure; final reviewer confirmed both corrections.
 - Resume recovery: isolated MySQL/native log completed successfully with 542 passed; default/native full run repeated because its earlier 537-pass log preceded the final nonblocking cancellation regression.
+- Final default/native result: 538 passed, 4 explicit live-MySQL skips. Separate native close-during-export check passed with prompt return, worker completion, no files and no callback errors. Full evidence: `docs/WINDOWS_DESKTOP_PHASE3D_VERIFICATION.md`.
+- Publication checkbox intentionally awaits external push/PR/hosted results, which are recorded on the draft PR and final report; avoid a documentation-only CI rerun merely to change this pre-publication ledger.
