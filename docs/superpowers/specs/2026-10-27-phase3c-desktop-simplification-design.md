@@ -1,6 +1,6 @@
 # Revised Phase 3C — A small HR administrator workspace
 
-Status: proposed, awaiting approval. This design supersedes the previous full
+Status: approved by the developer at design checkpoint `5ad73e5`. This design supersedes the previous full
 Employee Accounts / Administrator Activity desktop direction. No product code
 changes are included in this checkpoint.
 

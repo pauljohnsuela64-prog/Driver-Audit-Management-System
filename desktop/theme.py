@@ -37,7 +37,7 @@ def icon(master, name, ink='#F1F5F9'):
     def line(x0,y0,x1,y1):
         draw.line((x0*4,y0*4,x1*4,y1*4),fill=ink,width=6)
     for x0,y0,x1,y1 in shapes[name]:
-        if x0 != x1 and y0 != y1 and name != 'Administrator Activity':
+        if x0 != x1 and y0 != y1:
             for coords in [(x0,y0,x1,y0),(x1,y0,x1,y1),(x1,y1,x0,y1),(x0,y1,x0,y0)]:
                 line(*coords)
         else:
