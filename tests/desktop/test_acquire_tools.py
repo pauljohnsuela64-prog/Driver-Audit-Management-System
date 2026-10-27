@@ -21,6 +21,7 @@ def test_signature_shell_does_not_inherit_incompatible_modules(monkeypatch,tmp_p
 
 
 def test_invalid_signature_remains_a_hard_failure(monkeypatch,tmp_path):
+    monkeypatch.setenv('SystemRoot',str(tmp_path))
     def fail(command,**kwargs):raise subprocess.CalledProcessError(1,command)
     monkeypatch.setattr(subprocess,'run',fail)
     with pytest.raises(subprocess.CalledProcessError):verify_signature(tmp_path/'unsigned.exe')

@@ -10,6 +10,7 @@ import time
 import winreg
 
 from tests.desktop.packaged_acceptance import window,wait,user
+from tests.desktop.installer_support import uninstall_complete
 
 APP_KEY=r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{C9470975-3249-43C2-A410-80972C956B05}_is1'
 
@@ -43,7 +44,9 @@ def run(installer,output):
         uninstaller=target/'unins000.exe'
         if uninstaller.exists() and (target/'BHLIAudit.exe').exists():
             subprocess.run([str(uninstaller),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'],check=True,timeout=90)
-            wait(lambda:not (target/'BHLIAudit.exe').exists(),30)
+            # The bootstrap exits before its self-deleting child. EXE removal
+            # precedes shortcuts/registration: require the entire postcondition.
+            wait(lambda:uninstall_complete(target,desktop,menu,installed_key),30)
     try:
         subprocess.run(args,check=True,timeout=120)
         assert installed_key() and menu.exists() and not desktop.exists()
