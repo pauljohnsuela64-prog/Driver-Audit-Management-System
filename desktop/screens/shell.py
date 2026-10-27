@@ -29,7 +29,7 @@ class Shell(ctk.CTkFrame):
             b.grid(row=row,column=0,padx=12,pady=4,sticky='ew')
             self.nav_buttons[destination]=b
             Tip(b,destination)
-        self.footer = ctk.CTkLabel(self.sidebar,text='Phase 3A · Read-only workspace',font=font(11),text_color='#B8C5D6',wraplength=190)
+        self.footer = ctk.CTkLabel(self.sidebar,text='Phase 3B · Audit management',font=font(11),text_color='#B8C5D6',wraplength=190)
         self.footer.grid(row=9,column=0,padx=12,pady=20)
         main=ctk.CTkFrame(self,fg_color='transparent',corner_radius=0)
         main.grid(row=0,column=1,sticky='nsew')
@@ -71,7 +71,7 @@ class Shell(ctk.CTkFrame):
         self.toggle.configure(text='›' if value else 'Collapse navigation',width=40 if value else 200)
         for name,b in self.nav_buttons.items():
             b.configure(text='' if value else name,width=40 if value else 200,anchor='center' if value else 'w')
-        self.footer.configure(text='' if value else 'Phase 3A · Read-only workspace')
+        self.footer.configure(text='' if value else 'Phase 3B · Audit management')
 
     def resize(self,event):
         if event.widget is self and event.width/self._get_widget_scaling() < 1050 and not self.collapsed:

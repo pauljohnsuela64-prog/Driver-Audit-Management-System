@@ -31,6 +31,12 @@ def test_demo_real_http_auth_filters_attribution_and_cleanup(monkeypatch):
         assert detail.audited_by_name=='Fictional Auditor (original)'
         assert auditor.user.full_name=='Demo Auditor'
         assert detail.etag is not None
+        archived=client.list_audits(admin.token,AuditQuery(include_deleted=True,page_size=100))
+        assert archived.total==61
+        deleted=next(record for record in archived.items if record.deleted_at)
+        history=client.audit_history(admin.token,deleted.id,include_deleted=True)
+        assert [event.action for event in history.items]==['CREATE','UPDATE','DELETE']
+        assert history.items[0].after_data.audited_by_name=='Fictional Auditor (original)'
         with pytest.raises(ApiError) as denied:
             client._request('GET','/users',auditor.token)
         assert denied.value.status==403

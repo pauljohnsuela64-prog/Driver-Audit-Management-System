@@ -1,5 +1,6 @@
 """One application lifetime per process for the pending-login native close check."""
 import secrets
+import gc
 from threading import Event
 import time
 import weakref
@@ -11,8 +12,10 @@ from tests.desktop.visual_support import DemoTransport
 
 
 def main():
+    gc_enabled=gc.isenabled()
     client=ApiClient(Config(),DemoTransport())
     app=Application(client)
+    assert not gc.isenabled(),'Automatic collection could run Tk finalizers on HTTP workers'
     errors=[]
     app.report_callback_exception=lambda kind,value,tb:errors.append(kind.__name__)
     app.tk.createcommand('close_bgerror',lambda value:errors.append('TclError'))
@@ -44,6 +47,7 @@ def main():
         app.close()
         assert time.monotonic()-before<2
         assert app.session.login is None and app.closing
+        assert gc.isenabled()==gc_enabled,'Closing did not restore the previous collector setting'
         assert font_reference() is None,'Closed UI still retains a Tk font that could finalize on a worker thread'
         gate.set()
         assert disposed.wait(3),'Abandoned login was not revoked after native window close'

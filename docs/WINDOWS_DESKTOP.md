@@ -1,10 +1,14 @@
-# BHLI Audit desktop — Phase 3A
+# BHLI Audit desktop — Phase 3B
 
 Windows desktop foundation: employee sign-in, role-aware collapsible navigation,
 dashboard with real active-audit totals, searchable/filterable/paginated audit table,
-separate read-only details, My Account, appearance selection and sign-out.
+separate details, audit creation/editing, ADMIN soft deletion, chronological history,
+My Account, appearance selection and sign-out.
 Employee Accounts and Administrator Activity are clearly labeled future modules.
 The desktop preserves the seven audit business fields and original auditor snapshot.
+
+See the [Phase 3B verification and screenshots](WINDOWS_DESKTOP_PHASE3B_VERIFICATION.md)
+for independent-review corrections, complete local test results and native evidence.
 
 ## Setup and launch
 
@@ -72,8 +76,24 @@ creation ID or audit date ascending/descending. Page sizes are 25/50/100. Refres
 reloads the current query. Concurrent server writes can shift offset pages.
 Enter/double-click or View Details opens the selected audit. Back retains query/page
 and selected ID. Details display Driver Name, optional Helper Name, Audit Date,
-Station, Plate Number, optional Remarks and original Audited By. No create/edit/delete
-or deleted-record visibility is exposed in Phase 3A.
+Station, Plate Number, optional Remarks and original Audited By.
+
+New audit opens a validated six-field form; the server supplies Audited By. ADMIN
+can edit any active audit; AUDITOR can edit only their stable user ID's records.
+Only changed fields are submitted with the exact GET ETag. A stale/ambiguous edit
+requires explicit original/draft/latest comparison and review before another Save.
+ADMIN deletion fetches current identity/version and requires confirmation; stale
+deletion requires a new confirmation. Deletion preserves history and ownership.
+ADMIN can enable Include deleted in Filters to inspect read-only deleted details/history.
+History shows chronological actions, UTC timestamps, actor IDs and before/after changes,
+25 events per page. Actor IDs are distinct from original auditor-name snapshots.
+
+Ambiguous creation retains the original UUID and normalized payload in memory.
+Retry same creation reuses both; editing is locked until reconciliation or explicit
+abandonment with a duplicate-risk warning. No automatic mutation replay exists.
+Drafts survive theme changes. Leaving unsaved work asks for confirmation; leaving
+a submitted request cannot undo a server commit. Exiting loses unresolved retry
+state: inspect records before starting another creation. A new login never inherits it.
 
 Tab/Shift+Tab traverse controls; Enter signs in or opens a selected row; Space
 activates buttons/checkboxes; dropdowns can be opened with Enter/Space and navigated
@@ -101,9 +121,16 @@ at most eight outstanding screen requests; the main thread drains completions.
 Navigation and supersession invalidate stale results, including stale errors. Even
 if a replacement request is refused because the queue is full, the previous query
 cannot update the screen under new filters. Workers never invoke Tk or retain UI
-callbacks. Independent bounded revocation work cannot be canceled by navigation or
+callbacks. A separate single-operation mutation queue retains write results across
+read supersession and theme rebuilds, and discards delivery after session changes.
+Independent bounded revocation work cannot be canceled by navigation or
 starved by a full screen queue. Closing suppresses late UI callbacks and performs
 best-effort revocation without waiting indefinitely.
+
+While the single application is open, automatic cyclic collection is replaced by
+UI-thread collection every two seconds. This prevents detached Tk font/image cycles
+from finalizing on HTTP/API workers; reference counting remains enabled. Closing
+collects remaining views on the UI thread and restores the previous GC setting.
 
 Logout clears local identity, token and audit views immediately and requests server
 revocation. Unconfirmed revocation is reported: a server session may remain until
@@ -112,7 +139,7 @@ effort revoked. Sessions have no refresh; expiry or a current-request 401 requir
 new login. Server authorization remains authoritative despite role-based navigation.
 
 403 is permission denial; 404 removes unavailable details; known conflict codes for
-409/412 are retained for future editing; 422 gives safe validation feedback. 429
+409/412 require operation-specific conflict resolution; 422 gives safe validation feedback. 429
 uses a nonblocking Retry-After cooldown (numeric or HTTP-date), including read-screen
 retries. Untrusted delays are bounded to one day before native arithmetic. Polling
 continues after a reported callback failure, preserving later completion/expiry handling.
