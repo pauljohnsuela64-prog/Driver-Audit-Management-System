@@ -103,11 +103,11 @@ def main():
         wait(lambda:not app.screen.pending)
         capture('10-login-error-dark')
         app.screen.username.delete(0,'end')
-        app.screen.username.insert(0,'auditor')
+        app.screen.username.insert(0,'admin2')
         app.screen.password.insert(0,'fictional visual-test passphrase')
         app.screen.submit()
         wait(lambda:app.session.login is not None and getattr(app.screen,'loaded',False))
-        capture('11-auditor-dashboard-dark')
+        capture('11-second-admin-dashboard-dark')
         metadata={'os_dpi':ctypes.windll.user32.GetDpiForWindow(app.winfo_id()),
                   'programmatic_widget_scales':[100,125,150],
                   'actual_display_scale_changed':False,'callback_errors':callback_errors,

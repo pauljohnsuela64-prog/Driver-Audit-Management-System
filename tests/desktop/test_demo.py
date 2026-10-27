@@ -21,25 +21,28 @@ def test_demo_real_http_auth_filters_attribution_and_cleanup(monkeypatch):
         assert database.is_file()
         client=ApiClient(Config(demo.origin))
         admin=client.sign_in('demo_admin',ADMIN_PASSWORD)
-        auditor=client.sign_in('demo_auditor',AUDITOR_PASSWORD)
-        assert admin.user.role=='ADMIN' and auditor.user.role=='AUDITOR'
+        auditor=client.sign_in('demo_admin2',AUDITOR_PASSWORD)
+        assert admin.user.role=='ADMIN' and auditor.user.role=='ADMIN'
+        assert admin.user.id!=auditor.user.id
         page=client.list_audits(auditor.token,AuditQuery(page_size=100))
         assert page.total==60 and len(page.items)==60
         own=client.list_audits(auditor.token,AuditQuery(audited_by_user_id=auditor.user.id))
         assert own.total==40
         detail=client.get_audit(auditor.token,own.items[0].id)
-        assert detail.audited_by_name=='Fictional Auditor (original)'
-        assert auditor.user.full_name=='Demo Auditor'
+        assert detail.audited_by_name=='Fictional HR Two (original)'
+        assert auditor.user.full_name=='Demo Administrator Two'
         assert detail.etag is not None
         archived=client.list_audits(admin.token,AuditQuery(include_deleted=True,page_size=100))
         assert archived.total==61
         deleted=next(record for record in archived.items if record.deleted_at)
         history=client.audit_history(admin.token,deleted.id,include_deleted=True)
         assert [event.action for event in history.items]==['CREATE','UPDATE','DELETE']
-        assert history.items[0].after_data.audited_by_name=='Fictional Auditor (original)'
+        assert history.items[0].after_data.audited_by_name=='Fictional HR Two (original)'
+        legacy=client.sign_in('demo_auditor',demo.legacy_password)
         with pytest.raises(ApiError) as denied:
-            client._request('GET','/users',auditor.token)
+            client._request('GET','/users',legacy.token)
         assert denied.value.status==403
+        client.logout(legacy.token)
         client.logout(admin.token)
         client.logout(auditor.token)
         with pytest.raises(ApiError) as revoked:

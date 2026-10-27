@@ -95,7 +95,7 @@ def main():
             tree.focus_set()
             tree.event_generate('<Return>')
             wait(lambda:app.destination=='Audit Details' and app.screen.loaded)
-            assert app.screen.record.audited_by_name=='Fictional Auditor (original)'
+            assert app.screen.record.audited_by_name=='Fictional HR Two (original)'
             capture('06-details-top')
             app.screen.body._parent_canvas.yview_moveto(1)
             capture('07-details-original-attribution')
@@ -149,16 +149,16 @@ def main():
             assert app.screen.total==0
             capture('14-empty-real-api')
             app.logout()
-            login('demo_auditor',auditor_password)
+            login('demo_admin2',auditor_password)
             assert 'Employee Accounts' not in app.shell.nav_buttons
-            capture('15-auditor-dashboard')
+            capture('15-second-admin-dashboard')
             app.navigate('Driver Audits')
             wait(lambda:app.screen.loaded)
             app.screen.mine.select()
             app.screen.apply()
             wait(lambda:app.screen.loaded)
             assert app.screen.total==40
-            capture('16-auditor-own-records')
+            capture('16-second-admin-own-records')
             for factor in (1.0,1.25,1.5):
                 ctk.set_widget_scaling(factor)
                 app.set_theme('Dark')
@@ -166,7 +166,7 @@ def main():
                 wait(lambda:app.screen.loaded)
                 capture(f'17-widget-factor-{int(factor*100)}')
             metadata={'actual_dpi':ctypes.windll.user32.GetDpiForWindow(app.winfo_id()),
-                'data':'Real FastAPI HTTP + disposable SQLite; 60 fictional audits, 40 auditor-owned',
+                'data':'Real FastAPI HTTP + disposable SQLite; 60 fictional audits, 40 second-admin-owned',
                 'authentication':'Normal API authentication; generated passwords never saved',
                 'maximized_checked':True,'keyboard_back_focus_checked':True,
                 'widget_factors':[100,125,150],'os_display_scale_changed':False,'callback_errors':errors,
