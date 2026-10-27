@@ -6,7 +6,7 @@ from desktop.theme import color, font
 
 
 class LoginScreen(ctk.CTkFrame):
-    def __init__(self, parent, app, message=''):
+    def __init__(self, parent, app, message='',message_error=True):
         super().__init__(parent, fg_color=color('bg'), corner_radius=0)
         self.app = app
         self.blocked_until = 0
@@ -47,7 +47,7 @@ class LoginScreen(ctk.CTkFrame):
         self.status = Notice(self.card)
         self.status.configure(wraplength=310)
         self.status.grid(row=7,column=0,sticky='ew',padx=28,pady=(0,12))
-        self.status.show(message)
+        self.status.show(message,message_error)
         self.submit_button = button(self.card,'Sign In',self.submit,primary=True)
         self.submit_button.grid(row=8,column=0,sticky='ew',padx=28,pady=(0,16))
         from urllib.parse import urlsplit

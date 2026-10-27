@@ -54,7 +54,7 @@ class Application(ctk.CTk):
         self.title('BHLI Audit')
         from desktop.resources import resource_path
         icon=resource_path('bhli.ico')
-        if icon.exists():self.iconbitmap(str(icon))
+        if icon.exists():self.iconbitmap(default=str(icon))
         scale=self._get_window_scaling()
         width,height=min(1280,int(self.winfo_screenwidth()/scale)-40),min(800,int(self.winfo_screenheight()/scale)-80)
         self.geometry(f'{width}x{height}')
@@ -94,7 +94,7 @@ class Application(ctk.CTk):
             if not self.closing:
                 self.after(30,self.poll)
 
-    def show_login(self,message=''):
+    def show_login(self,message='',error=True):
         if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.shell:
             destroy_view(self.shell)
@@ -102,7 +102,7 @@ class Application(ctk.CTk):
         elif self.screen:
             destroy_view(self.screen)
         self.destination=''
-        self.screen=LoginScreen(self,self,message)
+        self.screen=LoginScreen(self,self,message,error)
         self.screen.pack(fill='both',expand=True)
 
     def sign_in(self,username,password,finished):

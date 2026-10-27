@@ -43,22 +43,26 @@ class Connection(Confirmation):
         try:config=validated(self.origin_field.get())
         except SettingsError as error:self.status.show(str(error));return
         self.pending=True;self.test_button.configure(state='disabled')
+        self.origin_field.configure(state='disabled');self.confirm_button.configure(state='disabled')
         self.status.show('Checking the API connection…',False)
         client=ApiClient(config)
         def done(result,error):
             if not self.alive:return
             self.pending=False;self.test_button.configure(state='normal')
+            if not self.app.endpoint.locked:
+                self.origin_field.configure(state='normal')
+                if self.app.settings_file:self.confirm_button.configure(state='normal')
             self.status.show(str(error) if error else 'API reachable. Database readiness is not verified; sign in after your administrator approves server deployment.',bool(error))
         if not self.app.tasks.submit('connection',client.health,done):
             done(None,SettingsFailure())
 
     def save(self):
-        if self.app.endpoint.locked or self.app.session.login or not self.app.settings_file:return
+        if self.pending or self.app.endpoint.locked or self.app.session.login or not self.app.settings_file:return
         try:config=save_settings(self.app.settings_file,self.origin_field.get())
         except SettingsError as error:self.status.show(str(error));return
         self.app.tasks.invalidate()
         self.app.endpoint=Endpoint(config,'Saved settings');self.app.client=ApiClient(config)
-        self.dismiss();self.app.show_login('Connection saved. Sign in with your HR administrator account.')
+        self.dismiss();self.app.show_login('Connection saved. Sign in with your HR administrator account.',error=False)
 
     def dismiss(self):
         self.alive=False
