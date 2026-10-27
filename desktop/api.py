@@ -25,6 +25,9 @@ MESSAGES = {
 ERROR_CODES = {409: {'conflict','username_exists','access_conflict','self_access_change','last_admin',
                      'self_reset','password_reuse'}, 412: {'version_mismatch'}, 428: {'precondition_required'}}
 MAX_RETRY_SECONDS = 86_400  # Bound untrusted delays before any native UI arithmetic.
+# 100 records × (10,000 remarks + bounded name/station/plate fields), including
+# worst-case JSON Unicode escaping. Keep a finite ceiling above legal pages.
+MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 
 
 class ApiError(Exception):
@@ -57,8 +60,8 @@ class HttpTransport:
             connection.sock.settimeout(self.config.read_timeout)
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()
-            raw = response.read(2_000_001)
-            if len(raw) > 2_000_000:
+            raw = response.read(MAX_RESPONSE_BYTES+1)
+            if len(raw) > MAX_RESPONSE_BYTES:
                 raise ValueError('Oversized response')
             return Reply(response.status, dict(response.getheaders()), raw)
         finally:

@@ -187,3 +187,49 @@ def test_real_http_transport_refuses_redirect_and_times_out():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_real_transport_accepts_contract_valid_full_unicode_page():
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    from threading import Thread
+    records=[dict(AUDIT,id=index+1,remarks='\U0001f4dd'*10000) for index in range(100)]
+    payload=json.dumps(dict(items=records,total=100,page=1,page_size=100),ensure_ascii=False).encode('utf-8')
+    assert len(payload)>2_000_000
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self,*args):
+            pass
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Length',str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    Thread(target=server.serve_forever,daemon=True).start()
+    try:
+        result=ApiClient(Config(f'http://127.0.0.1:{server.server_port}')).list_audits(TOKEN,AuditQuery(page_size=100))
+        assert len(result.items)==100 and len(result.items[0].remarks)==10000
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_transport_keeps_finite_body_limit_and_closes_connection(monkeypatch):
+    from types import SimpleNamespace
+    import desktop.api as module
+    class Connection:
+        def __init__(self):
+            self.closed=False
+            self.sock=SimpleNamespace(settimeout=lambda _:None)
+        def connect(self):
+            pass
+        def request(self,*args,**kwargs):
+            pass
+        def getresponse(self):
+            return SimpleNamespace(status=200,getheaders=lambda:[],read=lambda limit:b'x'*limit)
+        def close(self):
+            self.closed=True
+    connection=Connection()
+    monkeypatch.setattr(module.http.client,'HTTPConnection',lambda **kwargs:connection)
+    with pytest.raises(ValueError,match='Oversized response'):
+        module.HttpTransport(Config())('GET','/audits',{},None)
+    assert connection.closed
