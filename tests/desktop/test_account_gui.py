@@ -174,3 +174,26 @@ def test_old_mutation_completion_releases_new_account_view_without_old_result(ap
     gate.set();pump(app,lambda:not app.mutation_pending)
     pump(app,lambda:app.screen.change_button.cget('state')=='normal')
     assert app.account_action is None and 'old_private' not in app.screen.notice.cget('text')
+
+
+def test_empty_account_form_does_not_reserve_vertical_space(app):
+    account_setup(app)
+    assert not app.screen.forms.winfo_ismapped()
+    app.screen.open_form('add');pump(app)
+    assert app.screen.forms.winfo_ismapped()
+    app.screen.clear_form();pump(app)
+    assert not app.screen.forms.winfo_ismapped()
+
+
+def test_keyboard_reveals_form_buttons_after_scrolling_away(app):
+    app.geometry('800x600');account_setup(app)
+    app.screen.open_form('add');pump(app)
+    field=app.screen.form.fields['confirm_password']
+    app.focus_force();field.focus_set();pump(app)
+    # A user can scroll while an entry remains focused, then continue with Tab.
+    canvas=app.screen._parent_canvas
+    canvas.yview_moveto(0);pump(app)
+    field._entry.event_generate('<Tab>');pump(app)
+    focused=app.focus_get()
+    assert focused.winfo_rooty()>=canvas.winfo_rooty()
+    assert focused.winfo_rooty()+focused.winfo_height()<=canvas.winfo_rooty()+canvas.winfo_height()

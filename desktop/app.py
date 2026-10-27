@@ -23,6 +23,10 @@ class Application(ctk.CTk):
         except BaseException:
             self.collector.close()
             raise
+        # Tk lazily sources focus procedures. Load them before Python callbacks
+        # invoke traversal during the first native Tab event.
+        self.tk.call('auto_load','tk_focusNext')
+        self.tk.call('auto_load','tk_focusPrev')
         self.client=client
         self.session=SessionState()
         self.tasks=Tasks()

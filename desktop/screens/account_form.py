@@ -32,9 +32,12 @@ class AccountForm(ctk.CTkFrame):
             self.errors[key]=error
         self.status=Notice(self);self.status.grid(row=20,column=0,sticky='ew',padx=16,pady=(8,0))
         controls=ctk.CTkFrame(self,fg_color='transparent');controls.grid(row=21,column=0,sticky='ew',padx=16,pady=(8,16))
-        button(controls,'Cancel',owner.clear_form,width=110).pack(side='left')
+        self.cancel_button=button(controls,'Cancel',owner.clear_form,width=110)
+        self.cancel_button.pack(side='left')
         self.submit_button=button(controls,FORMS[kind][0],self.submit,True,width=190)
         self.submit_button.pack(side='right')
+        for widget in (self.cancel_button,self.submit_button):
+            widget.bind('<FocusIn>',lambda event,w=widget:owner.reveal(w),add='+')
 
     def clear_secrets(self):
         for key,widget in self.fields.items():

@@ -27,6 +27,7 @@ class Account(ctk.CTkScrollableFrame):
         self.notice=Notice(self);self.notice.grid(row=4,column=0,sticky='ew',padx=24,pady=(0,8))
         self.forms=ctk.CTkFrame(self,fg_color='transparent')
         self.forms.grid(row=5,column=0,sticky='ew',padx=24,pady=(0,12));self.forms.columnconfigure(0,weight=1)
+        self.forms.grid_remove()
         self.manage_button=button(self,'Manage Admin Accounts',self.toggle_manage,width=240)
         self.manage_button.grid(row=6,column=0,sticky='w',padx=24,pady=(12,8))
         self.manage=ctk.CTkFrame(self,fg_color='transparent');self.manage.grid(row=7,column=0,sticky='ew',padx=24,pady=(0,24))
@@ -39,6 +40,8 @@ class Account(ctk.CTkScrollableFrame):
         self.manage.grid_remove()
         self.base_buttons=(self.change_button,self.manage_button,self.add_button,self.refresh_button,self.retry_button)
         self.buttons=list(self.base_buttons)
+        for widget in self.base_buttons:
+            widget.bind('<FocusIn>',lambda event,w=widget:self.reveal(w),add='+')
         self.render_action()
         if not self.busy():self.refresh()
 
@@ -68,10 +71,12 @@ class Account(ctk.CTkScrollableFrame):
 
     def clear_form(self):
         if self.form:self.form.clear_secrets();destroy_view(self.form);self.form=None
+        self.forms.grid_remove()
 
     def open_form(self,kind,target=None):
         if self.busy() or self.blocked:return
         self.clear_form();self.form=AccountForm(self.forms,self,kind,target)
+        self.forms.grid()
         self.form.grid(row=0,column=0,sticky='ew')
         self.after_idle(lambda:self.form.fields[next(iter(self.form.fields))].focus_set() if self.form else None)
 
@@ -128,9 +133,11 @@ class Account(ctk.CTkScrollableFrame):
                     controls=ctk.CTkFrame(card,fg_color='transparent');controls.grid(row=2,column=0,sticky='ew',padx=16,pady=(0,12))
                     reset=button(controls,'Reset password',lambda u=user:self.open_target('reset',u),width=170)
                     reset.pack(side='left',padx=(0,8));self.buttons.append(reset)
+                    reset.bind('<FocusIn>',lambda event,w=reset:self.reveal(w),add='+')
                     if user.is_active:
                         disable=button(controls,'Disable',lambda u=user:self.open_target('disable',u),width=100)
                         disable.pack(side='left');self.buttons.append(disable)
+                        disable.bind('<FocusIn>',lambda event,w=disable:self.reveal(w),add='+')
             self.notice.show('No administrator accounts found.' if expanded and not users else '',False);self.render_action()
         self.app.request(work,loaded)
 
