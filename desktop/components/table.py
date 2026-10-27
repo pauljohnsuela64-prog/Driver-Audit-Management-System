@@ -55,7 +55,10 @@ class AuditTable(ctk.CTkFrame):
     def set_rows(self,records,selected=None):
         self.tree.delete(*self.tree.get_children())
         for record in records:
-            self.tree.insert('', 'end',iid=str(record.id),values=[getattr(record,k) or '—' for k in COLUMNS])
+            values=[getattr(record,k) or '—' for k in COLUMNS]
+            if record.deleted_at:
+                values[1]='[Deleted] '+record.driver_name
+            self.tree.insert('', 'end',iid=str(record.id),values=values)
         if selected is not None and self.tree.exists(str(selected)):
             self.tree.selection_set(str(selected))
             self.tree.focus(str(selected))

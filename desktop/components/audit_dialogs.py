@@ -15,14 +15,18 @@ class Confirmation(tk.Toplevel):
         # CTkToplevel installs bind_all focus callbacks and delayed Windows
         # titlebar work. Native Toplevel avoids those cross-dialog lifetimes.
         self.configure(bg=resolved('surface'))
-        self.geometry('520x310')
-        self.minsize(440,280)
+        scale=app._get_window_scaling()
+        self.geometry(f'{int(520*scale)}x{int(400*scale)}')
+        self.minsize(int(440*scale),int(310*scale))
         self.transient(app)
         self.columnconfigure(0,weight=1)
         self.rowconfigure(1,weight=1)
         label(self,title,22).grid(row=0,column=0,sticky='w',padx=24,pady=(24,12))
-        self.message=label(self,message,justify='left',anchor='nw',wraplength=450)
-        self.message.grid(row=1,column=0,sticky='nsew',padx=24,pady=(0,16))
+        body=ctk.CTkScrollableFrame(self,fg_color=color('surface'))
+        body.grid(row=1,column=0,sticky='nsew',padx=16,pady=(0,16))
+        body.columnconfigure(0,weight=1)
+        self.message=label(body,message,justify='left',anchor='nw',wraplength=430)
+        self.message.grid(row=0,column=0,sticky='ew',padx=8)
         controls=ctk.CTkFrame(self,fg_color='transparent')
         controls.grid(row=2,column=0,sticky='ew',padx=24,pady=(0,24))
         self.cancel_button=button(controls,'Cancel',self.cancel,width=110)
@@ -39,7 +43,7 @@ class Confirmation(tk.Toplevel):
 
     def resize(self,event):
         if event.widget is self:
-            self.message.configure(wraplength=max(280,int(event.width/self.app._get_widget_scaling())-48))
+            self.message.configure(wraplength=max(280,int(event.width/self.message._get_widget_scaling())-70))
 
     def activate(self):
         if self.winfo_exists():

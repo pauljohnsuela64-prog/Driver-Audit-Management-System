@@ -80,7 +80,7 @@ class AuditForm(ctk.CTkFrame):
 
     def render_state(self):
         draft=self.draft
-        frozen=draft.pending or bool(draft.intent and draft.uncertain)
+        frozen=draft.pending or draft.uncertain or draft.latest is not None
         for key,widget in self.inputs.items():
             widget.configure(state='disabled' if frozen else 'normal')
             self.errors[key].configure(text=draft.errors.get(key,''))

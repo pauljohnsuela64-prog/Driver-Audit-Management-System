@@ -323,3 +323,7 @@ class Application(ctk.CTk):
         if not self.mutations.submit('mutation',work,completed):
             self.mutation_pending=False
             done(None,ApiError(message='Requests are busy. No new operation was queued.'))
+
+    def confirm_delete(self,record):
+        from desktop.audit_actions import confirm_delete
+        confirm_delete(self,record)

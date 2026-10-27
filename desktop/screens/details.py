@@ -48,6 +48,9 @@ class Details(ctk.CTkFrame):
         user=self.app.session.login.user
         if can_edit(record,user.id,user.role):
             button(self.actions,'Edit audit',lambda:self.app.open_edit(record),True,width=140).pack(side='left',padx=(0,8))
+        button(self.actions,'History',lambda:self.app.navigate('Audit History',record.id),width=100).pack(side='left',padx=(0,8))
+        if user.role=='ADMIN' and not record.deleted_at:
+            button(self.actions,'Delete audit',lambda:self.app.confirm_delete(record),width=140).pack(side='right')
         fields=[('Driver Name',record.driver_name),('Helper Name',record.helper_name),('Audit Date',record.audit_date),
                 ('Station',record.station),('Plate Number',record.plate_number),('Remarks',record.remarks),('Audited By',record.audited_by_name)]
         for i,(title,value) in enumerate(fields):

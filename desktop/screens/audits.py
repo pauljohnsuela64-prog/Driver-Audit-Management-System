@@ -30,7 +30,8 @@ class Audits(ctk.CTkFrame):
         self.apply_button=button(toolbar,'Search',self.apply,True,width=80)
         self.apply_button.grid(row=0,column=2,padx=(0,8))
         button(toolbar,'Filters',self.toggle_filters,width=80).grid(row=0,column=3)
-        button(self,'New audit',app.open_create,True,width=130).grid(row=5,column=0,sticky='w',pady=(8,0))
+        self.create_button=button(toolbar,'New audit',app.open_create,True,width=130)
+        self.create_button.grid(row=1,column=0,columnspan=4,sticky='w',pady=(8,0))
         self.options=ctk.CTkFrame(self,fg_color=color('surface'),corner_radius=12)
         self.options.grid(row=1,column=0,sticky='ew',pady=(0,8))
         for col in range(3):
@@ -40,6 +41,10 @@ class Audits(ctk.CTkFrame):
         self.date_to=self.field(self.options,'To · YYYY-MM-DD',0,2)
         self.mine=checkbox(self.options,text='My audits',font=font())
         self.mine.grid(row=2,column=0,sticky='w',padx=12,pady=12)
+        self.include_deleted=None
+        if app.session.login.user.role=='ADMIN':
+            self.include_deleted=checkbox(self.options,text='Include deleted',font=font())
+            self.include_deleted.grid(row=3,column=0,columnspan=3,sticky='w',padx=12,pady=(0,12))
         button(self.options,'Apply filters',self.apply,True,width=120).grid(row=2,column=1,padx=8,pady=12,sticky='e')
         button(self.options,'Clear all',self.clear,width=100).grid(row=2,column=2,padx=12,pady=12,sticky='e')
         self.options.grid_remove()
@@ -87,6 +92,8 @@ class Audits(ctk.CTkFrame):
             widget.insert(0,getattr(q,field))
         if q.audited_by_user_id:
             self.mine.select()
+        if self.include_deleted and q.include_deleted:
+            self.include_deleted.select()
         if q.plate_number:
             self.search_field.set('Plate')
             self.search_mode='Plate'
@@ -125,6 +132,7 @@ class Audits(ctk.CTkFrame):
         values[{'Driver':'driver_name','Plate':'plate_number','Station':'station'}[self.search_field.get()]]=term
         try:
             query=AuditQuery(page_size=int(self.size.get()),sort=SORTS[self.sort.get()],
+                include_deleted=bool(self.include_deleted and self.include_deleted.get()),
                 date_from=self.date_from.get().strip(),date_to=self.date_to.get().strip(),
                 audited_by_user_id=self.app.session.login.user.id if self.mine.get() else None,**values)
         except ValueError:
@@ -168,8 +176,13 @@ class Audits(ctk.CTkFrame):
             return
         self.loaded=True
         self.total=page.total
+        if not page.items and page.page>1:
+            last_page=max(1,(page.total+page.page_size-1)//page.page_size)
+            self.app.query=replace(self.app.query,page=min(last_page,page.page-1))
+            self.refresh()
+            return
         self.table.set_rows(page.items,self.app.selected_id)
-        self.notice.show('No matching audits. Try clearing your filters.' if not page.items else 'Read-only · Open a record to see all seven audit fields.',False)
+        self.notice.show('No matching audits. Try clearing your filters.' if not page.items else 'Open a record to view, edit, or inspect its history.',False)
         start=(page.page-1)*page.page_size+1 if page.items else 0
         end=start+len(page.items)-1 if page.items else 0
         self.range.configure(text=f'{start}–{end} of {page.total:,} · Page {page.page}')
