@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+import pytest
 
 from scripts.build_windows import copy_notices
 
@@ -13,3 +14,9 @@ def test_copying_and_distinct_vendor_notices_are_preserved(tmp_path):
     destination=tmp_path/'notices'
     copy_notices(dist,destination)
     assert [(destination/'example'/file).read_text() for file in files]==['0','1','2']
+
+
+def test_notice_metadata_cannot_escape_destination(tmp_path):
+    dist=SimpleNamespace(files=[Path('../LICENSE')],metadata={'Name':'example'})
+    with pytest.raises(RuntimeError,match='Unsafe notice path'):
+        copy_notices(dist,tmp_path)

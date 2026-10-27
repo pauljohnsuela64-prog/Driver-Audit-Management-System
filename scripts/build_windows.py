@@ -17,6 +17,8 @@ def copy_notices(dist,destination):
     for file in dist.files or []:
         relative=Path(file)
         if ('licen' in relative.name.lower() or relative.name.lower().startswith(('copying','notice'))):
+            if relative.is_absolute() or '..' in relative.parts:
+                raise RuntimeError('Unsafe notice path in dependency metadata')
             source=Path(dist.locate_file(file))
             if source.is_file():
                 # Retain vendor subdirectories: several dependencies use LICENSE.
