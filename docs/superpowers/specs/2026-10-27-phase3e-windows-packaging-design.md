@@ -1,6 +1,6 @@
 # Phase 3E: Windows packaging and deployment design
 
-**Status:** proposed; design approval required before implementation. No installer, executable or production deployment has been created by this assignment.
+**Status:** approved at `b250fb4`; implementation authorized by the operator. The desktop executable and per-user installer are test candidates. Production deployment remains separately approved work.
 
 ## 1. Verified baseline and scope
 

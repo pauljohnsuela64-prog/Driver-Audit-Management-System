@@ -103,3 +103,57 @@ jobs:
         run: python -m compileall -q desktop tests/desktop
       - name: Run isolated desktop contracts and native Tk checks
         run: python -m pytest tests/desktop -q -rs
+
+  windows-package:
+    name: Python 3.14 / Windows package and installer
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHON_DOTENV_DISABLED: '1'
+      DATABASE_URL: ''
+      DAMS_PROD_RUNTIME_URL: ''
+      DAMS_TEST_DATABASE_URL: ''
+      DAMS_TEST_RUNTIME_URL: ''
+    steps:
+      - name: Check out exact feature or push commit
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up pinned build Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14.10'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-desktop.txt
+            requirements-reports.txt
+            requirements-build.lock
+      - name: Install isolated fictional test harness
+        run: python -m pip install -r requirements.txt -r requirements-desktop.txt
+      - name: Create client-only hash-locked build environment
+        run: |
+          python -m venv .venv-build
+          .\.venv-build\Scripts\python.exe -m pip install --require-hashes -r requirements-build.lock
+      - name: Verify and acquire pinned signed installer compiler
+        run: python -m scripts.acquire_windows_tools
+      - name: Build and inspect client bundle and per-user installer
+        run: .\.venv-build\Scripts\python.exe -m scripts.build_windows --iscc build/tools/inno710/ISCC.exe
+      - name: Launch actual frozen client without developer PATH
+        run: python -m tests.desktop.packaged_acceptance --executable dist/BHLIAudit/BHLIAudit.exe --output artifacts/packaged-smoke --smoke
+      - name: Verify native installation, preservation and reinstall
+        run: python -m tests.desktop.installer_acceptance --installer dist/installer/BHLI-Audit-Setup-0.3.0-x64.exe --output artifacts/installer-acceptance
+      - name: Upload unsigned test candidates and evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: bhli-audit-windows-x64-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            dist/BHLIAudit/
+            dist/installer/
+            dist/SHA256SUMS.json
+            artifacts/packaged-smoke/*.png
+            artifacts/packaged-smoke/report.json
+            artifacts/installer-acceptance/installer-report.json
