@@ -1,0 +1,2 @@
+# Small desktop export writer, also exercised by headless CI.
+XlsxWriter==3.3.0
