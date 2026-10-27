@@ -68,3 +68,7 @@ Screenshots contain fictional data and empty password forms only; reports are sa
 under ignored `artifacts/desktop-phase3c/`. Earlier phase capture helpers remain
 available with updated administrator logins. Actual other OS DPI settings, mixed-monitor
 transitions and assistive technology require separate manual acceptance.
+
+# Phase 3D export acceptance
+
+The existing two-ADMIN demo now includes a fictional Unicode driver, plate `000123` and formula-like remarks for Excel text-safety checks. See [Excel export instructions](WINDOWS_DESKTOP_EXPORT.md#disposable-demonstration). No production data is used.

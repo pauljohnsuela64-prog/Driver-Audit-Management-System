@@ -1,6 +1,6 @@
 # Phase 3D: Simple Audit Reports and Export
 
-Status: proposed; requires user approval before implementation.
+Status: approved by the user at design checkpoint `9cd7423`. Implementation safety refinement: existing files are never overwritten; see the execution plan and export documentation for the independently verified overwrite-race rationale.
 
 ## Verified starting point
 

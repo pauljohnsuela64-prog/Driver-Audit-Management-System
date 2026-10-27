@@ -26,6 +26,8 @@ def test_demo_real_http_auth_filters_attribution_and_cleanup(monkeypatch):
         assert admin.user.id!=auditor.user.id
         page=client.list_audits(auditor.token,AuditQuery(page_size=100))
         assert page.total==60 and len(page.items)==60
+        unicode_record=next(record for record in page.items if record.plate_number=='000123')
+        assert '李' in unicode_record.driver_name and unicode_record.remarks.startswith('=')
         own=client.list_audits(auditor.token,AuditQuery(audited_by_user_id=auditor.user.id))
         assert own.total==40
         detail=client.get_audit(auditor.token,own.items[0].id)
