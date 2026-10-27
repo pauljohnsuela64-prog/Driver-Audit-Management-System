@@ -22,6 +22,10 @@ class Application(ctk.CTk):
         self.session=SessionState()
         self.tasks=Tasks()
         self.revocations=Tasks(workers=1,capacity=8)
+        self.mutations=Tasks(workers=1,capacity=1)
+        self.mutation_pending=False
+        self.draft=None
+        self.dialog=None
         self.revocation_serial=0
         self.retry_until=0
         self._retry_display=0
@@ -57,12 +61,13 @@ class Application(ctk.CTk):
         try:
             self.tasks.drain()
             self.revocations.drain()
+            self.mutations.drain()
             remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
             if self.shell and remaining!=self._retry_display:
                 self.shell.notice.show(f'Too many requests. Retry available in {remaining}s.' if remaining else '',bool(remaining))
             self._retry_display=remaining
             if self.session.login and self.session.expired():
-                self.logout('Your session expired. Please sign in again.')
+                self.logout('Your session expired. Please sign in again.',force=True)
         finally:
             # Report callback errors through Tk's handler, but keep completions and expiry alive.
             if not self.closing:
@@ -88,7 +93,7 @@ class Application(ctk.CTk):
             destroy_view(self.screen)
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
-            self.navigate('Dashboard')
+            self.navigate('Dashboard',force=True)
         if not self.tasks.submit('login',lambda: client.sign_in(username,password),accepted,
                                  lambda result: client.logout(result.token)):
             finished(None,ApiError(message='Requests are busy. Please try again.'))
@@ -103,7 +108,7 @@ class Application(ctk.CTk):
             if generation != self.session.generation:
                 return
             if error and error.status == 401:
-                self.logout('Your session is no longer valid. Please sign in again.')
+                self.logout('Your session is no longer valid. Please sign in again.',force=True)
             else:
                 if error and error.status==429:
                     self.retry_until=time.monotonic()+error.retry_after
@@ -111,10 +116,12 @@ class Application(ctk.CTk):
         if not self.tasks.submit('screen',work,completed):
             done(None,ApiError(message='Requests are busy. Please try again shortly.'))
 
-    def navigate(self,destination,audit_id=None):
+    def navigate(self,destination,audit_id=None,force=False):
         if not self.session.login:
             return
-        if destination not in self.session.destinations and destination != 'Audit Details':
+        if destination not in self.session.destinations and destination not in ('Audit Details','Create Audit','Edit Audit','Audit History'):
+            return
+        if not force and not self.leave_form(lambda:self.navigate(destination,audit_id,force=True)):
             return
         self.tasks.invalidate()
         if self.screen and self.screen.winfo_exists():
@@ -131,6 +138,12 @@ class Application(ctk.CTk):
         elif destination == 'Audit Details':
             from desktop.screens.details import Details
             factory=lambda: Details(self.shell.content,self,audit_id)
+        elif destination in ('Create Audit','Edit Audit') and self.draft is not None:
+            from desktop.screens.audit_form import AuditForm
+            factory=lambda: AuditForm(self.shell.content,self,self.draft)
+        elif destination == 'Audit History':
+            from desktop.screens.audit_history import AuditHistory
+            factory=lambda: AuditHistory(self.shell.content,self,audit_id)
         elif destination == 'My Account':
             from desktop.screens.account import Account
             factory=lambda: Account(self.shell.content,self)
@@ -162,8 +175,13 @@ class Application(ctk.CTk):
         else:
             Thread(target=work,daemon=True,name='bhli-signout').start()
 
-    def logout(self,message='Signed out. Please sign in to continue.'):
+    def logout(self,message='Signed out. Please sign in to continue.',force=False):
+        if not force and not self.leave_form(lambda:self.logout(message,force=True),allow_pending=True):
+            return
+        if self.dialog:
+            self.dialog.dismiss()
         old=self.session.clear()
+        self.draft=None
         self.tasks.invalidate()
         self.query=AuditQuery()
         self.selected_id=None
@@ -177,6 +195,8 @@ class Application(ctk.CTk):
         self.focus_set()
         ctk.set_appearance_mode(appearance)
         if self.session.login:
+            if hasattr(self.screen,'capture'):
+                self.screen.capture()
             destination=self.destination
             audit_id=getattr(self.screen,'audit_id',None)
             self.tasks.invalidate()
@@ -184,12 +204,12 @@ class Application(ctk.CTk):
             self.screen=None
             self.shell=Shell(self,self)
             self.shell.pack(fill='both',expand=True)
-            self.navigate(destination,audit_id)
+            self.navigate(destination,audit_id,force=True)
 
     def escape(self,event=None):
         if self.shell and self.shell.menu.winfo_ismapped():
             self.shell.hide_menu()
-        elif self.destination=='Audit Details':
+        elif self.destination in ('Audit Details','Create Audit','Edit Audit','Audit History'):
             self.navigate('Driver Audits')
 
     def refresh(self):
@@ -201,13 +221,19 @@ class Application(ctk.CTk):
             self.screen.search.focus_set()
             return 'break'
 
-    def close(self):
+    def close(self,force=False):
         if self.closing:
             return
+        if not force and not self.leave_form(lambda:self.close(force=True),allow_pending=True):
+            return
+        if self.dialog:
+            self.dialog.dismiss()
         self.closing=True
         old=self.session.clear()
         self.tasks.close()
         self.revocations.close()
+        self.mutations.close()
+        self.draft=None
         if old:
             self._revoke(old.token)
         destroy_view(self)
@@ -216,3 +242,84 @@ class Application(ctk.CTk):
         self.screen=None
         self.shell=None
         gc.collect()
+
+    def leave_form(self,accepted,allow_pending=False):
+        from desktop.components.audit_dialogs import confirm
+        if self.mutation_pending and not allow_pending:
+            self.shell.notice.show('Wait for the submitted operation to finish before navigating.')
+            return False
+        if self.draft:
+            if hasattr(self.screen,'capture'):
+                self.screen.capture()
+            if self.draft.dirty:
+                def discard():
+                    self.draft=None
+                    accepted()
+                message=('A request has been sent and may commit even after leaving. Its result cannot be undone by closing or signing out. '
+                         if self.draft.pending else
+                         'The last creation may already exist. Leaving loses its safe retry key. ' if self.draft.uncertain else '')
+                confirm(self,'Leave this audit?',message+'Unsaved form data will be discarded.',discard,'Leave and discard')
+                return False
+            self.draft=None
+        elif self.mutation_pending and allow_pending:
+            confirm(self,'Leave a pending operation?',
+                    'A request has been sent and may commit after leaving. Inspect the record after signing in again.',
+                    accepted,'Leave anyway')
+            return False
+        return True
+
+    def open_create(self):
+        from datetime import date
+        from desktop.audit_operations import AuditDraft,FIELDS
+        def open_form():
+            self.draft=AuditDraft({key:date.today().isoformat() if key=='audit_date' else '' for key in FIELDS})
+            self.navigate('Create Audit',force=True)
+        if self.leave_form(open_form):
+            open_form()
+
+    def open_edit(self,record):
+        from desktop.audit_operations import AuditDraft,record_values,can_edit
+        user=self.session.login.user
+        if not can_edit(record,user.id,user.role):
+            self.shell.notice.show('You may edit only your own active audits.')
+            return
+        def load():
+            client,token,audit_id=self.client,self.session.login.token,record.id
+            def loaded(latest,error):
+                if error:
+                    self.shell.notice.show(str(error));return
+                if not can_edit(latest,self.session.login.user.id,self.session.login.user.role):
+                    self.shell.notice.show('You no longer have permission to edit this audit.');return
+                self.draft=AuditDraft(record_values(latest),baseline=latest)
+                self.navigate('Edit Audit',force=True)
+            self.request(lambda:client.get_audit(token,audit_id),loaded)
+        if self.leave_form(load):
+            load()
+
+    def render_draft(self):
+        if self.draft and getattr(self.screen,'draft',None) is self.draft:
+            self.screen.render_state()
+
+    def rebuild_form(self):
+        self.navigate('Edit Audit' if self.draft.baseline else 'Create Audit',force=True)
+
+    def mutate(self,work,done):
+        remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
+        if self.mutation_pending or remaining:
+            done(None,ApiError(429,retry_after=remaining) if remaining else ApiError(message='An operation is already in progress.'))
+            return
+        generation=self.session.generation
+        self.mutation_pending=True
+        def completed(result,error):
+            self.mutation_pending=False
+            if generation!=self.session.generation or not self.session.login:
+                return
+            if error and error.status==401:
+                self.logout('Your session is no longer valid. A submitted operation may have completed; inspect records after signing in.',force=True)
+                return
+            if error and error.status==429:
+                self.retry_until=time.monotonic()+error.retry_after
+            done(result,error)
+        if not self.mutations.submit('mutation',work,completed):
+            self.mutation_pending=False
+            done(None,ApiError(message='Requests are busy. No new operation was queued.'))

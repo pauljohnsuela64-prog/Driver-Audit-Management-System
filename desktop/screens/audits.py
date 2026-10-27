@@ -30,6 +30,7 @@ class Audits(ctk.CTkFrame):
         self.apply_button=button(toolbar,'Search',self.apply,True,width=80)
         self.apply_button.grid(row=0,column=2,padx=(0,8))
         button(toolbar,'Filters',self.toggle_filters,width=80).grid(row=0,column=3)
+        button(self,'New audit',app.open_create,True,width=130).grid(row=5,column=0,sticky='w',pady=(8,0))
         self.options=ctk.CTkFrame(self,fg_color=color('surface'),corner_radius=12)
         self.options.grid(row=1,column=0,sticky='ew',pady=(0,8))
         for col in range(3):
