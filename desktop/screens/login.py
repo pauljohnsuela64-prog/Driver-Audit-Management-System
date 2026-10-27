@@ -50,8 +50,16 @@ class LoginScreen(ctk.CTkFrame):
         self.status.show(message)
         self.submit_button = button(self.card,'Sign In',self.submit,primary=True)
         self.submit_button.grid(row=8,column=0,sticky='ew',padx=28,pady=(0,16))
-        label(self.card,'Connects securely to your configured service',12,True,wraplength=300).grid(
-            row=9,column=0,padx=20,pady=(0,24))
+        from urllib.parse import urlsplit
+        endpoint=app.endpoint
+        host=urlsplit(endpoint.config.base_url).netloc if endpoint.config else 'Not configured'
+        label(self.card,f'Service: {host}\n{endpoint.source}',12,True,wraplength=300).grid(
+            row=9,column=0,padx=20,pady=(0,8))
+        self.connection_button=button(self.card,'Connection settings',app.open_connection,width=180)
+        self.connection_button.grid(row=10,column=0,padx=28,pady=(0,20))
+        if endpoint.config is None:
+            self.submit_button.configure(state='disabled')
+            self.status.show(endpoint.error or 'Configure the API connection before signing in.')
         self.username.bind('<Return>',lambda e=None: self.submit())
         self.password.bind('<Return>',lambda e=None: self.submit())
         tk.Misc.bind(self,'<Configure>',self.resize,add='+')
@@ -67,7 +75,7 @@ class LoginScreen(ctk.CTkFrame):
                 self.right.grid_configure(column=1,columnspan=1,padx=32)
 
     def submit(self):
-        if self.pending or time.monotonic() < self.blocked_until:
+        if self.app.endpoint.config is None or self.pending or time.monotonic() < self.blocked_until:
             return
         username,password = self.username.get().strip(),self.password.get()
         if not 1 <= len(username) <= 100 or not 1 <= len(password) <= 128:
