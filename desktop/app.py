@@ -53,15 +53,19 @@ class Application(ctk.CTk):
     def poll(self):
         if self.closing:
             return
-        self.tasks.drain()
-        self.revocations.drain()
-        remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
-        if self.shell and remaining!=self._retry_display:
-            self.shell.notice.show(f'Too many requests. Retry available in {remaining}s.' if remaining else '',bool(remaining))
-        self._retry_display=remaining
-        if self.session.login and self.session.expired():
-            self.logout('Your session expired. Please sign in again.')
-        self.after(30,self.poll)
+        try:
+            self.tasks.drain()
+            self.revocations.drain()
+            remaining=max(0,math.ceil(self.retry_until-time.monotonic()))
+            if self.shell and remaining!=self._retry_display:
+                self.shell.notice.show(f'Too many requests. Retry available in {remaining}s.' if remaining else '',bool(remaining))
+            self._retry_display=remaining
+            if self.session.login and self.session.expired():
+                self.logout('Your session expired. Please sign in again.')
+        finally:
+            # Report callback errors through Tk's handler, but keep completions and expiry alive.
+            if not self.closing:
+                self.after(30,self.poll)
 
     def show_login(self,message=''):
         if self.shell:
@@ -133,7 +137,10 @@ class Application(ctk.CTk):
             factory=lambda: StatePanel(self.shell.content,destination,'Coming in a later phase. This module is not implemented yet.')
         self.screen=factory()
         self.screen.pack(fill='both',expand=True)
-        self.screen.focus_set()
+        if hasattr(self.screen,'search'):
+            self.screen.search.focus_set()
+        else:
+            self.screen.focus_set()
 
     def _revoke(self,token,notify=False):
         client=self.client

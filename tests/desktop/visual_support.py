@@ -38,5 +38,5 @@ class DemoTransport:
             return reply(dict(items=items, total=len(items), page=int(query.get('page',['1'])[0]),
                               page_size=int(query.get('page_size',['25'])[0])))
         if path.startswith('/audits/'):
-            return reply(dict(AUDIT, remarks='Fictional verification record.\nNo production data is used.'), etag='"2"')
+            return reply(dict(AUDIT,id=int(path.rsplit('/',1)[1]),remarks='Fictional verification record.\nNo production data is used.'), etag='"2"')
         raise AssertionError('Unexpected desktop route')

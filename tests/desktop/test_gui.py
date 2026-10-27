@@ -221,3 +221,40 @@ def test_native_primary_action_has_distinct_keyboard_focus(app):
     target._canvas.event_generate('<FocusIn>')
     app.update()
     assert target.cget('border_color')[0]!=before
+
+
+def test_native_back_restores_keyboard_row_navigation(app):
+    sign_in(app)
+    app.focus_force()
+    app.navigate('Driver Audits')
+    pump(app,lambda:app.screen.loaded)
+    tree=app.screen.table.tree
+    tree.selection_set('3')
+    tree.focus('3')
+    tree.focus_set()
+    tree.event_generate('<Return>')
+    pump(app,lambda:app.destination=='Audit Details' and app.screen.loaded)
+    app.escape()
+    pump(app,lambda:app.destination=='Driver Audits' and app.screen.loaded)
+    assert app.focus_get() is app.screen.table.tree
+    app.screen.table.tree.event_generate('<Down>')
+    app.update()
+    assert app.screen.table.tree.selection()==('2',)
+
+
+def test_native_callback_failure_does_not_stop_polling_or_expiry(app):
+    from dataclasses import replace
+    from datetime import datetime,timedelta,timezone
+    sign_in(app)
+    pump(app,lambda:app.screen.loaded)
+    def failed_callback(result,error):
+        raise RuntimeError('intentional regression fault')
+    app.request(lambda:True,failed_callback)
+    pump(app,lambda:bool(app.callback_errors))
+    assert app.callback_errors[0][0]=='RuntimeError'
+    app.callback_errors.clear()  # This one callback error is intentional and asserted above.
+    seen=[]
+    app.request(lambda:True,lambda *_:seen.append(True))
+    pump(app,lambda:bool(seen))
+    app.session.login=replace(app.session.login,expires_at=datetime.now(timezone.utc)-timedelta(seconds=1))
+    pump(app,lambda:app.session.login is None)

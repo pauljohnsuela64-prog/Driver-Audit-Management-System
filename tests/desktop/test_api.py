@@ -136,6 +136,22 @@ def test_http_date_retry_header():
     assert 29<=e.value.retry_after<=31
 
 
+@pytest.mark.parametrize('header',['9'*400,'9'*5000,'Fri, 31 Dec 9999 23:59:59 GMT'],
+                         ids=['oversized','overlong','distant-date'])
+def test_unreasonable_retry_after_cannot_overflow_native_deadline(header):
+    import math
+    import time
+    from desktop.api import retry_seconds
+    seconds=retry_seconds(header)
+    assert 0<=seconds<=86400
+    assert math.isfinite(time.monotonic()+seconds)
+
+
+def test_retry_after_leading_zeroes_preserve_actual_delay():
+    from desktop.api import retry_seconds
+    assert retry_seconds('000000000007')==7
+
+
 def test_duplicate_record_ids_in_page_are_invalid():
     t=Transport(reply(dict(items=[AUDIT,AUDIT],total=2,page=1,page_size=25)))
     with pytest.raises(ApiError):

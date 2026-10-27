@@ -24,6 +24,7 @@ MESSAGES = {
 }
 ERROR_CODES = {409: {'conflict','username_exists','access_conflict','self_access_change','last_admin',
                      'self_reset','password_reuse'}, 412: {'version_mismatch'}, 428: {'precondition_required'}}
+MAX_RETRY_SECONDS = 86_400  # Bound untrusted delays before any native UI arithmetic.
 
 
 class ApiError(Exception):
@@ -31,7 +32,7 @@ class ApiError(Exception):
         default = MESSAGES.get(status, ('unexpected_response', 'The service returned an unexpected response.'))
         self.status = status
         self.code = code or (default[0] if status else 'network_error')
-        self.retry_after = retry_after
+        self.retry_after = max(0,min(MAX_RETRY_SECONDS,retry_after)) if type(retry_after) is int else 60
         super().__init__(message or (default[1] if status else 'Unable to reach the service. Check your connection and try again.'))
 
 
@@ -67,9 +68,10 @@ class HttpTransport:
 def retry_seconds(value):
     try:
         if value.isdigit():
-            return int(value)
+            value=value.lstrip('0') or '0'
+            return MAX_RETRY_SECONDS if len(value)>5 else min(int(value),MAX_RETRY_SECONDS)
         delta = parsedate_to_datetime(value) - datetime.now(timezone.utc)
-        return max(0, int(delta.total_seconds()) + 1)
+        return min(MAX_RETRY_SECONDS,max(0, int(delta.total_seconds()) + 1))
     except (ValueError, TypeError, OverflowError):
         return 60
 

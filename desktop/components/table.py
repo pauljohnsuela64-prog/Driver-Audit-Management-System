@@ -34,8 +34,12 @@ class AuditTable(ctk.CTkFrame):
         vertical.grid(row=0,column=1,sticky='ns')
         horizontal.grid(row=1,column=0,sticky='ew')
         self.tree.configure(yscrollcommand=vertical.set,xscrollcommand=horizontal.set)
-        self.tree.bind('<Double-1>',lambda e=None: on_open())
-        self.tree.bind('<Return>',lambda e=None: on_open())
+        def open_record(event=None):
+            on_open()
+            # Navigation destroys this widget; do not run its remaining class bindings.
+            return 'break'
+        self.tree.bind('<Double-1>',open_record)
+        self.tree.bind('<Return>',open_record)
         self.tree.bind('<Home>',lambda e=None: self.select_edge(False))
         self.tree.bind('<End>',lambda e=None: self.select_edge(True))
 
@@ -56,6 +60,7 @@ class AuditTable(ctk.CTkFrame):
             self.tree.selection_set(str(selected))
             self.tree.focus(str(selected))
             self.tree.see(str(selected))
+            self.tree.focus_set()
 
     def selected(self):
         selection=self.tree.selection()
