@@ -1,6 +1,9 @@
 """Windows account policy, separate from the backend's broader ADMIN powers."""
 from dataclasses import dataclass
+from threading import Lock
 from desktop.api import ApiError
+
+_scan_lock=Lock()
 
 
 def desktop_sign_in(client,username,password):
@@ -21,6 +24,13 @@ class ScanCancelled(Exception):
 
 def list_admins(client,token,cancelled):
     """Filter every backend page, without exposing legacy employee data to views."""
+    # A cancelled view may still have an HTTP page in flight. Serialize scans
+    # across theme rebuilds, then check cancellation before making another call.
+    with _scan_lock:
+        return _admin_pages(client,token,cancelled)
+
+
+def _admin_pages(client,token,cancelled):
     admins={}
     for number in range(1,10001):
         if cancelled.is_set():raise ScanCancelled()

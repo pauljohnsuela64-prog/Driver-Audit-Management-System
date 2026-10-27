@@ -14,7 +14,7 @@ class Account(ctk.CTkScrollableFrame):
     def __init__(self,parent,app):
         super().__init__(parent,fg_color=color('surface'),corner_radius=12)
         self.app=app
-        self.loaded=False;self.admins=();self.expanded=False;self.form=None
+        self.loaded=False;self.loading=False;self.blocked=False;self.admins=();self.expanded=False;self.form=None
         self.cancelled=Event();self.columnconfigure(0,weight=1)
         user=app.session.login.user
         label(self,'My Account',28).grid(row=0,column=0,sticky='w',padx=24,pady=(24,8))
@@ -22,6 +22,8 @@ class Account(ctk.CTkScrollableFrame):
         label(self,'Session expires '+app.session.login.expires_at.strftime('%Y-%m-%d %H:%M UTC'),12,True).grid(row=2,column=0,sticky='w',padx=24)
         self.change_button=button(self,'Change My Password',lambda:self.open_form('change'),width=210)
         self.change_button.grid(row=3,column=0,sticky='w',padx=24,pady=16)
+        self.retry_button=button(self,'Refresh',self.refresh,width=100)
+        self.retry_button.grid(row=3,column=0,sticky='e',padx=24,pady=16)
         self.notice=Notice(self);self.notice.grid(row=4,column=0,sticky='ew',padx=24,pady=(0,8))
         self.forms=ctk.CTkFrame(self,fg_color='transparent')
         self.forms.grid(row=5,column=0,sticky='ew',padx=24,pady=(0,12));self.forms.columnconfigure(0,weight=1)
@@ -35,12 +37,13 @@ class Account(ctk.CTkScrollableFrame):
         self.refresh_button=button(actions,'Refresh',self.refresh,width=100);self.refresh_button.pack(side='left')
         self.cards=ctk.CTkFrame(self.manage,fg_color='transparent');self.cards.grid(row=1,column=0,sticky='ew');self.cards.columnconfigure(0,weight=1)
         self.manage.grid_remove()
-        self.buttons=[self.change_button,self.manage_button,self.add_button,self.refresh_button]
+        self.base_buttons=(self.change_button,self.manage_button,self.add_button,self.refresh_button,self.retry_button)
+        self.buttons=list(self.base_buttons)
         self.render_action()
         if not self.busy():self.refresh()
 
     def busy(self):
-        return bool(self.app.mutation_pending or self.app.account_action and self.app.account_action.pending)
+        return bool(self.loading or self.app.mutation_pending or self.app.account_action and self.app.account_action.pending)
 
     def toggle_manage(self):
         if self.busy():return
@@ -59,25 +62,32 @@ class Account(ctk.CTkScrollableFrame):
             y=widget.winfo_rooty()-self.winfo_rooty();top=canvas.canvasy(0);height=canvas.winfo_height()
             if y<top or y+widget.winfo_height()>top+height:
                 canvas.yview_moveto(max(0,y-24)/max(1,region[3]))
-        self.after_idle(scroll)
+        # Own the deferred focus work on the field, so clearing its form cancels
+        # the callback before the underlying Tk command disappears.
+        widget.after_idle(scroll)
 
     def clear_form(self):
         if self.form:self.form.clear_secrets();destroy_view(self.form);self.form=None
 
     def open_form(self,kind,target=None):
-        if self.busy():return
+        if self.busy() or self.blocked:return
         self.clear_form();self.form=AccountForm(self.forms,self,kind,target)
         self.form.grid(row=0,column=0,sticky='ew')
         self.after_idle(lambda:self.form.fields[next(iter(self.form.fields))].focus_set() if self.form else None)
 
     def open_target(self,kind,user):
-        if self.busy():return
+        if self.busy() or self.blocked:return
         self.clear_form();actor=self.app.session.login.user
         if actor.id==user.id:
             self.notice.show('Use Change My Password for your own account; you cannot disable yourself.');return
         client,token=self.app.client,self.app.session.login.token
+        self.loading=True;self.render_action()
         def loaded(target,error):
-            if error:self.clear_cards();self.notice.show(account_error(error));return
+            self.loading=False
+            if error:
+                self.blocked=True;self.clear_form();self.clear_cards();self.render_action()
+                self.notice.show(account_error(error)+' Refresh before continuing.');return
+            self.render_action()
             if kind=='reset':self.open_form('reset',target)
             elif target.is_active:
                 confirm(self.app,'Disable administrator?',f'{target.full_name}\n{target.username} (#{target.id})\n\nTheir sessions will be revoked. Existing audits and attribution are preserved.',
@@ -88,11 +98,11 @@ class Account(ctk.CTkScrollableFrame):
     def clear_cards(self):
         self.admins=()
         for child in self.cards.winfo_children():destroy_view(child)
-        self.buttons=self.buttons[:4]
+        self.buttons=list(self.base_buttons)
 
     def refresh(self):
         if self.busy():return
-        self.loaded=False;self.clear_cards()
+        self.loaded=False;self.loading=True;self.clear_cards();self.render_action()
         self.cancelled.set();self.cancelled=Event();cancelled=self.cancelled
         client,token,actor_id=self.app.client,self.app.session.login.token,self.app.session.login.user.id
         expanded=self.expanded
@@ -102,7 +112,11 @@ class Account(ctk.CTkScrollableFrame):
             if identity.role!='ADMIN' or identity.id!=actor_id:raise ApiError(401)
             return list_admins(client,token,cancelled) if expanded else ()
         def loaded(users,error):
-            if error:self.notice.show(account_error(error)+' The account list is unavailable; Refresh to retry.');return
+            self.loading=False
+            if error:
+                self.blocked=True;self.clear_form();self.clear_cards();self.render_action()
+                self.notice.show(account_error(error)+' The account list is unavailable; Refresh (F5) to retry.');return
+            self.blocked=False
             self.loaded=True;self.admins=users
             for i,user in enumerate(users):
                 card=ctk.CTkFrame(self.cards,fg_color=color('raised'),corner_radius=8)
@@ -122,7 +136,9 @@ class Account(ctk.CTkScrollableFrame):
 
     def render_action(self):
         action=self.app.account_action;busy=self.busy()
-        for widget in self.buttons:widget.configure(state='disabled' if busy else 'normal')
+        for widget in self.buttons:
+            allowed=widget in (self.manage_button,self.refresh_button,self.retry_button)
+            widget.configure(state='disabled' if busy or self.blocked and not allowed else 'normal')
         if self.form:self.form.submit_button.configure(state='disabled' if busy else 'normal')
         if action:self.notice.show('Submitting account action…' if action.pending else action.message,action.failed)
 

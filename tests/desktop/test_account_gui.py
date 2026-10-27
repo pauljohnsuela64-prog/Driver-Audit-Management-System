@@ -89,6 +89,7 @@ def test_disable_conflict_and_ambiguous_outcome_never_auto_replay(app):
     app.screen.open_target('disable',users[1]);pump(app,lambda:app.dialog is not None)
     app.dialog.accept();pump(app,lambda:app.account_action is not None and not app.account_action.pending)
     assert len(calls)==1 and 'last active' in app.account_action.message
+    pump(app,lambda:app.screen.loaded and not app.screen.loading)
     def uncertain(*args):calls.append(args);raise ApiError()
     app.client.disable_admin=uncertain
     app.screen.open_target('disable',users[1]);pump(app,lambda:app.dialog is not None)
@@ -128,3 +129,48 @@ def test_theme_during_disable_reconciliation_does_not_strand_action(app):
     app.dialog.accept();pump(app,started.is_set)
     app.set_theme('Dark');pump(app)
     gate.set();pump(app,lambda:not app.account_action.pending)
+
+
+def test_refresh_does_not_start_overlapping_scans(app):
+    from threading import Event
+    users=account_setup(app);started=Event();gate=Event();calls=[]
+    def listing(token,page=1):
+        calls.append(page);started.set();gate.wait(3)
+        return AccountPage(users,2,page,100)
+    app.client.list_users=listing
+    try:
+        app.screen.refresh();pump(app,started.is_set)
+        app.screen.refresh();app.screen.refresh()
+        import time
+        for _ in range(5):pump(app);time.sleep(.02)
+        assert len(calls)==1
+    finally:gate.set()
+    pump(app,lambda:app.screen.loaded)
+
+
+def test_permission_loss_clears_password_form_and_blocks_actions_until_refresh(app):
+    users=account_setup(app)
+    app.screen.open_form('change')
+    form=app.screen.form;form.fields['current_password'].insert(0,'not retained after denial')
+    def denied(*args):raise ApiError(403)
+    app.client.list_users=denied
+    app.screen.refresh();pump(app,lambda:'unavailable' in app.screen.notice.cget('text'))
+    assert app.screen.form is None and not app.screen.admins
+    assert app.screen.add_button.cget('state')=='disabled'
+    app.client.list_users=lambda token,page=1:AccountPage(users,2,page,100)
+    app.screen.refresh();pump(app,lambda:app.screen.loaded)
+    assert app.screen.add_button.cget('state')=='normal'
+
+
+def test_old_mutation_completion_releases_new_account_view_without_old_result(app):
+    from threading import Event
+    account_setup(app);gate=Event();started=Event()
+    def create(*args):started.set();gate.wait(3);return Account(3,'old_private','Old Account','ADMIN',True)
+    app.client.create_admin=create
+    app.screen.open_form('add')
+    populate(app.screen.form,dict(username='old_private',full_name='Old Account',password='fictional new passphrase',confirm_password='fictional new passphrase'))
+    app.screen.form.submit();pump(app,started.is_set)
+    app.logout(force=True);sign_in(app,'admin2');app.navigate('My Account',force=True)
+    gate.set();pump(app,lambda:not app.mutation_pending)
+    pump(app,lambda:app.screen.change_button.cget('state')=='normal')
+    assert app.account_action is None and 'old_private' not in app.screen.notice.cget('text')

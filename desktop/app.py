@@ -334,6 +334,11 @@ class Application(ctk.CTk):
         def completed(result,error):
             self.mutation_pending=False
             if generation!=self.session.generation or not self.session.login:
+                # Release current-view controls, without delivering any obsolete
+                # operation result or data from another account's session.
+                if self.session.login and self.destination=='My Account':
+                    self.screen.render_action()
+                    self.screen.refresh()
                 return
             if error and error.status==401:
                 self.logout('Your session is no longer valid. A submitted operation may have completed; inspect records after signing in.',force=True)
