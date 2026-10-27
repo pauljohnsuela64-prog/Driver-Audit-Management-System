@@ -8,6 +8,11 @@ The desktop preserves the seven audit business fields and original auditor snaps
 
 ## Setup and launch
 
+For safe manual inspection without MySQL or existing server configuration, use the
+[disposable real-API demonstration](WINDOWS_DESKTOP_DEMO.md):
+`python -m scripts.desktop_demo`. It prompts for two hidden local passwords and
+opens this same application with fictional data and normal authentication.
+
 Python 3.14 with Tcl/Tk is required. From `C:\BHLI-Audit`, an independent desktop
 environment can be installed without backend/database packages:
 
@@ -79,7 +84,7 @@ equivalent to browser ARIA support.
 
 ## Architecture and security
 
-`desktop/api.py` owns HTTP, bounded response size, 5-second connection and 15-second
+`desktop/api.py` owns HTTP, bounded 16 MiB response size (including full Unicode pages), 5-second connection and 15-second
 read timeouts, strict data parsing and sanitized errors. `models.py` owns immutable
 responses and audit query validation. Screens receive an injected client; test
 transports and the real HTTP transport use the same interface. No backend ORM,
@@ -109,7 +114,9 @@ new login. Server authorization remains authoritative despite role-based navigat
 403 is permission denial; 404 removes unavailable details; known conflict codes for
 409/412 are retained for future editing; 422 gives safe validation feedback. 429
 uses a nonblocking Retry-After cooldown (numeric or HTTP-date), including read-screen
-retries. Network/500/503 errors offer manual retry without raw exceptions, SQL,
+retries. Untrusted delays are bounded to one day before native arithmetic. Polling
+continues after a reported callback failure, preserving later completion/expiry handling.
+Network/500/503 errors offer manual retry without raw exceptions, SQL,
 tokens or server-provided messages. HTTP 204 is handled without JSON decoding.
 
 ## Testing and visual evidence
@@ -140,6 +147,8 @@ A separate Windows job installs desktop dependencies and opts into native checks
 Consult the draft PR for exact latest local/hosted counts and run URLs.
 See the [verification record and native screenshots](WINDOWS_DESKTOP_VERIFICATION.md)
 for measured results, callback root cause and display-scaling limitations.
+The [2026-10-27 independent acceptance](WINDOWS_DESKTOP_ACCEPTANCE.md) adds real-API
+manual demonstration, maximized-window checks and subsequent engineering corrections.
 
 ## Remaining work
 

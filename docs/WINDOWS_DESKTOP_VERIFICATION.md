@@ -2,6 +2,10 @@
 
 2026-10-26 · approved baseline `09e8c585cd52aed826199ef1754f09d653cd1ecf`.
 
+This is the original implementation record. See the subsequent
+[2026-10-27 independent acceptance](WINDOWS_DESKTOP_ACCEPTANCE.md) for review
+corrections, real-API demonstration and current evidence.
+
 ## Engineering evidence
 
 | Check | Observed result |

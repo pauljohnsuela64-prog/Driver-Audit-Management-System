@@ -51,3 +51,6 @@ for a draft PR and engineering review.
 Install `requirements-desktop.txt` separately, then run `python -m desktop` from
 `C:\BHLI-Audit`. See [desktop setup, security, testing and limitations](docs/WINDOWS_DESKTOP.md)
 and the [approved visual/architecture design](docs/superpowers/specs/2026-10-26-phase3a-desktop-design.md).
+
+For a safe local demonstration without MySQL, run `python -m scripts.desktop_demo`
+from a local console. See [demo accounts and inspection steps](docs/WINDOWS_DESKTOP_DEMO.md).
