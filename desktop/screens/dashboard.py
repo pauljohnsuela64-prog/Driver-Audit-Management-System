@@ -15,8 +15,13 @@ class Dashboard(ctk.CTkScrollableFrame):
         label(self,'Your audit workspace',28).grid(row=0,column=0,sticky='w',pady=(0,4))
         description='Your driver audits, ready for the day.'
         label(self,description,muted=True,wraplength=600,justify='left').grid(row=1,column=0,sticky='w',pady=(0,24))
+        actions=ctk.CTkFrame(self,fg_color='transparent')
+        actions.grid(row=2,column=0,sticky='ew',pady=(0,16))
+        self.create_button=button(actions,'New Audit',app.open_create,True,width=150)
+        self.create_button.pack(side='left',padx=(0,12))
+        button(actions,'Open Driver Audits',lambda:app.navigate('Driver Audits'),width=190).pack(side='left')
         self.body=ctk.CTkFrame(self,fg_color='transparent')
-        self.body.grid(row=2,column=0,sticky='nsew')
+        self.body.grid(row=3,column=0,sticky='nsew')
         self.body.columnconfigure(0,weight=1)
         self.refresh()
 
@@ -41,7 +46,6 @@ class Dashboard(ctk.CTkScrollableFrame):
         label(summary,'ACTIVE DRIVER AUDITS',12,True).pack(anchor='w',padx=24,pady=(20,0))
         label(summary,f'{page.total:,}',36).pack(anchor='w',padx=24,pady=(0,4))
         label(summary,'All active records visible to your account',12,True).pack(anchor='w',padx=24,pady=(0,16))
-        button(summary,'Open Driver Audits',lambda: self.app.navigate('Driver Audits'),True,width=190).pack(anchor='w',padx=24,pady=(0,20))
         label(self.body,'Most recently created',20).grid(row=1,column=0,sticky='w',pady=(0,12))
         if page.items:
             table=AuditTable(self.body,lambda: self.open_selected(table),height=5)
