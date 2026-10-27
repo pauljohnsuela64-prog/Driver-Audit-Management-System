@@ -258,3 +258,11 @@ def test_native_callback_failure_does_not_stop_polling_or_expiry(app):
     pump(app,lambda:bool(seen))
     app.session.login=replace(app.session.login,expires_at=datetime.now(timezone.utc)-timedelta(seconds=1))
     pump(app,lambda:app.session.login is None)
+
+
+def test_native_window_close_during_pending_login():
+    import subprocess
+    result=subprocess.run([sys.executable,'-m','tests.desktop.native_close_check'],
+                          capture_output=True,text=True,timeout=20)
+    assert result.returncode==0,result.stdout+result.stderr
+    assert 'zero callback errors' in result.stdout
