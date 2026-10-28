@@ -65,10 +65,42 @@ jobs:
           assert actual['frameworkRevision']==pin['framework_revision']
           assert actual['dartSdkVersion']==pin['dart']
           PY
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      - name: Cache checksum-verified Temurin JDK
+        id: jdk-cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
-          distribution: temurin
-          java-version: '21.0.12.1+1'
+          path: ${{ runner.temp }}/temurin-sdk
+          key: temurin-linux-x64-21.0.12.1-1-ce79869e1307ed8e
+      - name: Install exact checksum-pinned Linux JDK
+        if: steps.jdk-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile,urllib.request
+          pin=json.loads(pathlib.Path('toolchain.json').read_text())
+          archive=pathlib.Path(os.environ['RUNNER_TEMP'])/'temurin21.tar.gz'
+          urllib.request.urlretrieve(pin['linux_jdk_archive'],archive)
+          with archive.open('rb') as source:
+              assert hashlib.file_digest(source,'sha256').hexdigest()==pin['linux_jdk_sha256'],'JDK checksum mismatch'
+          destination=pathlib.Path(os.environ['RUNNER_TEMP'])/'temurin-sdk'
+          destination.mkdir(exist_ok=True)
+          with tarfile.open(archive) as bundle:bundle.extractall(destination,filter='data')
+          archive.unlink()
+          PY
+      - name: Select and verify exact JDK
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          pin=json.loads(pathlib.Path('toolchain.json').read_text())
+          candidates=list((pathlib.Path(os.environ['RUNNER_TEMP'])/'temurin-sdk').glob('*/bin/java'))
+          assert len(candidates)==1,'Expected one pinned JDK'
+          java=candidates[0]
+          version=subprocess.check_output([str(java),'-version'],stderr=subprocess.STDOUT,text=True)
+          assert '"'+pin['java'].split('+')[0]+'"' in version,'Unexpected Java version'
+          assert pin['java'] in version,'Unexpected Java build'
+          with open(os.environ['GITHUB_ENV'],'a') as out:out.write('JAVA_HOME='+str(java.parent.parent)+'\n')
+          with open(os.environ['GITHUB_PATH'],'a') as out:out.write(str(java.parent)+'\n')
+          print(version)
+          PY
       - name: Cache locked Dart and Gradle dependencies
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
