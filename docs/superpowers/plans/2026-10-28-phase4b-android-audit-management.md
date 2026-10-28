@@ -1,6 +1,6 @@
 # Phase 4B Android Audit Management Implementation Plan
 
-> **For agentic workers:** Use superpowers:subagent-driven-development or superpowers:executing-plans. Operator approved the design at `5fdbd0d` and authorized Task 1 only. Tasks 2–6 remain unauthorized.
+> **For agentic workers:** Use superpowers:subagent-driven-development or superpowers:executing-plans. Operator approved the design at `5fdbd0d`; Checkpoints 1–2 are authorized and completed. Tasks 3–6 require further authorization.
 
 **Goal:** Authorized Android creation, editing, soft deletion and history without changing backend rules.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing pinned Flutter/Dart, Material 3, http/shared_preferences and FastAPI REST contracts. No additional dependency expected.
 
-**Spec:** `docs/superpowers/specs/2026-10-28-phase4b-android-audit-management-design.md` — approved at `5fdbd0d`; current authorization is Checkpoint 1 only.
+**Spec:** `docs/superpowers/specs/2026-10-28-phase4b-android-audit-management-design.md` — approved at `5fdbd0d`; stop after the local Checkpoint 2 commit.
 
 ## Global constraints
 
@@ -42,7 +42,7 @@
 
 ## Task 2 — Session-owned mutation coordination and safe retries
 
-**Not started; requires the operator's next checkpoint authorization.**
+**Completed under the operator's Checkpoint 2 authorization.**
 
 **Modify:** `mobile/lib/features/auth/session_controller.dart`.
 **Create:** `mobile/lib/features/audits/audit_mutation_controller.dart`; mutation/session regression tests.
@@ -50,10 +50,10 @@
 **Consumes:** typed payload/result/history contracts from Task 1.
 **Produces:** token-free `SessionController.createAudit(attempt)`, `updateAudit(id,etag,patch)`, `deleteAudit(id,etag)`, `fetchAuditHistory(id,page,includeDeleted)` plus bounded cancellation/generation checks. Controller states distinguish idle, validating, sending, confirmed, unknown outcome, conflict and forbidden; retain field errors separately.
 
-- [ ] RED: double Save dispatches once; timeout after commit reuses key/payload; edited payload cannot replace unknown attempt; 409 never rotates key; replay after later edit displays returned current state.
-- [ ] RED: logout/new account/new origin clears attempts and ignores late success/401; cancellation and invalid success retain truthful unknown-outcome semantics; pending mutation does not block logout or awaited resume validation. Leaving an unknown create retains exactly one RAM-only session attempt and its Audits review banner; abandonment requires acknowledgment, restart gets only a general new-create reminder.
-- [ ] Implement one in-flight mutation per session with a separate transport scope AND mutation latch, not authentication/resume `_busy`. Generation-invalidating session changes cancel that scope; ordinary list/detail cancellation cannot abort it. No automatic background resend or durable retry journal.
-- [ ] GREEN state/transport races, affected existing auth/lifecycle tests; checkpoint commit.
+- [x] RED: double Save dispatches once; timeout after commit reuses key/payload; edited payload cannot replace unknown attempt; 409 never rotates key; replay after later edit displays returned current state.
+- [x] RED: logout/new account/new origin clears attempts and ignores late success/401; cancellation and invalid success retain truthful unknown-outcome semantics; pending mutation does not block logout or awaited resume validation. Leaving an unknown create retains exactly one RAM-only session attempt and its Audits review banner; abandonment requires acknowledgment, restart gets only a general new-create reminder.
+- [x] Implement one in-flight mutation per session with a separate transport scope AND mutation latch, not authentication/resume `_busy`. Generation-invalidating session changes cancel that scope; ordinary list/detail cancellation cannot abort it. No automatic background resend or durable retry journal.
+- [x] GREEN state/transport races, affected existing auth/lifecycle tests; checkpoint commit.
 
 ## Task 3 — Accessible Create/Edit form and list entry points
 
@@ -115,5 +115,25 @@ transport/parsing. A reproduced BOM-only response parsing mismatch was corrected
 without changing authentication parsing. Shared request timeout/cancellation
 regressions also pass. No backend, session/UI, Windows, schema or dependency change.
 
-Tasks 2–6 remain unchecked and unimplemented. No push or PR is authorized.
-Stop after the local Checkpoint 1 commit and await operator review.
+Checkpoint 2: baseline 86 tests reverified before changes; 33 new mutation/session
+tests pass, full Flutter suite **119 passed, zero failures/skips**. Formatting and
+static analysis pass. Separate mutation scope/latch preserves logout and read
+cancellation isolation. One frozen create attempt remains session-RAM-only for
+explicit retry/review/acknowledged abandonment; no background write retry.
+PATCH/DELETE uncertainty requires fresh review and explicit acknowledgment.
+No banner or visual form was built; the retained state supports those future UI
+checkpoints. History access is token-free and archived access remains ADMIN-only.
+
+Independent engineering/security review corrections were reproduced with RED
+tests: unsupported/redirected HTTP results stay unconfirmed; post-notification
+logout suppresses returned records; immediate save/resume scheduling is rechecked
+before dispatch. Further regression fixes prevent create-abandonment bypass of
+unresolved PATCH state, stale/superseded reviews, canceled queued dispatch and
+publication before concurrent resume validation. Final review found no remaining
+confirmed blocker.
+
+Runtime/server fault injection, visual screens and native Android acceptance are
+deferred to their assigned later checkpoints. Cancellation cannot undo a server
+transaction, and process death/logout deliberately erases retry information.
+Tasks 3–6 remain unchecked and unimplemented. No push or PR is authorized.
+Stop after the local Checkpoint 2 commit and await operator review.

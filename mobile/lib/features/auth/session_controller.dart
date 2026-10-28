@@ -4,6 +4,9 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_origin.dart';
 import '../../core/network/api_failure.dart';
 import '../audits/models.dart';
+import '../audits/audit_draft.dart';
+import '../audits/audit_history_models.dart';
+import '../audits/audit_mutation_controller.dart';
 import 'models.dart';
 
 class SessionController extends ChangeNotifier {
@@ -20,6 +23,20 @@ class SessionController extends ChangeNotifier {
   ApiClient? _api;
   ApiClient? _listApi;
   ApiClient? _detailApi;
+  ApiClient? _mutationApi;
+  ApiClient? _historyApi;
+  ApiClient? _reviewApi;
+  _AuditMutationOperation? _mutationOperation;
+  late final AuditMutationController mutations = AuditMutationController(
+    authenticated: () => !_disposed && _user != null,
+    create: (attempt) =>
+        _mutate((api, token) => api.createAudit(token, attempt)),
+    update: (id, etag, patch) =>
+        _mutate((api, token) => api.updateAudit(token, id, etag, patch)),
+    delete: (id, etag) =>
+        _mutate((api, token) => api.deleteAudit(token, id, etag)),
+    review: _reviewAudit,
+  );
   _LoginAttempt? _pendingLogin;
   bool _busy = false;
   bool _loginInProgress = false;
@@ -124,15 +141,21 @@ class SessionController extends ChangeNotifier {
       cancelSignIn();
       return;
     }
-    if (_busy) return;
+    if (_busy && _user == null) return;
     final api = _api;
     final lease = _lease;
+    final auditUnconfirmed =
+        _mutationOperation != null ||
+        mutations.pendingCreate != null ||
+        mutations.state.phase == AuditMutationPhase.unknown;
     final requestGeneration = ++_generation;
     _cancelProtectedRequests();
     _api = null;
     _user = null;
     _lease = null;
-    _notice = null;
+    _notice = auditUnconfirmed
+        ? 'Signed out. An audit save may have completed; check Audits after signing in again.'
+        : null;
     _busy = api != null && lease != null;
     _emit();
     if (api == null || lease == null) return;
@@ -140,7 +163,8 @@ class SessionController extends ChangeNotifier {
     if (!_current(requestGeneration)) return;
     _busy = false;
     if (!confirmed) {
-      _notice = 'Signed out. Server revocation could not be confirmed.';
+      _notice =
+          '${_notice ?? 'Signed out.'} Server revocation could not be confirmed.';
     }
     _emit();
   }
@@ -208,6 +232,129 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  Future<AuditMutationResult> createAudit(PendingAuditCreate attempt) async =>
+      mutations.create(attempt);
+  Future<AuditRecord> updateAudit(
+    int id,
+    String etag,
+    AuditPatch patch,
+  ) async => mutations.update(id, etag, patch);
+  Future<void> deleteAudit(int id, String etag) async =>
+      mutations.delete(id, etag);
+  Future<AuditRecord> reviewMutation() async => mutations.reviewLatest();
+  void cancelAuditMutation() {
+    _mutationOperation?.canceled = true;
+    _mutationApi?.cancelAll();
+  }
+
+  Future<void> _awaitResume(int generation) async {
+    final pending = _resumeVerificationGeneration == generation
+        ? _resumeVerification
+        : null;
+    if (pending != null) await pending;
+    if (!_current(generation)) throw ApiFailure.canceled;
+    _requireLease();
+    if (_busy) throw ApiFailure.busy;
+  }
+
+  Future<T> _mutate<T>(Future<T> Function(ApiClient, String) operation) async {
+    final generation = _generation;
+    if (_mutationOperation != null) {
+      throw const AuditMutationFailure(ApiFailure.busy, unconfirmed: false);
+    }
+    final marker = _AuditMutationOperation();
+    _mutationOperation = marker;
+    var dispatched = false;
+    try {
+      await _awaitResume(generation);
+      // Awaiting a completed preflight still yields. A resume can start in that
+      // gap, so check the current shared verification again before dispatch.
+      while (_resumeVerificationGeneration == generation &&
+          _resumeVerification != null) {
+        await _awaitResume(generation);
+      }
+      if (marker.canceled) throw ApiFailure.canceled;
+      final lease = _requireLease();
+      final api = _apiFactory(_origin!);
+      _mutationApi = api;
+      dispatched = true;
+      final result = await operation(api, lease.accessToken);
+      // A resume may have started while the write was in flight. Do not publish
+      // protected results until that identity check has also completed.
+      await _awaitResume(generation);
+      if (marker.canceled) throw ApiFailure.canceled;
+      return result;
+    } on ApiFailure catch (error) {
+      if (_current(generation) && error.status == 401) {
+        _invalidate(error.message);
+      }
+      final safe = _current(generation) ? error : ApiFailure.canceled;
+      final unknown =
+          dispatched &&
+          (safe.code == 'protocol' ||
+              safe.status == null && safe.code != 'invalid_input' ||
+              (safe.status ?? 0) >= 500);
+      throw AuditMutationFailure(safe, unconfirmed: unknown);
+    } catch (_) {
+      throw AuditMutationFailure(
+        _current(generation) ? ApiFailure.network : ApiFailure.canceled,
+        unconfirmed: dispatched,
+      );
+    } finally {
+      if (identical(_mutationOperation, marker)) {
+        _mutationApi = null;
+        _mutationOperation = null;
+      }
+    }
+  }
+
+  Future<AuditRecord> _reviewAudit(int id, bool includeDeleted) async {
+    final generation = _generation;
+    await _awaitResume(generation);
+    final access = includeDeleted
+        ? AuditAccess.archivedFor(_user!)
+        : AuditAccess.active;
+    _reviewApi?.cancelAll();
+    final api = _apiFactory(_origin!);
+    _reviewApi = api;
+    try {
+      return await _read(
+        api,
+        (client, lease) => client.audit(lease.accessToken, id, access: access),
+      );
+    } finally {
+      if (identical(_reviewApi, api)) _reviewApi = null;
+    }
+  }
+
+  Future<AuditHistoryPage> fetchAuditHistory(
+    int id, {
+    int page = 1,
+    bool includeDeleted = false,
+  }) async {
+    final generation = _generation;
+    await _awaitResume(generation);
+    final access = includeDeleted
+        ? AuditAccess.archivedFor(_user!)
+        : AuditAccess.active;
+    _historyApi?.cancelAll();
+    final api = _apiFactory(_origin!);
+    _historyApi = api;
+    try {
+      return await _read(
+        api,
+        (client, lease) => client.auditHistory(
+          lease.accessToken,
+          id,
+          page: page,
+          access: access,
+        ),
+      );
+    } finally {
+      if (identical(_historyApi, api)) _historyApi = null;
+    }
+  }
+
   Future<AuditRecord> fetchAudit(int id) async {
     _requireLease();
     cancelAuditDetail();
@@ -237,6 +384,14 @@ class SessionController extends ChangeNotifier {
     cancelAuditList();
     cancelAuditDetail();
     _api?.cancelAll();
+    _mutationApi?.cancelAll();
+    _mutationApi = null;
+    _mutationOperation = null;
+    _historyApi?.cancelAll();
+    _historyApi = null;
+    _reviewApi?.cancelAll();
+    _reviewApi = null;
+    mutations.clearForSessionChange();
   }
 
   Future<T> _read<T>(
@@ -309,6 +464,7 @@ class SessionController extends ChangeNotifier {
     _lease = null;
     _user = null;
     _busy = false;
+    mutations.dispose();
     super.dispose();
   }
 }
@@ -317,4 +473,8 @@ class _LoginAttempt {
   _LoginAttempt(this.api);
   final ApiClient api;
   SessionLease? lease;
+}
+
+class _AuditMutationOperation {
+  bool canceled = false;
 }
