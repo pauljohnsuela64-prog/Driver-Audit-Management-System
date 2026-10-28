@@ -1,6 +1,6 @@
 # Phase 4A: Android mobile foundation design
 
-**Status:** proposed for operator approval; design/research only. No Flutter scaffold, SDK installation, application code, push or PR is authorized at this checkpoint.
+**Status:** approved at design checkpoint `b373011`. The subsequent operator assignment authorizes isolated toolchain setup, complete Phase 4A implementation/testing/review and one draft PR. Production changes and release distribution remain excluded.
 
 ## 1. Verified baseline, purpose and scope
 
@@ -14,7 +14,7 @@ See [domain glossary](../../../GLOSSARY.md): account identity, audit ownership a
 
 ## 2. Approaches and recommendation
 
-These are engineering proposals, not decisions already approved by the operator.
+The operator approved the recommended lean approach below; alternatives remain documented for context.
 
 | Approach | Advantages | Cost / assessment |
 | --- | --- | --- |
