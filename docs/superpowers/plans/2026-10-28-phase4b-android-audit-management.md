@@ -1,0 +1,111 @@
+# Phase 4B Android Audit Management Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL after operator approval: use superpowers:subagent-driven-development or superpowers:executing-plans. This is a proposed checkpoint plan, not permission to execute it.
+
+**Goal:** Authorized Android creation, editing, soft deletion and history without changing backend rules.
+
+**Architecture:** Extend the existing typed API/session modules and focused view controllers. Mutation state owns immutable request attempts and uncertain-outcome handling; widgets never receive bearer tokens. Reuse existing themes, native privacy and route/session lifetime.
+
+**Tech Stack:** Existing pinned Flutter/Dart, Material 3, http/shared_preferences and FastAPI REST contracts. No additional dependency expected.
+
+**Spec:** `docs/superpowers/specs/2026-10-28-phase4b-android-audit-management-design.md` — PROPOSED, awaiting approval.
+
+## Global constraints
+
+- Baseline `54c1f2e1b91d12f570d0bb67b54b25a10f9090d3`; feature branch `feat/dams-android-audit-management`.
+- Six editable fields; immutable server-assigned seventh field Audited By. Ownership uses user ID.
+- ADMIN create/read/edit/soft-delete; AUDITOR create/shared read/own edit, no delete. Archived access ADMIN-only and explicit.
+- UUIDv4 create key; exact quoted ETag/If-Match for PATCH/DELETE. No automatic write replay after conflict.
+- Memory-only tokens/drafts/attempts, trusted remote HTTPS, existing debug-only loopback and lifecycle safeguards.
+- Preserve backend, schema, migrations, grants, Windows behavior and all five CI checks. Fictional isolated data only.
+- No implementation, push or PR before design approval; no production modification or next-phase feature.
+
+## Review focus
+
+1. A create commits but its response is lost: retry uses the same UUID and frozen normalized payload (Task 2).
+2. Retry returns an already edited current record: do not reject it for differing from original payload or overwrite it (Tasks 1–2).
+3. Logout/account switch races a write: late completion never restores protected UI; cancellation never promises rollback (Task 2).
+4. Stale ETag or uncertain edit/delete: require latest-state review and explicit action, never silent last-writer-wins (Task 4).
+5. History actor IDs and arbitrary snapshot metadata: display only the safe allowlist; never infer actor names or call the user directory (Task 5).
+
+## Task 1 — Typed payload, permissions, mutation and history contracts
+
+**Modify:** `mobile/lib/core/network/api_client.dart`, `api_failure.dart`, `features/audits/models.dart`.
+**Create:** `mobile/lib/features/audits/audit_draft.dart`, `audit_permissions.dart`, `audit_history_models.dart`; focused tests in `mobile/test/`.
+
+**Interfaces:** `AuditDraft` validates/normalizes and emits six-key `Map<String,Object?>` create JSON or changed-only patch JSON. `PendingAuditCreate` holds immutable payload/key. `AuditMutationResult` holds record and replay flag. Pure permissions consume current `AuthenticatedUser` and `AuditRecord`, compare stable IDs. History models validate page echo, event action/IDs/timestamps and allowlisted before/after values.
+
+- [ ] RED tests: Unicode code-point limits and field-specific backend stripping (required Unicode White_Space versus optional Python strip including U+001C–001F; preserve BOM), optional null versus omission, valid calendar boundaries, duplicate plates allowed, empty patch, mass-assignment rejection, UUID version/variant and role/owner-ID matrix. Compare normalization against actual AuditCreate golden vectors.
+- [ ] RED transport tests: POST201/200 replay, nullable JSON, correct key header, PATCH200/DELETE204 with exact If-Match, response version/ETag agreement, 409/412/428, safe body-limit/timeout/redirect failures and explicit archived mode.
+- [ ] Implement typed `ApiClient.createAudit`, `updateAudit`, `deleteAudit`, `auditHistory` with existing token-taking transport seam. Keep bearer access inside session callers; avoid arbitrary endpoint/header escape hatches.
+- [ ] GREEN focused contracts and analyzer; checkpoint commit with reviewed tests.
+
+## Task 2 — Session-owned mutation coordination and safe retries
+
+**Modify:** `mobile/lib/features/auth/session_controller.dart`.
+**Create:** `mobile/lib/features/audits/audit_mutation_controller.dart`; mutation/session regression tests.
+
+**Consumes:** typed payload/result/history contracts from Task 1.
+**Produces:** token-free `SessionController.createAudit(attempt)`, `updateAudit(id,etag,patch)`, `deleteAudit(id,etag)`, `fetchAuditHistory(id,page,includeDeleted)` plus bounded cancellation/generation checks. Controller states distinguish idle, validating, sending, confirmed, unknown outcome, conflict and forbidden; retain field errors separately.
+
+- [ ] RED: double Save dispatches once; timeout after commit reuses key/payload; edited payload cannot replace unknown attempt; 409 never rotates key; replay after later edit displays returned current state.
+- [ ] RED: logout/new account/new origin clears attempts and ignores late success/401; cancellation and invalid success retain truthful unknown-outcome semantics; pending mutation does not block logout or awaited resume validation. Leaving an unknown create retains exactly one RAM-only session attempt and its Audits review banner; abandonment requires acknowledgment, restart gets only a general new-create reminder.
+- [ ] Implement one in-flight mutation per session with a separate transport scope AND mutation latch, not authentication/resume `_busy`. Generation-invalidating session changes cancel that scope; ordinary list/detail cancellation cannot abort it. No automatic background resend or durable retry journal.
+- [ ] GREEN state/transport races, affected existing auth/lifecycle tests; checkpoint commit.
+
+## Task 3 — Accessible Create/Edit form and list entry points
+
+**Create:** `mobile/lib/features/audits/audit_form_controller.dart`, `audit_form_screen.dart` and reusable local form controls only where shared.
+**Modify:** `audit_list_screen.dart`, `audit_details_screen.dart`, existing list controller only for explicit invalidation/refresh.
+
+**Consumes:** permissions, draft validation, token-free mutation methods and state from Tasks 1–2.
+**Produces:** create/edit routes returning a typed confirmed mutation result or no change, without leaking credentials or treating list refresh as part of the committed write.
+
+- [ ] RED widget tests: six fields/immutable attribution, required/optional limits, Unicode/paste/IME, date picker/manual date, changed-only patch, duplicate submission, dirty Back, uncertainty warning and same-key Retry. Keyboard Back dismisses IME before route navigation; Next moves single-line focus and Remarks keeps newline behavior. Verify stacked/wrapped actions at largest supported text size.
+- [ ] Implement full-screen scrollable phone form and readable tablet width; safe-area/IME-aware Save/Cancel, first-error focus, semantics and 48dp targets. No autosave or silent truncation.
+- [ ] After confirmed save refresh detail and list page1 with applied filters; show saved-but-not-in-filter and refresh-failed feedback separately.
+- [ ] GREEN both themes, 320dp/200% text and keyboard layouts, existing read-only regressions; checkpoint commit.
+
+## Task 4 — Conflict review and ADMIN soft deletion
+
+**Create:** `mobile/lib/features/audits/audit_conflict_screen.dart`; delete confirmation/controller logic local to details unless shared state warrants a focused file.
+**Modify:** detail route and form mutation handling.
+
+**Consumes:** current detail/ETag, draft diff and mutation state.
+**Produces:** explicit reload/review/resubmit choices with a newly reviewed baseline; delete returns confirmed/unconfirmed result, never a fabricated restored record.
+
+- [ ] RED tests: AUDITOR non-owner cannot open/submit edit; no AUDITOR delete; role change between display/dispatch handled by server failure; 412 and409 retain same-session draft but never replace If-Match automatically. Per-field latest/proposed choices preserve unrelated latest changes, latest-fetch failure disables Save and repeated conflict restarts review.
+- [ ] RED: lost PATCH response requires refetch; lost DELETE response checks ADMIN include-deleted state; 404 is unavailable, not proof of deletion. New confirmation required after a changed version.
+- [ ] Implement comparison, discard confirmation, read-only archived state and Record-ID/driver/plate delete dialog with accurate soft-delete copy.
+- [ ] GREEN conflict/deletion/controller/widget tests, existing session tests; checkpoint commit.
+
+## Task 5 — Authorized history and explicit archive browsing
+
+**Create:** `mobile/lib/features/audits/audit_history_controller.dart`, `audit_history_screen.dart`.
+**Modify:** list/query/detail/session archived-mode interfaces; keep default active-only parsing strict.
+
+**Consumes:** history models and permissions. History uses page10, oldest event first; ADMIN archive flag propagates only to authorized list/detail/history requests. Audit-list pages remain25.
+**Produces:** event cards with actor ID, timestamp/timezone and allowlisted field changes; no user lookup dependency.
+
+- [ ] RED: shared active history both roles, archived history ADMIN-only, hidden archive control for AUDITOR, unexpected archived response rejected in active-only mode.
+- [ ] RED: actor ID is distinct from Audited By; unknown/private snapshot keys never rendered; null/Unicode/long values, absent before-data for CREATE and DELETE lifecycle state, page bounds and superseded results. Serialize ten maximum-size before/after events using the actual backend JSONResponse, including six-byte-escaped controls; assert body below2MiB. Reject unexpectedly oversized responses without truncation.
+- [ ] Implement explicit Include archived switch, read-only archived details, history paging/refresh/loading/error states and expandable labeled comparisons.
+- [ ] GREEN history/archive widgets and transport regressions; checkpoint commit.
+
+## Task 6 — Real API, fault injection, native acceptance and publication gate
+
+**Extend:** `scripts/mobile_demo.py`, `tests/test_mobile_demo.py`, `mobile/integration_test/`, `test_driver/` and Android verification/development documentation. Use a second fictional AUDITOR to test stable-ID ownership; keep production isolation hard-coded.
+
+- [ ] RED/GREEN disposable API cases: create/replay, shared reads, owner/non-owner edits, ADMIN edits/deletes, exact history and immutable attribution, archive restrictions, duplicate plates and concurrent same-key/edit/delete requests.
+- [ ] Test-only fault adapter drops mutation responses after backend commit; assert exactly one CREATE event on retry, stale PATCH protection and honest uncertain DELETE handling. No shipping auth bypass.
+- [ ] Run `dart format --output=none --set-exit-if-changed lib test integration_test test_driver`, `flutter analyze --fatal-infos`, full `flutter test`, real-API native acceptance and serial default/isolated-MySQL regressions. Preserve existing Windows and installer checks.
+- [ ] Native fictional walkthrough: both roles, second AUDITOR denial, touch/keyboard/Back/dirty discard, conflict/history, themes, compact/landscape/large text, background/logout/process death and safe shutdown. Capture genuine screenshots; explicitly report unavailable API24/physical/TalkBack/TLS checks.
+- [ ] Independent engineering/security and mobile-UX reviews; reproduce and fix confirmed issues with focused regression coverage; coherent verified commits.
+- [ ] Only after implementation authorization and verification: inspect complete diff/secrets, publish the same branch, create exactly one draft PR and verify all five hosted jobs. Never merge automatically.
+
+## Current design handoff
+
+All checkboxes describe future implementation and remain unchecked intentionally.
+Approval is requested for the proposed specification and these checkpoints.
+Execution method may be selected with implementation authorization; this design
+assignment ends at a local documentation commit.
