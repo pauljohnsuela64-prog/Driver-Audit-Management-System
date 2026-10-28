@@ -1,0 +1,15 @@
+{
+  "flutter": "3.47.8",
+  "framework_revision": "737ba8f885dc774b53b442759999a312c9461e4e",
+  "dart": "3.13.7",
+  "windows_archive": "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.47.8-stable.zip",
+  "windows_sha256": "11e19ea3409808fe3b3765ea8149640c299e58cce6eda7c9f38fc1b4a193eb6e",
+  "linux_archive": "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.8-stable.tar.xz",
+  "linux_sha256": "baf7dcc5a3dbba60fe863bf493a6cf203195621f7786eaa5a1bba02cd0d87dd2",
+  "java_distribution": "temurin",
+  "java": "21.0.12.1+1",
+  "android_platform": "android-36",
+  "android_build_tools": "36.0.0",
+  "android_ndk": "28.2.13676358",
+  "android_min_sdk": 24
+}
