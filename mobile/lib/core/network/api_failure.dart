@@ -52,6 +52,21 @@ class ApiFailure implements Exception {
           'This audit is no longer available.',
           status: 404,
         ),
+        409 => const ApiFailure._(
+          'conflict',
+          'This request conflicts with the current audit state.',
+          status: 409,
+        ),
+        412 => const ApiFailure._(
+          'version_mismatch',
+          'This audit has changed. Review the latest version.',
+          status: 412,
+        ),
+        428 => const ApiFailure._(
+          'precondition_required',
+          'Reload the audit before trying again.',
+          status: 428,
+        ),
         422 => const ApiFailure._(
           'invalid_input',
           'Check the entered values and try again.',

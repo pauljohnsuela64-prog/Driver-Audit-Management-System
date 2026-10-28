@@ -1,5 +1,36 @@
 import '../../core/network/api_failure.dart';
 import '../../core/network/json_contract.dart';
+import '../auth/models.dart';
+
+String _requiredAuditText(Object? value, {required int maxLength}) {
+  // Pydantic's required audit strings preserve BOM and U+001C–U+001F;
+  // Dart trim() would incorrectly reject a valid BOM-only server value.
+  if (value is! String ||
+      value.runes.length > maxLength ||
+      !RegExp(
+        r'[^\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]',
+      ).hasMatch(value)) {
+    throw ApiFailure.protocol;
+  }
+  return value;
+}
+
+/// Explicit parsing/request mode, never a replacement for server authorization.
+class AuditAccess {
+  const AuditAccess._(this.includeDeleted);
+  static const active = AuditAccess._(false);
+  factory AuditAccess.archivedFor(AuthenticatedUser user) {
+    if (user.role != 'ADMIN') throw ApiFailure.fromStatus(403);
+    return const AuditAccess._(true);
+  }
+  final bool includeDeleted;
+}
+
+class AuditMutationResult {
+  const AuditMutationResult(this.record, {required this.replayed});
+  final AuditRecord record;
+  final bool replayed;
+}
 
 class CalendarDate {
   const CalendarDate._(this.value);
@@ -49,33 +80,43 @@ class AuditRecord {
   final DateTime updatedAt;
   final String? etag;
 
-  static AuditRecord fromJson(Object? value, {String? etag}) {
+  static AuditRecord fromJson(
+    Object? value, {
+    String? etag,
+    AuditAccess access = AuditAccess.active,
+  }) {
     final json = jsonObject(value);
     final version = positiveInt(json['version']);
     final date = json['audit_date'];
     if (date is! String ||
         !validCalendarDate(date) ||
         !json.containsKey('deleted_at') ||
-        json['deleted_at'] != null ||
+        (!access.includeDeleted && json['deleted_at'] != null) ||
         (etag != null && etag != '"$version"')) {
       throw ApiFailure.protocol;
     }
     final deletedBy = nullablePositiveInt(json, 'deleted_by_user_id');
-    if (deletedBy != null) throw ApiFailure.protocol;
+    final deletedAt = json['deleted_at'] == null
+        ? null
+        : utcTimestamp(json['deleted_at']);
+    if ((deletedAt == null) != (deletedBy == null)) throw ApiFailure.protocol;
     return AuditRecord._(
       id: positiveInt(json['id']),
       version: version,
-      driverName: requiredText(json['driver_name'], maxLength: 200),
+      driverName: _requiredAuditText(json['driver_name'], maxLength: 200),
       helperName: nullableText(json, 'helper_name', maxLength: 200),
       auditDate: date,
-      station: requiredText(json['station'], maxLength: 150),
-      plateNumber: requiredText(json['plate_number'], maxLength: 30),
+      station: _requiredAuditText(json['station'], maxLength: 150),
+      plateNumber: _requiredAuditText(json['plate_number'], maxLength: 30),
       remarks: nullableText(json, 'remarks', maxLength: 10000),
-      auditedByName: requiredText(json['audited_by_name'], maxLength: 200),
+      auditedByName: _requiredAuditText(
+        json['audited_by_name'],
+        maxLength: 200,
+      ),
       auditedByUserId: positiveInt(json['audited_by_user_id']),
       updatedByUserId: nullablePositiveInt(json, 'updated_by_user_id'),
       deletedByUserId: deletedBy,
-      deletedAt: null,
+      deletedAt: deletedAt,
       createdAt: utcTimestamp(json['created_at']),
       updatedAt: utcTimestamp(json['updated_at']),
       etag: etag,
@@ -166,7 +207,11 @@ class AuditPage {
   final int page;
   final int pageSize;
   int get totalPages => total == 0 ? 1 : (total + pageSize - 1) ~/ pageSize;
-  static AuditPage fromJson(Object? value, AuditQuery query) {
+  static AuditPage fromJson(
+    Object? value,
+    AuditQuery query, {
+    AuditAccess access = AuditAccess.active,
+  }) {
     final json = jsonObject(value);
     final total = json['total'];
     final page = json['page'];
@@ -183,7 +228,7 @@ class AuditPage {
       throw ApiFailure.protocol;
     }
     return AuditPage._(
-      items.map(AuditRecord.fromJson).toList(),
+      items.map((item) => AuditRecord.fromJson(item, access: access)).toList(),
       total,
       page,
       pageSize,

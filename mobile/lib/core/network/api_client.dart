@@ -9,6 +9,8 @@ import 'api_failure.dart';
 import 'json_contract.dart';
 import '../../features/auth/models.dart';
 import '../../features/audits/models.dart';
+import '../../features/audits/audit_draft.dart';
+import '../../features/audits/audit_history_models.dart';
 
 class ApiClient {
   ApiClient(ApiOrigin origin, {http.Client Function()? clientFactory})
@@ -50,25 +52,134 @@ class ApiClient {
     await _request('POST', '/auth/logout', token: token, expectedStatus: 204);
   }
 
-  Future<AuditPage> audits(String token, AuditQuery query) async =>
-      AuditPage.fromJson(
-        (await _request(
-          'GET',
-          '/audits',
-          token: token,
-          query: query.toQueryParameters(),
-        )).json,
-        query,
-      );
+  Future<AuditPage> audits(
+    String token,
+    AuditQuery query, {
+    AuditAccess access = AuditAccess.active,
+  }) async => AuditPage.fromJson(
+    (await _request(
+      'GET',
+      '/audits',
+      token: token,
+      query: {
+        ...query.toQueryParameters(),
+        if (access.includeDeleted) 'include_deleted': 'true',
+      },
+    )).json,
+    query,
+    access: access,
+  );
 
-  Future<AuditRecord> audit(String token, int id) async {
+  Future<AuditRecord> audit(
+    String token,
+    int id, {
+    AuditAccess access = AuditAccess.active,
+  }) async {
     if (id < 1) throw ApiFailure.invalidInput;
-    final response = await _request('GET', '/audits/$id', token: token);
+    final response = await _request(
+      'GET',
+      '/audits/$id',
+      token: token,
+      query: access.includeDeleted ? {'include_deleted': 'true'} : null,
+    );
     final etag = response.headers['etag'];
     if (etag == null) throw ApiFailure.protocol;
-    final record = AuditRecord.fromJson(response.json, etag: etag);
+    final record = AuditRecord.fromJson(
+      response.json,
+      etag: etag,
+      access: access,
+    );
     if (record.id != id) throw ApiFailure.protocol;
     return record;
+  }
+
+  Future<AuditMutationResult> createAudit(
+    String token,
+    PendingAuditCreate attempt,
+  ) async {
+    final response = await _request(
+      'POST',
+      '/audits',
+      token: token,
+      body: attempt.payload,
+      idempotencyKey: attempt.key,
+      acceptedStatuses: const {200, 201},
+    );
+    return AuditMutationResult(
+      _record(response),
+      replayed: response.status == 200,
+    );
+  }
+
+  Future<AuditRecord> updateAudit(
+    String token,
+    int id,
+    String etag,
+    AuditPatch patch,
+  ) async {
+    final version = _precondition(id, etag);
+    final response = await _request(
+      'PATCH',
+      '/audits/$id',
+      token: token,
+      body: patch.payload,
+      ifMatch: etag,
+    );
+    final record = _record(response);
+    if (record.id != id || record.version != version + 1) {
+      throw ApiFailure.protocol;
+    }
+    return record;
+  }
+
+  Future<void> deleteAudit(String token, int id, String etag) async {
+    _precondition(id, etag);
+    await _request(
+      'DELETE',
+      '/audits/$id',
+      token: token,
+      ifMatch: etag,
+      expectedStatus: 204,
+    );
+  }
+
+  Future<AuditHistoryPage> auditHistory(
+    String token,
+    int id, {
+    int page = 1,
+    AuditAccess access = AuditAccess.active,
+  }) async {
+    if (id < 1 || page < 1 || page > 10000) throw ApiFailure.invalidInput;
+    final response = await _request(
+      'GET',
+      '/audits/$id/history',
+      token: token,
+      query: {
+        'page': '$page',
+        'page_size': '${AuditHistoryPage.pageSize}',
+        if (access.includeDeleted) 'include_deleted': 'true',
+      },
+    );
+    return AuditHistoryPage.fromJson(
+      response.json,
+      auditId: id,
+      page: page,
+      access: access,
+    );
+  }
+
+  static AuditRecord _record(_ApiResponse response) {
+    final etag = response.headers['etag'];
+    if (etag == null) throw ApiFailure.protocol;
+    return AuditRecord.fromJson(response.json, etag: etag);
+  }
+
+  static int _precondition(int id, String etag) {
+    final match = RegExp(r'^"[1-9][0-9]{0,9}"$').firstMatch(etag);
+    if (id < 1 || match == null || match.end != etag.length) {
+      throw ApiFailure.invalidInput;
+    }
+    return int.parse(etag.substring(1, etag.length - 1));
   }
 
   /// Cancels only currently running operations; subsequent requests are allowed.
@@ -83,8 +194,11 @@ class ApiClient {
     String path, {
     String? token,
     Map<String, String>? query,
-    Map<String, String>? body,
+    Map<String, Object?>? body,
     int expectedStatus = 200,
+    Set<int>? acceptedStatuses,
+    String? idempotencyKey,
+    String? ifMatch,
   }) async {
     if (token != null && !validBearer(token)) throw ApiFailure.invalidInput;
     _PendingRequest? operation;
@@ -105,12 +219,16 @@ class ApiClient {
             ..followRedirects = false
             ..headers['accept'] = 'application/json';
       if (token != null) request.headers['authorization'] = 'Bearer $token';
+      if (idempotencyKey != null) {
+        request.headers['idempotency-key'] = idempotencyKey;
+      }
+      if (ifMatch != null) request.headers['if-match'] = ifMatch;
       if (body != null) {
         request.headers['content-type'] = 'application/json; charset=utf-8';
         request.body = jsonEncode(body);
       }
       return await Future.any([
-        _consume(operation, request, expectedStatus),
+        _consume(operation, request, acceptedStatuses ?? {expectedStatus}),
         operation.canceled.future,
       ]);
     } on ApiFailure {
@@ -131,7 +249,7 @@ class ApiClient {
   Future<_ApiResponse> _consume(
     _PendingRequest operation,
     http.BaseRequest request,
-    int expectedStatus,
+    Set<int> acceptedStatuses,
   ) async {
     final response = await operation.client.send(request);
     if (operation.closed) {
@@ -166,7 +284,7 @@ class ApiClient {
       cancelOnError: true,
     );
     await Future.any<void>([bodyDone.future, operation.canceled.future]);
-    if (response.statusCode != expectedStatus) {
+    if (!acceptedStatuses.contains(response.statusCode)) {
       final retry = int.tryParse(response.headers['retry-after'] ?? '');
       throw ApiFailure.fromStatus(
         response.statusCode,
@@ -175,7 +293,9 @@ class ApiClient {
             : Duration(seconds: retry.clamp(0, 300)),
       );
     }
-    if (expectedStatus == 204) return _ApiResponse(null, response.headers);
+    if (response.statusCode == 204) {
+      return _ApiResponse(null, response.headers, response.statusCode);
+    }
     final contentType = response.headers['content-type']
         ?.split(';')
         .first
@@ -185,14 +305,16 @@ class ApiClient {
     return _ApiResponse(
       jsonDecode(utf8.decode(bytes.takeBytes())),
       response.headers,
+      response.statusCode,
     );
   }
 }
 
 class _ApiResponse {
-  const _ApiResponse(this.json, this.headers);
+  const _ApiResponse(this.json, this.headers, this.status);
   final Object? json;
   final Map<String, String> headers;
+  final int status;
 }
 
 class _PendingRequest {

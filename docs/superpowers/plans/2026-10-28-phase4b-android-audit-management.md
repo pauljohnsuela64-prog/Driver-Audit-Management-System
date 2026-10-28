@@ -1,6 +1,6 @@
 # Phase 4B Android Audit Management Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL after operator approval: use superpowers:subagent-driven-development or superpowers:executing-plans. This is a proposed checkpoint plan, not permission to execute it.
+> **For agentic workers:** Use superpowers:subagent-driven-development or superpowers:executing-plans. Operator approved the design at `5fdbd0d` and authorized Task 1 only. Tasks 2–6 remain unauthorized.
 
 **Goal:** Authorized Android creation, editing, soft deletion and history without changing backend rules.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing pinned Flutter/Dart, Material 3, http/shared_preferences and FastAPI REST contracts. No additional dependency expected.
 
-**Spec:** `docs/superpowers/specs/2026-10-28-phase4b-android-audit-management-design.md` — PROPOSED, awaiting approval.
+**Spec:** `docs/superpowers/specs/2026-10-28-phase4b-android-audit-management-design.md` — approved at `5fdbd0d`; current authorization is Checkpoint 1 only.
 
 ## Global constraints
 
@@ -35,12 +35,14 @@
 
 **Interfaces:** `AuditDraft` validates/normalizes and emits six-key `Map<String,Object?>` create JSON or changed-only patch JSON. `PendingAuditCreate` holds immutable payload/key. `AuditMutationResult` holds record and replay flag. Pure permissions consume current `AuthenticatedUser` and `AuditRecord`, compare stable IDs. History models validate page echo, event action/IDs/timestamps and allowlisted before/after values.
 
-- [ ] RED tests: Unicode code-point limits and field-specific backend stripping (required Unicode White_Space versus optional Python strip including U+001C–001F; preserve BOM), optional null versus omission, valid calendar boundaries, duplicate plates allowed, empty patch, mass-assignment rejection, UUID version/variant and role/owner-ID matrix. Compare normalization against actual AuditCreate golden vectors.
-- [ ] RED transport tests: POST201/200 replay, nullable JSON, correct key header, PATCH200/DELETE204 with exact If-Match, response version/ETag agreement, 409/412/428, safe body-limit/timeout/redirect failures and explicit archived mode.
-- [ ] Implement typed `ApiClient.createAudit`, `updateAudit`, `deleteAudit`, `auditHistory` with existing token-taking transport seam. Keep bearer access inside session callers; avoid arbitrary endpoint/header escape hatches.
-- [ ] GREEN focused contracts and analyzer; checkpoint commit with reviewed tests.
+- [x] RED tests: Unicode code-point limits and field-specific backend stripping (required Unicode White_Space versus optional Python strip including U+001C–001F; preserve BOM), optional null versus omission, valid calendar boundaries, duplicate plates allowed, empty patch, mass-assignment rejection, UUID version/variant and role/owner-ID matrix. Compare normalization against actual AuditCreate golden vectors.
+- [x] RED transport tests: POST201/200 replay, nullable JSON, correct key header, PATCH200/DELETE204 with exact If-Match, response version/ETag agreement, 409/412/428, safe body-limit/timeout/redirect failures and explicit archived mode.
+- [x] Implement typed `ApiClient.createAudit`, `updateAudit`, `deleteAudit`, `auditHistory` with existing token-taking transport seam. Keep bearer access inside session callers; avoid arbitrary endpoint/header escape hatches.
+- [x] GREEN focused contracts and analyzer; checkpoint commit with reviewed tests.
 
 ## Task 2 — Session-owned mutation coordination and safe retries
+
+**Not started; requires the operator's next checkpoint authorization.**
 
 **Modify:** `mobile/lib/features/auth/session_controller.dart`.
 **Create:** `mobile/lib/features/audits/audit_mutation_controller.dart`; mutation/session regression tests.
@@ -105,7 +107,13 @@
 
 ## Current design handoff
 
-All checkboxes describe future implementation and remain unchecked intentionally.
-Approval is requested for the proposed specification and these checkpoints.
-Execution method may be selected with implementation authorization; this design
-assignment ends at a local documentation commit.
+Checkpoint 1 is implemented and verified: 26 new contract tests and all 60 existing
+Flutter tests pass (86 total, zero failures/skips); analysis and formatting pass.
+Independent engineering/security review found no blocking defect. Review-driven
+coverage now includes distinct same-plate creation attempts and archived-list
+transport/parsing. A reproduced BOM-only response parsing mismatch was corrected
+without changing authentication parsing. Shared request timeout/cancellation
+regressions also pass. No backend, session/UI, Windows, schema or dependency change.
+
+Tasks 2–6 remain unchecked and unimplemented. No push or PR is authorized.
+Stop after the local Checkpoint 1 commit and await operator review.
