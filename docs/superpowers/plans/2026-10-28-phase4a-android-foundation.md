@@ -56,6 +56,14 @@ Files: `.github/workflows/mobile-tests.yml`, toolchain provenance/pins, `docs/AN
 - [ ] Inspect cumulative diff/staged secrets, commit docs/evidence, clean tree, normal push, exactly one draft PR to main, verify final hosted jobs and artifact provenance; remain unmerged.
 
 ## Recovery ledger
+
+Implementation checkpoint 2026-10-28: Tasks1–4 completed with documented native
+acceptance limitations in docs/ANDROID_VERIFICATION.md. Toolchain reused after
+interruption. Full Flutter60/defaultPython514/MySQL518 passed; Android16/API36
+native real-API scenario passed and six screenshots independently reviewed.
+Source-review corrections are preserved in 530a4ff after the client checkpoint
+32953e3. Task5 local CI validation complete; draft publication and hosted results
+are the remaining gate. No production modifications or Android mutations.
 Persistent ignored work ledger: `local/phase4a-progress.md`. Record actual commands/results/commit SHAs and independent-review findings there as work proceeds.
 Ruling: work in the explicitly requested clean feature checkout rather than create another worktree; avoids splitting existing local configuration/tools and honors C:\BHLI-Audit workflow. No main implementation commits.
 Ruling: no repeated plan approval; explicit user attachment already authorizes complete implementation and draft publication.

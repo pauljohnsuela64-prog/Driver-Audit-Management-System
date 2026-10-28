@@ -1,0 +1,97 @@
+name: Android foundation
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['mobile/**', 'scripts/mobile_demo.py', 'tests/test_mobile_demo.py', '.github/workflows/mobile-tests.yml']
+  push:
+    branches: [main, 'feat/**']
+    paths: ['mobile/**', 'scripts/mobile_demo.py', 'tests/test_mobile_demo.py', '.github/workflows/mobile-tests.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  android-tests:
+    name: Flutter 3.47.8 / Android foundation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ runner.temp }}/pub-cache
+      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Cache verified Flutter SDK
+        id: sdk-cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ runner.temp }}/flutter-sdk
+          key: flutter-linux-x64-3.47.8-baf7dcc5a3dbba60
+      - name: Install checksum-verified official SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile,urllib.request
+          pin=json.loads(pathlib.Path('toolchain.json').read_text())
+          archive=pathlib.Path(os.environ['RUNNER_TEMP'])/'flutter-sdk.tar.xz'
+          urllib.request.urlretrieve(pin['linux_archive'],archive)
+          digest=hashlib.file_digest(archive.open('rb'),'sha256').hexdigest()
+          assert digest==pin['linux_sha256'],'Flutter SDK checksum mismatch'
+          destination=pathlib.Path(os.environ['RUNNER_TEMP'])/'flutter-sdk'
+          destination.mkdir(exist_ok=True)
+          with tarfile.open(archive) as bundle:bundle.extractall(destination,filter='data')
+          archive.unlink()
+          PY
+      - name: Select SDK and disable tool analytics
+        run: |
+          echo "$RUNNER_TEMP/flutter-sdk/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter-sdk/flutter/bin/flutter" --disable-analytics
+      - name: Verify SDK provenance
+        run: |
+          flutter --version --machine > "$RUNNER_TEMP/flutter-version.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pin=json.loads(pathlib.Path('toolchain.json').read_text())
+          actual=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'flutter-version.json').read_text())
+          assert actual['frameworkRevision']==pin['framework_revision']
+          assert actual['dartSdkVersion']==pin['dart']
+          PY
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21.0.12.1+1'
+      - name: Cache locked Dart and Gradle dependencies
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ env.PUB_CACHE }}
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: android-dependencies-${{ runner.os }}-3.47.8-${{ hashFiles('mobile/pubspec.lock', 'mobile/android/**/*.gradle.kts', 'mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Install only required Android packages
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,subprocess
+          sdk=pathlib.Path(os.environ['ANDROID_HOME'])/'cmdline-tools/latest/bin/sdkmanager'
+          subprocess.run([str(sdk),'platforms;android-36','build-tools;36.0.0','ndk;28.2.13676358'],input='y\n'*20,text=True,check=True)
+          PY
+      - name: Resolve locked application dependencies
+        run: |
+          flutter config --jdk-dir="$JAVA_HOME" --android-sdk="$ANDROID_HOME"
+          flutter pub get --enforce-lockfile
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+      - name: Analyze application and tests
+        run: flutter analyze --fatal-infos
+      - name: Run unit and widget contracts
+        run: flutter test --reporter expanded
+      - name: Build internal debug Android application
+        run: flutter build apk --debug
+      # Debug APKs are test outputs only. Distribution/signing belongs to 4C.

@@ -21,8 +21,9 @@ void main() {
         (origin) => ApiClient(
           origin,
           clientFactory: () => RecordingClient((request) {
-            if (request.url.path == '/auth/me' && delayIdentity)
+            if (request.url.path == '/auth/me' && delayIdentity) {
               return verified.future;
+            }
             return switch (request.url.path) {
               '/auth/login' => jsonResponse(leaseJson()),
               '/auth/me' => jsonResponse(userJson()),
