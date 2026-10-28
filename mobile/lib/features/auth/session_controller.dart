@@ -26,6 +26,8 @@ class SessionController extends ChangeNotifier {
   bool _disposed = false;
   String? _notice;
   int _generation = 0;
+  Future<void>? _resumeVerification;
+  int? _resumeVerificationGeneration;
 
   ApiOrigin? get origin => _origin;
   AuthenticatedUser? get user => _user;
@@ -143,7 +145,23 @@ class SessionController extends ChangeNotifier {
     _emit();
   }
 
-  Future<void> verifyOnResume() async {
+  Future<void> verifyOnResume() {
+    final pending = _resumeVerification;
+    if (pending != null && _resumeVerificationGeneration == _generation) {
+      return pending;
+    }
+    final verification = _verifyOnResume();
+    _resumeVerification = verification;
+    _resumeVerificationGeneration = _generation;
+    return verification.whenComplete(() {
+      if (identical(_resumeVerification, verification)) {
+        _resumeVerification = null;
+        _resumeVerificationGeneration = null;
+      }
+    });
+  }
+
+  Future<void> _verifyOnResume() async {
     if (_disposed || _user == null || _busy) return;
     final SessionLease lease;
     try {

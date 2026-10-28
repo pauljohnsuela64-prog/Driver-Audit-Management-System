@@ -129,6 +129,29 @@ void main() {
   );
 
   test(
+    'failed next page cannot relabel old rows or skip the failed page',
+    () async {
+      final requests = <int>[];
+      final session = await signedIn((request) {
+        final number = int.parse(request.url.queryParameters['page']!);
+        requests.add(number);
+        return number == 2
+            ? jsonResponse({}, status: 503)
+            : jsonResponse(page(1));
+      });
+      final list = AuditListController(session);
+      addTearDown(list.dispose);
+      await list.refresh();
+      await list.next();
+      expect(list.page, isNull);
+      expect(list.query.page, 2);
+      expect(list.error, isNotNull);
+      await list.next();
+      expect(requests, [1, 2]);
+    },
+  );
+
+  test(
     'failed refresh marks retained records stale and sign out erases them',
     () async {
       var offline = false;

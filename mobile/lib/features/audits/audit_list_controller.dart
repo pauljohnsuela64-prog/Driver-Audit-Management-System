@@ -37,6 +37,11 @@ class AuditListController extends ChangeNotifier {
     if (_disposed) return;
     final request = ++_request;
     final generation = _session.generation;
+    // Retain stale rows only when retrying exactly the displayed query. Rows
+    // from another page/filter must not be labeled as the requested result.
+    if (!mapEquals(_query.toQueryParameters(), query.toQueryParameters())) {
+      _page = null;
+    }
     _query = query;
     _loading = true;
     _error = null;
