@@ -1,6 +1,7 @@
 # Python environments, caches and generated packages
 .venv/
 .venv-desktop/
+.venv-build/
 venv/
 __pycache__/
 .pytest_cache/

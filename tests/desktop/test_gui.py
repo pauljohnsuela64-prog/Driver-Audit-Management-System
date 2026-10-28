@@ -25,6 +25,9 @@ def app(native_app):
     from tests.desktop.visual_support import DemoTransport
     native_app.logout('Native test setup',force=True)
     native_app.client=ApiClient(Config(),DemoTransport())
+    from desktop.settings import Endpoint
+    native_app.endpoint=Endpoint(native_app.client.config,'Developer default')
+    native_app.settings_file=None
     pump(native_app)
     native_app.callback_errors.clear()
     yield native_app

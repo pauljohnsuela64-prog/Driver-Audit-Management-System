@@ -74,7 +74,7 @@ def _seed(origin,admin_password,second_admin_password,legacy_password):
 
 
 @contextmanager
-def demonstration(admin_password,second_admin_password):
+def demonstration(admin_password,second_admin_password,*,tls=None):
     """Own a fresh loopback HTTP server and SQLite directory; accept no DB URL/path."""
     # Validate before allocating resources, using the established password contract.
     for password in (admin_password,second_admin_password):
@@ -96,9 +96,10 @@ def demonstration(admin_password,second_admin_password):
             listener.listen(128)
             listener.setblocking(False)
             port=listener.getsockname()[1]
-            origin=f'http://127.0.0.1:{port}'
+            origin=f'{"https" if tls else "http"}://127.0.0.1:{port}'
+            tls_options={'ssl_certfile':str(tls[0]),'ssl_keyfile':str(tls[1])} if tls else {}
             server=uvicorn.Server(uvicorn.Config(create_app(engine=engine),host='127.0.0.1',port=port,
-                access_log=False,log_level='critical',proxy_headers=False,timeout_graceful_shutdown=2))
+                access_log=False,log_level='critical',proxy_headers=False,timeout_graceful_shutdown=2,**tls_options))
             thread=Thread(target=server.run,kwargs={'sockets':[listener]},daemon=True,name='dams-disposable-api')
             thread.start()
             deadline=time.monotonic()+15

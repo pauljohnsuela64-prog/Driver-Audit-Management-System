@@ -1,22 +1,30 @@
 import argparse
 import os
+import sys
 from desktop.api import ApiClient
 from desktop.config import Config
 
 
-def main():
+def main(argv=None):
     parser=argparse.ArgumentParser(description='BHLI Audit Windows desktop')
-    parser.add_argument('--api-url',default=os.getenv('DAMS_DESKTOP_API_URL','http://127.0.0.1:8000'),
+    parser.add_argument('--api-url',default=None,
                         help='HTTPS API origin, or HTTP on loopback')
-    args=parser.parse_args()
-    try:
-        config=Config(args.api_url)
-    except ValueError:
-        parser.exit(2,'Invalid service configuration. Use HTTPS, or HTTP on loopback only.\n')
+    args=parser.parse_args(argv)
+    from desktop.settings import settings_path,resolve_settings,SettingsError
+    from desktop.resources import set_app_identity,running_mutex,release_mutex
+    try:path=settings_path()
+    except SettingsError:path=None
+    endpoint=resolve_settings(args.api_url,os.environ,path,getattr(sys,'frozen',False))
     import customtkinter as ctk
     from desktop.app import Application
     ctk.set_appearance_mode('Light')
-    Application(ApiClient(config)).mainloop()
+    set_app_identity()
+    handle=running_mutex()
+    try:
+        app=Application(ApiClient(endpoint.config or Config()),endpoint,path)
+        if endpoint.config is None:app.after(100,app.open_connection)
+        app.mainloop()
+    finally:release_mutex(handle)
 
 
 if __name__=='__main__':

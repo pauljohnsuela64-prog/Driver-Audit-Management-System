@@ -16,7 +16,7 @@ from desktop.theme import color
 
 
 class Application(ctk.CTk):
-    def __init__(self,client):
+    def __init__(self,client,endpoint=None,settings_file=None):
         self.collector=UiCollector()
         try:
             super().__init__()
@@ -28,6 +28,10 @@ class Application(ctk.CTk):
         self.tk.call('auto_load','tk_focusNext')
         self.tk.call('auto_load','tk_focusPrev')
         self.client=client
+        from desktop.settings import Endpoint
+        from desktop.config import Config
+        self.endpoint=endpoint or Endpoint(getattr(client,'config',Config()),'Developer default')
+        self.settings_file=settings_file
         self.session=SessionState()
         self.tasks=Tasks()
         self.revocations=Tasks(workers=1,capacity=8)
@@ -48,6 +52,9 @@ class Application(ctk.CTk):
         self.query=AuditQuery()
         self.selected_id=None
         self.title('BHLI Audit')
+        from desktop.resources import resource_path
+        icon=resource_path('bhli.ico')
+        if icon.exists():self.iconbitmap(default=str(icon))
         scale=self._get_window_scaling()
         width,height=min(1280,int(self.winfo_screenwidth()/scale)-40),min(800,int(self.winfo_screenheight()/scale)-80)
         self.geometry(f'{width}x{height}')
@@ -87,7 +94,7 @@ class Application(ctk.CTk):
             if not self.closing:
                 self.after(30,self.poll)
 
-    def show_login(self,message=''):
+    def show_login(self,message='',error=True):
         if self.screen and hasattr(self.screen,'on_leave'):self.screen.on_leave()
         if self.shell:
             destroy_view(self.shell)
@@ -95,10 +102,12 @@ class Application(ctk.CTk):
         elif self.screen:
             destroy_view(self.screen)
         self.destination=''
-        self.screen=LoginScreen(self,self,message)
+        self.screen=LoginScreen(self,self,message,error)
         self.screen.pack(fill='both',expand=True)
 
     def sign_in(self,username,password,finished):
+        if self.endpoint.config is None:
+            finished(None,ApiError(message='Configure the API connection before signing in.'));return
         from desktop.account_operations import desktop_sign_in
         client=self.client
         def accepted(result,error):
@@ -117,6 +126,11 @@ class Application(ctk.CTk):
         if not self.tasks.submit('login',lambda: desktop_sign_in(client,username,password),accepted,
                                  lambda result: client.logout(result.token)):
             finished(None,ApiError(message='Requests are busy. Please try again.'))
+
+    def open_connection(self):
+        if self.session.login or self.dialog or getattr(self.screen,'pending',False):return
+        from desktop.screens.connection import Connection
+        Connection(self)
 
     def request(self,work,done):
         remaining=max(0,math.ceil(self.retry_until-time.monotonic()))

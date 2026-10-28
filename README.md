@@ -49,6 +49,10 @@ for a draft PR and engineering review.
 
 ## Windows desktop
 
+For the Windows 11 x64 installer, first-launch API configuration, upgrades and
+disposable packaged demo, see [Windows installation](docs/WINDOWS_INSTALLATION.md).
+Phase 3E artifacts are unsigned test candidates pending release acceptance.
+
 Install `requirements-desktop.txt` separately, then run `python -m desktop` from
 `C:\BHLI-Audit`. See [desktop setup, security, testing and limitations](docs/WINDOWS_DESKTOP.md)
 and the [approved visual/architecture design](docs/superpowers/specs/2026-10-26-phase3a-desktop-design.md).

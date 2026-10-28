@@ -83,6 +83,7 @@ def retry_seconds(value):
 
 class ApiClient:
     def __init__(self, config: Config, transport=None):
+        self.config=config
         self.transport = transport or HttpTransport(config)
 
     def _request(self, method, path, token=None, payload=None, conditional=None):
@@ -129,6 +130,11 @@ class ApiClient:
             return parser(data, *args)
         except (ValueError, KeyError, TypeError, AttributeError, OverflowError):
             raise ApiError(502, message='The service returned an invalid response.') from None
+
+    def health(self):
+        data,_=self._request('GET','/health')
+        if data!={'status':'ok'}:raise ApiError(502,message='The service returned an invalid health response.')
+        return True
 
     def login(self, username, password):
         if not isinstance(username, str) or not 1 <= len(username.strip()) <= 100 or not isinstance(password, str) or not 1 <= len(password) <= 128:
