@@ -19,8 +19,6 @@ jobs:
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
-      PUB_CACHE: ${{ runner.temp }}/pub-cache
-      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
     defaults:
       run:
         working-directory: mobile
@@ -28,6 +26,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - name: Initialize isolated dependency caches
+        run: |
+          echo "PUB_CACHE=$RUNNER_TEMP/pub-cache" >> "$GITHUB_ENV"
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-home" >> "$GITHUB_ENV"
       - name: Cache verified Flutter SDK
         id: sdk-cache
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
