@@ -18,7 +18,7 @@ def validate_badging(text):
     import re
     match = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", text)
     if (not match or match.groups() != ('com.bhli.audit.mobile', '2', '1.0.0')
-            or "sdkVersion:'24'" not in text or 'application-debuggable' not in text):
+            or "minSdkVersion:'24'" not in text or 'application-debuggable' not in text):
         raise ValueError('Unexpected APK identity/build')
 
 

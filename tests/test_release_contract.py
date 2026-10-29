@@ -57,6 +57,20 @@ def test_candidate_inventory_rejects_stale_installer(tmp_path):
         candidate_installers(tmp_path)
 
 
+@pytest.mark.parametrize('outside', [False, True])
+def test_windows_output_guard_preserves_existing_files(tmp_path, monkeypatch, outside):
+    from scripts import build_windows as builder
+    monkeypatch.setattr(builder, 'ROOT', tmp_path)
+    monkeypatch.setattr(builder.sys, 'platform', 'win32')
+    monkeypatch.setattr(builder.platform, 'machine', lambda: 'AMD64')
+    output = tmp_path / ('outside' if outside else 'dist/candidate')
+    output.mkdir(parents=True)
+    sentinel = output/'owned-file.txt'; sentinel.write_text('preserve')
+    with pytest.raises(SystemExit, match='inside|empty'):
+        builder.build('unused-compiler', output)
+    assert sentinel.read_text() == 'preserve'
+
+
 def test_apk_notices_preserve_flutter_and_native_licenses(tmp_path):
     from scripts.android_candidate import apk_notices
     apk = tmp_path/'app.apk'
@@ -100,7 +114,7 @@ def test_candidate_checksums_match_actual_bytes_and_refuse_overwrite(tmp_path, m
                                    ('application-debuggable', '')])
 def test_android_candidate_rejects_wrong_actual_manifest(old, new):
     from scripts.android_candidate import validate_badging
-    valid = "package: name='com.bhli.audit.mobile' versionCode='2' versionName='1.0.0'\nsdkVersion:'24'\napplication-debuggable\n"
+    valid = "package: name='com.bhli.audit.mobile' versionCode='2' versionName='1.0.0'\nminSdkVersion:'24'\napplication-debuggable\n"
     validate_badging(valid)
     with pytest.raises(ValueError, match='identity/build'):
         validate_badging(valid.replace(old, new))
