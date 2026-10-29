@@ -89,10 +89,10 @@
 **Consumes:** history models and permissions. History uses page10, oldest event first; ADMIN archive flag propagates only to authorized list/detail/history requests. Audit-list pages remain25.
 **Produces:** event cards with actor ID, timestamp/timezone and allowlisted field changes; no user lookup dependency.
 
-- [ ] RED: shared active history both roles, archived history ADMIN-only, hidden archive control for AUDITOR, unexpected archived response rejected in active-only mode.
-- [ ] RED: actor ID is distinct from Audited By; unknown/private snapshot keys never rendered; null/Unicode/long values, absent before-data for CREATE and DELETE lifecycle state, page bounds and superseded results. Serialize ten maximum-size before/after events using the actual backend JSONResponse, including six-byte-escaped controls; assert body below2MiB. Reject unexpectedly oversized responses without truncation.
-- [ ] Implement explicit Include archived switch, read-only archived details, history paging/refresh/loading/error states and expandable labeled comparisons.
-- [ ] GREEN history/archive widgets and transport regressions; checkpoint commit.
+- [x] RED: shared active history both roles, archived history ADMIN-only, hidden archive control for AUDITOR, unexpected archived response rejected in active-only mode.
+- [x] RED: actor ID is distinct from Audited By; unknown/private snapshot keys never rendered; null/Unicode/long values, absent before-data for CREATE and DELETE lifecycle state, page bounds and superseded results. Serialize ten maximum-size before/after events using the actual backend JSONResponse, including six-byte-escaped controls; assert body below2MiB. Reject unexpectedly oversized responses without truncation.
+- [x] Implement explicit Include archived switch, read-only archived details, history paging/refresh/loading/error states and expandable labeled comparisons.
+- [x] GREEN history/archive widgets and transport regressions; checkpoint commit.
 
 ## Task 6 — Real API, fault injection, native acceptance and publication gate
 
@@ -199,3 +199,43 @@ Task4 only is complete. Task5 history/full archive browsing and Task6 acceptance
 remain deferred pending authorization. Backend, Windows, schema, migrations,
 grants, dependencies and production data are unchanged. Local commit only;
 no push, pull request or merge is authorized for this checkpoint.
+
+
+Checkpoint 5 completed (2026-10-29): dedicated read-only history with ten events
+per page in backend oldest-first order, Created/Updated/Archived actions, actor
+account IDs (never inferred names), local timestamp/timezone and expandable UTC
+and allowlisted previous/updated values. Seven business fields and archive status
+are projected; arbitrary metadata never becomes displayable history. ADMIN-only
+Include archived defaults off and means active plus archived, preserving list25,
+search/filter/sort/pagination. Explicit permission-checked mode propagates to
+read-only archived details/history; active-only parsing remains strict.
+
+Verification: baseline186 reverified; full Flutter suite **213 passed, zero
+failures/skips** (27 new history/archive regressions). Focused32 passed including
+5 existing list-controller tests. `flutter analyze --fatal-infos` reports no
+issues; formatting checks50 Dart files without changes. Three pure Python
+serialization tests pass without API/database fixtures. Actual JSONResponse:
+ten maximum escaped-control before/after events =1,302,356 bytes; ten maximum
+Unicode events =871,156 bytes;25 worst-case events =3,255,821 bytes. Thus history10
+fits the unchanged2MiB cap, while list page size25 must not be reused for history.
+Oversized streamed history is rejected safely without partial/truncated events.
+Local ignored evidence: `artifacts/phase4b-cp5-{baseline,focused-final,full-final,
+analyze-final,format-final,serialization-final}.txt` and targeted RED/GREEN logs.
+
+Independent engineering/security and mobile-UX review found no residual confirmed
+blockers after corrections: late archived response suppression across same-session
+role downgrade, initial unauthorized-history unavailable feedback, unexpected
+resume account-ID mismatch invalidation, and archive-control visibility updates
+when role changes with the switch off. Same-account role changes remain supported.
+Existing test doubles were adapted only for the optional explicit read-mode
+argument; their assertions remain intact. Only reported brace lints were fixed.
+Both themes320dp200%,300%landscape/tablet,10,000-codepoint Unicode/null comparisons,
+archived read-only detail/history/Back and measured History-action48dp pass widget
+checks. Material semantics are source-supported; comprehensive focus/target audits,
+actual TalkBack, physical/native Android and real-server mutation acceptance remain
+unverified for Task6.
+
+Task5 only is complete. Task6 remains deferred pending authorization. No backend
+business logic, Windows, schema, migration, grant, dependency or production change.
+The added backend-schema serialization test exercises existing behavior only.
+Local commit only; no push, PR or merge.

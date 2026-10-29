@@ -207,6 +207,10 @@ class SessionController extends ChangeNotifier {
       final identity = await api.me(lease.accessToken);
       if (!_current(requestGeneration)) return;
       _requireLease();
+      if (identity.id != _user?.id) {
+        _invalidate('Your account changed. Sign in again.');
+        return;
+      }
       _user = identity;
     } on ApiFailure catch (failure) {
       if (_current(requestGeneration)) {
@@ -223,7 +227,10 @@ class SessionController extends ChangeNotifier {
     }
   }
 
-  Future<AuditPage> fetchAudits(AuditQuery query) async {
+  Future<AuditPage> fetchAudits(
+    AuditQuery query, {
+    bool includeDeleted = false,
+  }) async {
     _requireLease();
     cancelAuditList();
     final api = _apiFactory(_origin!);
@@ -231,7 +238,14 @@ class SessionController extends ChangeNotifier {
     try {
       return await _read(
         api,
-        (client, lease) => client.audits(lease.accessToken, query),
+        (client, lease) => client.audits(
+          lease.accessToken,
+          query,
+          access: includeDeleted
+              ? AuditAccess.archivedFor(_user!)
+              : AuditAccess.active,
+        ),
+        includeDeleted: includeDeleted,
       );
     } finally {
       if (identical(_listApi, api)) _listApi = null;
@@ -317,16 +331,20 @@ class SessionController extends ChangeNotifier {
   Future<AuditRecord> _reviewAudit(int id, bool includeDeleted) async {
     final generation = _generation;
     await _awaitResume(generation);
-    final access = includeDeleted
-        ? AuditAccess.archivedFor(_user!)
-        : AuditAccess.active;
     _reviewApi?.cancelAll();
     final api = _apiFactory(_origin!);
     _reviewApi = api;
     try {
       return await _read(
         api,
-        (client, lease) => client.audit(lease.accessToken, id, access: access),
+        (client, lease) => client.audit(
+          lease.accessToken,
+          id,
+          access: includeDeleted
+              ? AuditAccess.archivedFor(_user!)
+              : AuditAccess.active,
+        ),
+        includeDeleted: includeDeleted,
       );
     } finally {
       if (identical(_reviewApi, api)) _reviewApi = null;
@@ -340,9 +358,6 @@ class SessionController extends ChangeNotifier {
   }) async {
     final generation = _generation;
     await _awaitResume(generation);
-    final access = includeDeleted
-        ? AuditAccess.archivedFor(_user!)
-        : AuditAccess.active;
     _historyApi?.cancelAll();
     final api = _apiFactory(_origin!);
     _historyApi = api;
@@ -353,15 +368,18 @@ class SessionController extends ChangeNotifier {
           lease.accessToken,
           id,
           page: page,
-          access: access,
+          access: includeDeleted
+              ? AuditAccess.archivedFor(_user!)
+              : AuditAccess.active,
         ),
+        includeDeleted: includeDeleted,
       );
     } finally {
       if (identical(_historyApi, api)) _historyApi = null;
     }
   }
 
-  Future<AuditRecord> fetchAudit(int id) async {
+  Future<AuditRecord> fetchAudit(int id, {bool includeDeleted = false}) async {
     _requireLease();
     cancelAuditDetail();
     final api = _apiFactory(_origin!);
@@ -369,7 +387,14 @@ class SessionController extends ChangeNotifier {
     try {
       return await _read(
         api,
-        (client, lease) => client.audit(lease.accessToken, id),
+        (client, lease) => client.audit(
+          lease.accessToken,
+          id,
+          access: includeDeleted
+              ? AuditAccess.archivedFor(_user!)
+              : AuditAccess.active,
+        ),
+        includeDeleted: includeDeleted,
       );
     } finally {
       if (identical(_detailApi, api)) _detailApi = null;
@@ -402,15 +427,25 @@ class SessionController extends ChangeNotifier {
 
   Future<T> _read<T>(
     ApiClient api,
-    Future<T> Function(ApiClient, SessionLease) operation,
-  ) async {
-    final lease = _requireLease();
-    if (_busy) throw ApiFailure.busy;
+    Future<T> Function(ApiClient, SessionLease) operation, {
+    bool includeDeleted = false,
+  }) async {
     final requestGeneration = _generation;
+    await _awaitResume(requestGeneration);
+    while (_resumeVerificationGeneration == requestGeneration &&
+        _resumeVerification != null) {
+      await _awaitResume(requestGeneration);
+    }
+    final lease = _requireLease();
+    if (includeDeleted) AuditAccess.archivedFor(_user!);
     try {
       final result = await operation(api, lease);
-      if (!_current(requestGeneration)) throw ApiFailure.canceled;
-      _requireLease();
+      await _awaitResume(requestGeneration);
+      while (_resumeVerificationGeneration == requestGeneration &&
+          _resumeVerification != null) {
+        await _awaitResume(requestGeneration);
+      }
+      if (includeDeleted) AuditAccess.archivedFor(_user!);
       return result;
     } on ApiFailure catch (failure) {
       if (_current(requestGeneration) && failure.status == 401) {

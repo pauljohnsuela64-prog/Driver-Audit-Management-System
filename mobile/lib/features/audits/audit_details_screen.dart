@@ -4,6 +4,7 @@ import '../../core/network/api_failure.dart';
 import '../../ui/core/content.dart';
 import '../auth/session_controller.dart';
 import 'models.dart';
+import 'audit_history_screen.dart';
 import 'audit_form_screen.dart';
 import 'audit_permissions.dart';
 import 'audit_mutation_controller.dart';
@@ -14,6 +15,7 @@ class AuditDetailsScreen extends StatefulWidget {
     required this.session,
     required this.auditId,
     this.initialRecord,
+    this.includeArchived = false,
     this.savedMessage,
     this.onSaved,
     this.onVisibilityChanged,
@@ -21,6 +23,7 @@ class AuditDetailsScreen extends StatefulWidget {
   });
   final SessionController session;
   final int auditId;
+  final bool includeArchived;
   final AuditRecord? initialRecord;
   final String? savedMessage;
   final Future<void> Function(AuditFormResult)? onSaved;
@@ -332,13 +335,19 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
       _error = null;
     });
     try {
-      final record = await widget.session.fetchAudit(widget.auditId);
+      final record = await widget.session.fetchAudit(
+        widget.auditId,
+        includeDeleted: widget.includeArchived,
+      );
       if (!mounted ||
           request != _request ||
           generation != widget.session.generation) {
         return;
       }
       setState(() {
+        if (widget.includeArchived && widget.session.user?.role != 'ADMIN') {
+          return;
+        }
         _record = record;
       });
     } on ApiFailure catch (failure) {
@@ -403,7 +412,11 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
               const SizedBox(height: 16),
               if (_savedMessage case final message?) StatusMessage(message),
               if (record?.deletedAt != null)
-                const StatusMessage('Archived · Read-only'),
+                const ListTile(
+                  leading: Icon(Icons.archive_outlined),
+                  title: Text('Archived \u00b7 Read-only'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               if (widget.session.user?.role == 'ADMIN' &&
                   (_archiveNeedsReview ||
                       (record != null &&
@@ -437,6 +450,31 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
                         : _edit,
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Edit'),
+                  ),
+                ),
+              if (record != null &&
+                  widget.session.user != null &&
+                  (record.deletedAt == null ||
+                      (widget.includeArchived &&
+                          AuditPermissions.canIncludeArchived(
+                            widget.session.user!,
+                          ))))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _loading || _editing
+                        ? null
+                        : () => Navigator.of(context).push<void>(
+                            MaterialPageRoute(
+                              builder: (_) => AuditHistoryScreen(
+                                session: widget.session,
+                                auditId: widget.auditId,
+                                includeArchived: widget.includeArchived,
+                              ),
+                            ),
+                          ),
+                    icon: const Icon(Icons.history),
+                    label: const Text('History'),
                   ),
                 ),
               Align(

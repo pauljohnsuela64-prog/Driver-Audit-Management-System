@@ -16,7 +16,10 @@ class AuditReadSession extends SessionController {
   @override
   int get generation => 1;
   @override
-  Future<AuditPage> fetchAudits(AuditQuery query) async {
+  Future<AuditPage> fetchAudits(
+    AuditQuery query, {
+    bool includeDeleted = false,
+  }) async {
     queries.add(query);
     if (offline) throw ApiFailure.network;
     return AuditPage.fromJson({
@@ -28,7 +31,7 @@ class AuditReadSession extends SessionController {
   }
 
   @override
-  Future<AuditRecord> fetchAudit(int id) async {
+  Future<AuditRecord> fetchAudit(int id, {bool includeDeleted = false}) async {
     if (missing) throw ApiFailure.fromStatus(404);
     return AuditRecord.fromJson(auditJson());
   }

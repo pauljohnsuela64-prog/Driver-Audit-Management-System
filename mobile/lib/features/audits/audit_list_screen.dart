@@ -90,7 +90,11 @@ class _AuditListScreenState extends State<AuditListScreen> {
   Future<void> _afterArchived() async {
     if (!mounted || widget.session.user == null) return;
     final generation = widget.session.generation;
-    setState(() => _savedMessage = 'Audit archived.');
+    setState(
+      () => _savedMessage = _list.includeArchived
+          ? 'Audit archived. Its read-only row may remain visible while Include archived is enabled.'
+          : 'Audit archived.',
+    );
     await _list.refresh();
     if (!mounted || generation != widget.session.generation) return;
     if (_list.error != null) {
@@ -334,6 +338,14 @@ class _AuditListScreenState extends State<AuditListScreen> {
           ),
         ],
         if (_savedMessage case final message?) StatusMessage(message),
+        if (_list.canIncludeArchived)
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Include archived'),
+            subtitle: const Text('Show active and archived audits'),
+            value: _list.includeArchived,
+            onChanged: (value) => _list.setIncludeArchived(value),
+          ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           initialValue: _searchField,
@@ -546,6 +558,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
                                 builder: (_) => AuditDetailsScreen(
                                   session: widget.session,
                                   auditId: record.id,
+                                  includeArchived: _list.includeArchived,
                                   onSaved: _afterSaved,
                                   onVisibilityChanged: _list.refresh,
                                   onArchived: _afterArchived,
@@ -563,6 +576,12 @@ class _AuditListScreenState extends State<AuditListScreen> {
                                         .textTheme
                                         .titleMedium,
                                   ),
+                                  if (record.deletedAt != null)
+                                    const ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: Icon(Icons.archive_outlined),
+                                      title: Text('Archived \u00b7 Read-only'),
+                                    ),
                                   const SizedBox(height: 8),
                                   Text(
                                     '${record.auditDate} · ${record.station}',
