@@ -65,10 +65,26 @@ class AuditMutationController extends ChangeNotifier {
   final Future<AuditRecord> Function(int, bool) _review;
   AuditMutationState _state = const AuditMutationState();
   PendingAuditCreate? _pendingCreate;
+  bool _createWasUnconfirmed = false;
   int _epoch = 0;
   bool _disposed = false;
   AuditMutationState get state => _state;
   PendingAuditCreate? get pendingCreate => _pendingCreate;
+  bool get canCorrectRejectedCreate =>
+      !busy &&
+      _pendingCreate != null &&
+      !_createWasUnconfirmed &&
+      _state.phase == AuditMutationPhase.rejected &&
+      _state.failure?.status == 422;
+  void releaseRejectedCreate() {
+    if (!canCorrectRejectedCreate) {
+      throw const AuditMutationFailure(ApiFailure.busy, unconfirmed: false);
+    }
+    _pendingCreate = null;
+    _createWasUnconfirmed = false;
+    _set(const AuditMutationState());
+  }
+
   bool get busy => _state.phase == AuditMutationPhase.sending;
 
   void _available({bool retry = false}) {
@@ -91,6 +107,7 @@ class AuditMutationController extends ChangeNotifier {
 
   Future<AuditMutationResult> create(PendingAuditCreate attempt) {
     _available(retry: identical(attempt, _pendingCreate));
+    if (_pendingCreate == null) _createWasUnconfirmed = false;
     _pendingCreate = attempt;
     return _run(AuditMutationKind.create, () => _create(attempt));
   }
@@ -160,7 +177,10 @@ class AuditMutationController extends ChangeNotifier {
           unconfirmed: true,
         );
       }
-      if (kind == AuditMutationKind.create) _pendingCreate = null;
+      if (kind == AuditMutationKind.create) {
+        _pendingCreate = null;
+        _createWasUnconfirmed = false;
+      }
       _set(
         AuditMutationState(
           phase: AuditMutationPhase.confirmed,
@@ -185,6 +205,10 @@ class AuditMutationController extends ChangeNotifier {
       return result;
     } on AuditMutationFailure catch (error) {
       if (epoch == _epoch && !_disposed) {
+        if (kind == AuditMutationKind.create &&
+            (error.unconfirmed || error.failure.status == 409)) {
+          _createWasUnconfirmed = true;
+        }
         final status = error.failure.status;
         final phase = status == 409 || status == 412
             ? AuditMutationPhase.conflict
@@ -213,6 +237,7 @@ class AuditMutationController extends ChangeNotifier {
       throw const AuditMutationFailure(ApiFailure.busy, unconfirmed: false);
     }
     _pendingCreate = null;
+    _createWasUnconfirmed = false;
     _set(const AuditMutationState());
   }
 
@@ -280,6 +305,7 @@ class AuditMutationController extends ChangeNotifier {
   void clearForSessionChange() {
     _epoch++;
     _pendingCreate = null;
+    _createWasUnconfirmed = false;
     _set(const AuditMutationState());
   }
 
@@ -295,6 +321,7 @@ class AuditMutationController extends ChangeNotifier {
     _disposed = true;
     _epoch++;
     _pendingCreate = null;
+    _createWasUnconfirmed = false;
     _state = const AuditMutationState();
     super.dispose();
   }

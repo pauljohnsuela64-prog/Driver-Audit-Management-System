@@ -63,10 +63,10 @@
 **Consumes:** permissions, draft validation, token-free mutation methods and state from Tasks 1–2.
 **Produces:** create/edit routes returning a typed confirmed mutation result or no change, without leaking credentials or treating list refresh as part of the committed write.
 
-- [ ] RED widget tests: six fields/immutable attribution, required/optional limits, Unicode/paste/IME, date picker/manual date, changed-only patch, duplicate submission, dirty Back, uncertainty warning and same-key Retry. Keyboard Back dismisses IME before route navigation; Next moves single-line focus and Remarks keeps newline behavior. Verify stacked/wrapped actions at largest supported text size.
-- [ ] Implement full-screen scrollable phone form and readable tablet width; safe-area/IME-aware Save/Cancel, first-error focus, semantics and 48dp targets. No autosave or silent truncation.
-- [ ] After confirmed save refresh detail and list page1 with applied filters; show saved-but-not-in-filter and refresh-failed feedback separately.
-- [ ] GREEN both themes, 320dp/200% text and keyboard layouts, existing read-only regressions; checkpoint commit.
+- [x] RED widget tests: six fields/immutable attribution, required/optional limits, Unicode/paste/IME, date picker/manual date, changed-only patch, duplicate submission, dirty Back, uncertainty warning and same-key Retry. Keyboard Back dismisses IME before route navigation; Next moves single-line focus and Remarks keeps newline behavior. Verify stacked/wrapped actions at largest supported text size.
+- [x] Implement full-screen scrollable phone form and readable tablet width; safe-area/IME-aware Save/Cancel, first-error focus, semantics and 48dp targets. No autosave or silent truncation.
+- [x] After confirmed save refresh detail and list page1 with applied filters; show saved-but-not-in-filter and refresh-failed feedback separately.
+- [x] GREEN both themes, 320dp/200% text and keyboard layouts, existing read-only regressions; checkpoint commit.
 
 ## Task 4 — Conflict review and ADMIN soft deletion
 
@@ -137,3 +137,31 @@ deferred to their assigned later checkpoints. Cancellation cannot undo a server
 transaction, and process death/logout deliberately erases retry information.
 Tasks 3–6 remain unchecked and unimplemented. No push or PR is authorized.
 Stop after the local Checkpoint 2 commit and await operator review.
+
+
+Checkpoint 3 completed (2026-10-29): accessible six-field create/edit forms,
+server-owned attribution, fresh ETag entry, changed-only PATCH, permission-aware
+entry points, session-memory frozen retries, explicit abandonment/discard, and
+filter-preserving page-1 refresh with separate save/refresh feedback. Minimal
+reload/discard gates unresolved edits; per-field conflict review remains Task 4.
+
+Verification: original 119 tests reverified before implementation; final full
+Flutter suite **160 passed, zero failures/skips** (27 form/controller, 12 navigation,
+2 rejected-create regressions plus the original 119). `flutter analyze --fatal-infos`
+reports no issues; formatting checks all 44 Dart files with no changes.
+Local ignored evidence: `artifacts/phase4b-cp3-full-final.txt`,
+`phase4b-cp3-analyze-final.txt`, and focused RED/GREEN logs.
+
+Independent engineering/security and mobile-UX reviews found and verified fixes
+for definite first-422 draft freezing (without releasing previously uncertain
+attempts), interruption guidance, keyboard/exit-dialog behavior, nested-navigator
+save completion, and terminal 403/404 draft clearing/identity revalidation plus
+visibility refresh (including failed refresh). Both themes, portrait/landscape at
+200% text, compact320dp, first-error focus and keyboard Back pass widget checks.
+No residual confirmed review blockers. No broad `dart fix` changes are included;
+final lint corrections were targeted braces in changed files only.
+
+Native Android/emulator, physical-device/TalkBack, real-server mutation integration
+and eventual full backend/hosted verification remain Task 6. No such acceptance is
+claimed here. Tasks 4?6 remain unimplemented and require further authorization.
+No backend, Windows, schema, migration, grant, dependency or production changes.

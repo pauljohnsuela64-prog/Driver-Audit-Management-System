@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/network/api_failure.dart';
@@ -6,6 +8,10 @@ import '../auth/session_controller.dart';
 import 'audit_list_controller.dart';
 import 'audit_details_screen.dart';
 import 'models.dart';
+import 'audit_form_screen.dart';
+import 'audit_mutation_controller.dart';
+import 'audit_permissions.dart';
+import 'audit_draft.dart';
 
 class AuditListScreen extends StatefulWidget {
   const AuditListScreen({
@@ -28,11 +34,21 @@ class _AuditListScreenState extends State<AuditListScreen> {
   DateTime? _from;
   DateTime? _to;
   String? _validation;
+  String? _savedMessage;
+  String? _savedKey;
+  bool _openingForm = false;
+  bool get _needsReload =>
+      widget.session.mutations.pendingCreate == null &&
+      {
+        AuditMutationPhase.unknown,
+        AuditMutationPhase.conflict,
+      }.contains(widget.session.mutations.state.phase);
 
   @override
   void initState() {
     super.initState();
     _list = AuditListController(widget.session)..addListener(_changed);
+    widget.session.mutations.addListener(_mutationChanged);
     _list.refresh();
   }
 
@@ -40,8 +56,131 @@ class _AuditListScreenState extends State<AuditListScreen> {
     if (mounted) setState(() {});
   }
 
+  void _mutationChanged() {
+    if (!mounted) return;
+    final state = widget.session.mutations.state;
+    if (state.phase == AuditMutationPhase.sending) _savedMessage = null;
+    if (state.phase == AuditMutationPhase.confirmed && state.record != null) {
+      unawaited(
+        _afterSaved(AuditFormResult(state.record!, replayed: state.replayed)),
+      );
+    }
+    _changed();
+  }
+
+  String _saveMessage(AuditFormResult result) {
+    final saved = result.replayed
+        ? 'Previously saved audit recovered.'
+        : 'Audit saved.';
+    return _filtered
+        ? '$saved Active filters are preserved; this audit may not appear in the list.'
+        : saved;
+  }
+
+  Future<void> _afterSaved(AuditFormResult result) async {
+    if (!mounted || widget.session.user == null) return;
+    final key =
+        '${widget.session.generation}:${result.record.id}:${result.record.version}';
+    if (_savedKey == key) return;
+    _savedKey = key;
+    setState(() => _savedMessage = _saveMessage(result));
+    await _list.refresh();
+  }
+
+  Future<void> _newAudit({bool review = false}) async {
+    if (_openingForm || !mounted) return;
+    setState(() {
+      _openingForm = true;
+      _savedMessage = null;
+      _validation = null;
+    });
+    try {
+      await _openNewAudit(review: review);
+    } finally {
+      if (mounted) setState(() => _openingForm = false);
+    }
+  }
+
+  Future<void> _openNewAudit({bool review = false}) async {
+    final user = widget.session.user;
+    if (user == null ||
+        !AuditPermissions.canCreate(user) ||
+        widget.session.mutations.busy) {
+      return;
+    }
+    if (_needsReload) {
+      setState(
+        () => _validation = 'A previous audit save needs review. Open that audit and reload it before another save.',
+      );
+      return;
+    }
+    final generation = widget.session.generation;
+    PendingAuditCreate? pending = widget.session.mutations.pendingCreate;
+    if (pending != null && !review) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Unconfirmed audit save'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'This audit may already exist. Resume the same save, or abandon its retry information. Creating again after abandonment could duplicate an audit.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'resume'),
+              child: const Text('Resume unconfirmed save'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'abandon'),
+              child: const Text('Abandon retry information'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted ||
+          generation != widget.session.generation ||
+          choice == null) {
+        return;
+      }
+      if (choice == 'abandon') {
+        widget.session.mutations.abandonCreate(acknowledgeDuplicateRisk: true);
+        pending = null;
+      }
+    }
+    if (!mounted || generation != widget.session.generation) return;
+    final result = await Navigator.of(context).push<AuditFormResult>(
+      MaterialPageRoute(
+        builder: (_) =>
+            AuditFormScreen(session: widget.session, pendingCreate: pending),
+      ),
+    );
+    if (!mounted || generation != widget.session.generation || result == null) {
+      return;
+    }
+    await _afterSaved(result);
+    if (!mounted || generation != widget.session.generation) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AuditDetailsScreen(
+          session: widget.session,
+          auditId: result.record.id,
+          initialRecord: result.record,
+          savedMessage: _saveMessage(result),
+          onSaved: _afterSaved,
+          onVisibilityChanged: _list.refresh,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    widget.session.mutations.removeListener(_mutationChanged);
     _list.removeListener(_changed);
     _list.dispose();
     _search.dispose();
@@ -65,6 +204,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
       );
       setState(() {
         _validation = null;
+        _savedMessage = null;
       });
       FocusScope.of(context).unfocus();
       _list.apply(query);
@@ -84,6 +224,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
       _to = null;
       _sort = '-id';
       _validation = null;
+      _savedMessage = null;
     });
     _list.apply(AuditQuery());
   }
@@ -121,6 +262,61 @@ class _AuditListScreenState extends State<AuditListScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Driver Audits', style: Theme.of(context).textTheme.headlineSmall),
+        if (widget.session.user case final user?)
+          if (AuditPermissions.canCreate(user))
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: FilledButton.icon(
+                  onPressed: widget.session.mutations.busy || _openingForm
+                      ? null
+                      : () => _newAudit(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Audit'),
+                ),
+              ),
+            ),
+        if (widget.session.mutations.pendingCreate != null) ...[
+          StatusMessage(
+            widget.session.mutations.busy
+                ? 'Audit save in progress.'
+                : 'Unconfirmed audit save. The audit may already exist.',
+            error: true,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(
+              onPressed: widget.session.mutations.busy || _openingForm
+                  ? null
+                  : () => _newAudit(review: true),
+              child: const Text('Review unconfirmed save'),
+            ),
+          ),
+        ],
+        if (_needsReload && widget.session.mutations.state.auditId != null) ...[
+          const StatusMessage(
+            'A previous audit save needs reload. It may already have completed.',
+            error: true,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => AuditDetailsScreen(
+                    session: widget.session,
+                    auditId: widget.session.mutations.state.auditId!,
+                    onSaved: _afterSaved,
+                    onVisibilityChanged: _list.refresh,
+                  ),
+                ),
+              ),
+              child: const Text('Open audit to reload'),
+            ),
+          ),
+        ],
+        if (_savedMessage case final message?) StatusMessage(message),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           initialValue: _searchField,
@@ -333,6 +529,8 @@ class _AuditListScreenState extends State<AuditListScreen> {
                                 builder: (_) => AuditDetailsScreen(
                                   session: widget.session,
                                   auditId: record.id,
+                                  onSaved: _afterSaved,
+                                  onVisibilityChanged: _list.refresh,
                                 ),
                               ),
                             ),
