@@ -98,11 +98,11 @@
 
 **Extend:** `scripts/mobile_demo.py`, `tests/test_mobile_demo.py`, `mobile/integration_test/`, `test_driver/` and Android verification/development documentation. Use a second fictional AUDITOR to test stable-ID ownership; keep production isolation hard-coded.
 
-- [ ] RED/GREEN disposable API cases: create/replay, shared reads, owner/non-owner edits, ADMIN edits/deletes, exact history and immutable attribution, archive restrictions, duplicate plates and concurrent same-key/edit/delete requests.
-- [ ] Test-only fault adapter drops mutation responses after backend commit; assert exactly one CREATE event on retry, stale PATCH protection and honest uncertain DELETE handling. No shipping auth bypass.
-- [ ] Run `dart format --output=none --set-exit-if-changed lib test integration_test test_driver`, `flutter analyze --fatal-infos`, full `flutter test`, real-API native acceptance and serial default/isolated-MySQL regressions. Preserve existing Windows and installer checks.
-- [ ] Native fictional walkthrough: both roles, second AUDITOR denial, touch/keyboard/Back/dirty discard, conflict/history, themes, compact/landscape/large text, background/logout/process death and safe shutdown. Capture genuine screenshots; explicitly report unavailable API24/physical/TalkBack/TLS checks.
-- [ ] Independent engineering/security and mobile-UX reviews; reproduce and fix confirmed issues with focused regression coverage; coherent verified commits.
+- [x] RED/GREEN disposable API cases: create/replay, shared reads, owner/non-owner edits, ADMIN edits/deletes, exact history and immutable attribution, archive restrictions, duplicate plates and concurrent same-key/edit/delete requests.
+- [x] Test-only fault adapter drops mutation responses after backend commit; assert exactly one CREATE event on retry, stale PATCH protection and honest uncertain DELETE handling. No shipping auth bypass.
+- [x] Run `dart format --output=none --set-exit-if-changed lib test integration_test test_driver`, `flutter analyze --fatal-infos`, full `flutter test`, real-API native acceptance and serial default/isolated-MySQL regressions. Preserve existing Windows and installer checks.
+- [x] Native fictional walkthrough: both roles, second AUDITOR denial, touch/keyboard/Back/dirty discard, conflict/history, themes, compact/landscape/large text, background/logout/process death and safe shutdown. Capture genuine screenshots; explicitly report unavailable API24/physical/TalkBack/TLS checks.
+- [x] Independent engineering/security and mobile-UX reviews; reproduce and fix confirmed issues with focused regression coverage; coherent verified commits.
 - [ ] Only after implementation authorization and verification: inspect complete diff/secrets, publish the same branch, create exactly one draft PR and verify all five hosted jobs. Never merge automatically.
 
 ## Current design handoff
@@ -239,3 +239,31 @@ Task5 only is complete. Task6 remains deferred pending authorization. No backend
 business logic, Windows, schema, migration, grant, dependency or production change.
 The added backend-schema serialization test exercises existing behavior only.
 Local commit only; no push, PR or merge.
+
+
+Checkpoint 6 completed locally (2026-10-29), subject to documented acceptance
+limitations. Full Flutter: 217 passed, zero failures/skips; analysis clean;
+formatting 51 files unchanged. Full Python default: 549 passed/60 skipped;
+isolated MySQL: 553 passed/56 skipped; native Windows desktop: 247 passed,
+zero skips. Skips and overlapping suites are explained in the verification report.
+The isolated test database finishes with zero tables. No production connection,
+migration, grant, data or backend business-rule change was made.
+
+Three real-API native business scenarios pass; the framework teardown counter is
+not an extra scenario. Actual main-entry ADB acceptance passes all eight privacy,
+keyboard/Back, revocation, reactivation and process-restart assertions. Native
+Android 16/API36, 360dp and compact320dp/200% text, themes and landscape were
+exercised. Real-HTTP mutation/demo tests include 35 cases plus three history
+serialization checks. Confirmed label clipping, nested Back bypass and rapid
+inactive/resume cached-content disclosure were reproduced, corrected and covered
+by regressions. Independent engineering/security and mobile-UX re-reviews found
+no residual confirmed blocker.
+
+See docs/ANDROID_PHASE4B_VERIFICATION.md for exact evidence and limitations and
+docs/ANDROID_PHASE4B_ACCEPTANCE.md for fresh-session personal acceptance steps.
+Physical-device/API24/TalkBack/trusted production HTTPS and personal acceptance
+remain unverified. Existing Windows installation was preserved; installer
+roundtrip was not performed. Retained source-equivalent packaged launch and
+bundle inspection pass. Publication/PR/hosted-CI checkbox deliberately remains
+unchecked: current authorization requires a local checkpoint commit only.
+No push, PR, merge or later phase is authorized. Stop for operator review.

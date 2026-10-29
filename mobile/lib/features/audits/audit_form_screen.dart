@@ -304,59 +304,78 @@ class _AuditFormScreenState extends State<AuditFormScreen> {
                           for (final key in labels.keys)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 16),
-                              child: TextFormField(
-                                controller: fields[key],
-                                focusNode: focus[key],
-                                enabled:
-                                    form.active && !form.busy && !form.frozen,
-                                decoration: InputDecoration(
-                                  labelText: labels[key],
-                                  errorMaxLines: 4,
-                                  helperText: key == 'audit_date'
-                                      ? 'YYYY-MM-DD'
-                                      : null,
-                                  counterText:
-                                      key == 'remarks' &&
-                                          fields[key]!.text.runes.length >= 9000
-                                      ? '${fields[key]!.text.runes.length} / 10000'
-                                      : null,
-                                  suffixIcon: key == 'audit_date'
-                                      ? IconButton(
-                                          tooltip: 'Choose audit date',
-                                          onPressed:
-                                              form.active &&
-                                                  !form.busy &&
-                                                  !form.frozen
-                                              ? pickDate
-                                              : null,
-                                          icon: const Icon(
-                                            Icons.calendar_today,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                minLines: key == 'remarks' ? 3 : 1,
-                                maxLines: key == 'remarks' ? null : 1,
-                                keyboardType: key == 'remarks'
-                                    ? TextInputType.multiline
-                                    : TextInputType.text,
-                                textInputAction: key == 'remarks'
-                                    ? TextInputAction.newline
-                                    : TextInputAction.next,
-                                onFieldSubmitted: key == 'remarks'
-                                    ? null
-                                    : (_) {
-                                        final keys = labels.keys.toList();
-                                        focus[keys[keys.indexOf(key) + 1]]!
-                                            .requestFocus();
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ExcludeSemantics(
+                                    child: Text(labels[key]!, softWrap: true),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Semantics(
+                                    label: labels[key],
+                                    child: TextFormField(
+                                      key: ValueKey('audit_$key'),
+                                      controller: fields[key],
+                                      focusNode: focus[key],
+                                      enabled:
+                                          form.active &&
+                                          !form.busy &&
+                                          !form.frozen,
+                                      decoration: InputDecoration(
+                                        errorMaxLines: 4,
+                                        helperText: key == 'audit_date'
+                                            ? 'YYYY-MM-DD'
+                                            : null,
+                                        counterText:
+                                            key == 'remarks' &&
+                                                fields[key]!
+                                                        .text
+                                                        .runes
+                                                        .length >=
+                                                    9000
+                                            ? '${fields[key]!.text.runes.length} / 10000'
+                                            : null,
+                                        suffixIcon: key == 'audit_date'
+                                            ? IconButton(
+                                                tooltip: 'Choose audit date',
+                                                onPressed:
+                                                    form.active &&
+                                                        !form.busy &&
+                                                        !form.frozen
+                                                    ? pickDate
+                                                    : null,
+                                                icon: const Icon(
+                                                  Icons.calendar_today,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      minLines: key == 'remarks' ? 3 : 1,
+                                      maxLines: key == 'remarks' ? null : 1,
+                                      keyboardType: key == 'remarks'
+                                          ? TextInputType.multiline
+                                          : TextInputType.text,
+                                      textInputAction: key == 'remarks'
+                                          ? TextInputAction.newline
+                                          : TextInputAction.next,
+                                      onFieldSubmitted: key == 'remarks'
+                                          ? null
+                                          : (_) {
+                                              final keys = labels.keys.toList();
+                                              focus[keys[keys.indexOf(key) +
+                                                      1]]!
+                                                  .requestFocus();
+                                            },
+                                      validator: (value) => form.active
+                                          ? form.validateField(key, value)
+                                          : null,
+                                      onChanged: (value) {
+                                        form.values[key] = value;
+                                        if (key == 'remarks') setState(() {});
                                       },
-                                validator: (value) => form.active
-                                    ? form.validateField(key, value)
-                                    : null,
-                                onChanged: (value) {
-                                  form.values[key] = value;
-                                  if (key == 'remarks') setState(() {});
-                                },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           if (form.message != null)

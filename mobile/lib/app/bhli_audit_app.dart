@@ -31,7 +31,7 @@ class _BhliAuditAppState extends State<BhliAuditApp>
     with WidgetsBindingObserver {
   late PublicSettings _settings;
   bool _concealed = false;
-  bool _wasBackgrounded = false;
+  bool _requiresIdentityVerification = false;
   int _lifecycleRequest = 0;
 
   @override
@@ -58,10 +58,9 @@ class _BhliAuditAppState extends State<BhliAuditApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) {
       _lifecycleRequest++;
-      if (state == AppLifecycleState.paused ||
-          state == AppLifecycleState.hidden) {
-        _wasBackgrounded = true;
-      }
+      // A rapid app switch may resume from inactive without reaching paused.
+      // Never reveal cached authorization/data without the shared identity check.
+      _requiresIdentityVerification = true;
       setState(() {
         _concealed = true;
       });
@@ -72,13 +71,13 @@ class _BhliAuditAppState extends State<BhliAuditApp>
 
   Future<void> _resume() async {
     final request = ++_lifecycleRequest;
-    if (_wasBackgrounded && widget.session.user != null) {
+    if (_requiresIdentityVerification && widget.session.user != null) {
       await widget.session.verifyOnResume();
     }
     if (!mounted || request != _lifecycleRequest) return;
     setState(() {
       _concealed = false;
-      _wasBackgrounded = false;
+      _requiresIdentityVerification = false;
     });
   }
 
@@ -198,7 +197,9 @@ class _SessionRoutesState extends State<_SessionRoutes> {
 
   @override
   Widget build(BuildContext context) => NavigatorPopHandler<void>(
-    onPopWithResult: (_) => _navigator.currentState!.pop(),
+    // Respect route PopScope guards (dirty drafts and pending mutations).
+    // A direct pop would discard a form without invoking its confirmation.
+    onPopWithResult: (_) => _navigator.currentState!.maybePop(),
     child: Navigator(
       key: _navigator,
       onGenerateRoute: (_) =>

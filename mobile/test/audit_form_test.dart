@@ -4,6 +4,7 @@ import 'package:bhli_audit/features/auth/session_controller.dart';
 import 'package:bhli_audit/core/network/api_client.dart';
 import 'package:bhli_audit/core/network/api_origin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:bhli_audit/ui/core/audit_theme.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -556,4 +557,54 @@ void main() {
       form.dispose();
     });
   }
+  testWidgets('optional field labels remain readable at320dp and200percent', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: AuditFormScreen(session: session),
+        ),
+      );
+      expect(
+        tester.getTopLeft(find.text('Helper Name (optional)')).dy,
+        greaterThanOrEqualTo(
+          tester.getBottomLeft(find.byType(TextFormField).first).dy + 8,
+        ),
+      );
+      expect(
+        tester.getBottomLeft(find.text('Helper Name (optional)')).dy + 8,
+        lessThanOrEqualTo(
+          tester.getTopLeft(find.byType(TextFormField).at(1)).dy,
+        ),
+      );
+      for (final label in ['Helper Name (optional)', 'Remarks (optional)']) {
+        final key = ValueKey(
+          'audit_${label.replaceAll(' (optional)', '').toLowerCase().replaceAll(' ', '_')}',
+        );
+        expect(tester.getSemantics(find.byKey(key)).label, contains(label));
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .renderObject<RenderParagraph>(find.text(label))
+              .didExceedMaxLines,
+          isFalse,
+          reason: label,
+        );
+      }
+    } finally {
+      semantics.dispose();
+    }
+  });
 }

@@ -20,11 +20,13 @@ class MobileDemo:
 
 
 @contextmanager
-def mobile_demonstration(admin_password,auditor_password):
-    for password in (admin_password,auditor_password):
+def mobile_demonstration(admin_password,auditor_password,auditor_b_password=None):
+    if auditor_b_password is None:
+        auditor_b_password=secrets.token_urlsafe(32)
+    for password in (admin_password,auditor_password,auditor_b_password):
         if not isinstance(password,str) or not 15<=len(password)<=128 or not password.strip():
             raise ValueError('Choose separate nonblank demo passwords of 15-128 characters')
-    if admin_password==auditor_password:
+    if len({admin_password,auditor_password,auditor_b_password})!=3:
         raise ValueError('Use separate demo passwords')
     # Existing fixture owns its temporary SQLite engine and loopback listener.
     with demonstration(admin_password,secrets.token_urlsafe(24)) as demo:
@@ -34,9 +36,11 @@ def mobile_demonstration(admin_password,auditor_password):
             accounts=client._request('GET','/users?search=demo_auditor',admin.token)[0]['items']
             target=next(account for account in accounts if account['username']=='demo_auditor')
             client.reset_admin_password(admin.token,target['id'],admin_password,auditor_password)
+            client._request('POST','/users',admin.token,dict(username='demo_auditor_b',
+                full_name='Fictional Auditor B',role='AUDITOR',password=auditor_b_password))
         finally:
             client.logout(admin.token)
-        admin_password=auditor_password=None
+        admin_password=auditor_password=auditor_b_password=None
         yield MobileDemo(demo.origin,demo.port,demo.database_file)
 
 
@@ -47,9 +51,10 @@ def main():
             warnings.simplefilter('error',GetPassWarning)
             admin=getpass('Choose demo_admin password (15-128 characters): ')
             auditor=getpass('Choose separate demo_auditor password (15-128 characters): ')
-        with mobile_demonstration(admin,auditor) as demo:
-            admin=auditor=None
-            print('Accounts: demo_admin (ADMIN), demo_auditor (AUDITOR). All records are fictional.')
+            auditor_b=getpass('Choose separate demo_auditor_b password (15-128 characters): ')
+        with mobile_demonstration(admin,auditor,auditor_b) as demo:
+            admin=auditor=auditor_b=None
+            print('Accounts: demo_admin (ADMIN), demo_auditor and demo_auditor_b (AUDITOR). All records are fictional.')
             print('API origin:',demo.origin)
             print(f'ADB: adb -s <test-device-serial> reverse tcp:{demo.port} tcp:{demo.port}')
             print('Use that loopback origin in the explicit debug-loopback build. Ctrl+C removes this fixture.')

@@ -1,4 +1,8 @@
 import 'dart:convert';
+import 'dart:async';
+
+import 'package:bhli_audit/app/bhli_audit_app.dart';
+import 'package:bhli_audit/core/settings/public_settings.dart';
 
 import 'package:bhli_audit/core/network/api_client.dart';
 import 'package:bhli_audit/core/network/api_origin.dart';
@@ -55,7 +59,13 @@ void main() {
 
   tearDown(() => session.dispose());
   Future<void> enter(WidgetTester tester, String label, String value) async {
-    final field = find.widgetWithText(TextFormField, label);
+    final field = label == 'Search audits'
+        ? find.widgetWithText(TextFormField, label)
+        : find.byKey(
+            ValueKey(
+              'audit_${label.replaceAll(' (optional)', '').toLowerCase().replaceAll(' ', '_')}',
+            ),
+          );
     await tester.ensureVisible(field);
     await tester.enterText(field, value);
   }
@@ -67,6 +77,7 @@ void main() {
     await enter(tester, 'Plate Number', '000123');
     final save = find.widgetWithText(FilledButton, 'Save');
     FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
     await tester.tap(save);
@@ -87,8 +98,8 @@ void main() {
     expect(find.text('New Audit'), findsOneWidget);
     await tester.tap(find.text('New Audit'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextFormField, 'Driver Name'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'Audit Date'), findsOneWidget);
+    expect(find.byKey(const ValueKey('audit_driver_name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('audit_audit_date')), findsOneWidget);
     expect(find.textContaining('server'), findsWidgets);
   });
   for (final scenario in [
@@ -145,11 +156,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(detailCalls, 2);
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Helper Name (optional)'),
+      find.byKey(const ValueKey('audit_helper_name')),
       'New helper',
     );
     final save = find.widgetWithText(FilledButton, 'Save');
     FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
     await tester.tap(save);
@@ -381,6 +393,7 @@ void main() {
       await tester.pumpAndSettle();
       await enter(tester, 'Helper Name (optional)', 'My old draft');
       FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -399,11 +412,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(writes, 1);
       final helper = tester.widget<TextFormField>(
-        find.widgetWithText(TextFormField, 'Helper Name (optional)'),
+        find.byKey(const ValueKey('audit_helper_name')),
       );
       expect(helper.controller!.text, 'Other helper');
       await enter(tester, 'Station', 'Revised');
       FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -463,4 +477,100 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'system Back in real protected navigator preserves dirty audit until confirmed',
+    (tester) async {
+      role = 'ADMIN';
+      id = 8;
+      await setup();
+      await tester.pumpWidget(
+        BhliAuditApp(
+          session: session,
+          settingsStore: MemorySettingsStore(),
+          initialSettings: const PublicSettings(origin: 'https://example.com'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New Audit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('audit_driver_name')),
+        'Fictional unsent draft',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(find.text('Fictional unsent draft'), findsOneWidget);
+      expect(find.text('Create Audit'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'system Back in protected navigator confirms pending save without claiming rollback',
+    (tester) async {
+      role = 'ADMIN';
+      id = 8;
+      await setup();
+      final response = Completer<http.StreamedResponse>();
+      override = (r) async {
+        if (r.method == 'POST') return response.future;
+        return jsonResponse({
+          'items': [auditJson()],
+          'total': 1,
+          'page': 1,
+          'page_size': 25,
+        });
+      };
+      await tester.pumpWidget(
+        BhliAuditApp(
+          session: session,
+          settingsStore: MemorySettingsStore(),
+          initialSettings: const PublicSettings(origin: 'https://example.com'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New Audit'));
+      await tester.pumpAndSettle();
+      await enter(tester, 'Driver Name', 'Fictional draft');
+      await enter(tester, 'Station', 'Fictional station');
+      await enter(tester, 'Plate Number', '001');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      expect(session.mutations.busy, isTrue);
+      final attempt = session.mutations.pendingCreate;
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Leave this save attempt?'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining('server may already have saved'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Leave'));
+      await tester.pumpAndSettle();
+      expect(find.text('Driver Audits'), findsOneWidget);
+      expect(session.mutations.pendingCreate, same(attempt));
+      response.complete(
+        jsonResponse(
+          {...auditJson(), 'version': 1},
+          status: 201,
+          headers: {'etag': '"1"'},
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Create Audit'), findsNothing);
+      expect(session.mutations.pendingCreate, same(attempt));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

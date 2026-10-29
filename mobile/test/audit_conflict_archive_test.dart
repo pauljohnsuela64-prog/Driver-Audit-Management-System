@@ -66,10 +66,7 @@ void main() {
     );
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Station'),
-      'Mine',
-    );
+    await tester.enterText(find.byKey(const ValueKey('audit_station')), 'Mine');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
@@ -593,7 +590,7 @@ void main() {
         ),
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Station'),
+        find.byKey(const ValueKey('audit_station')),
         'Mine',
       );
       FocusManager.instance.primaryFocus?.unfocus();
