@@ -1,6 +1,6 @@
 # Release readiness — development/demo
 
-Updated for Phase 5 Checkpoint A, 2026-10-29 (Asia/Manila). This is the current
+Updated for Phase 5 candidate preparation, 2026-10-29 (Asia/Manila). This is the current
 status index; original phase specifications and verification reports remain
 historical records. **Documentation cleanup is not a new release, build, test run
 or production approval.**
@@ -29,16 +29,16 @@ Plate Number, Remarks and immutable server-assigned Audited By.
 
 | Surface | Actual current value | Proposed, not yet implemented/released |
 | --- | --- | --- |
-| Desktop / Windows PE / installer | `0.3.0` | `1.0.0` / numeric PE `1.0.0.0` |
-| Android pubspec | `0.4.0+1` | `1.0.0+2`, subject to monotonic build-code verification |
+| Desktop / Windows PE / installer | Candidate `1.0.0` / numeric PE `1.0.0.0` | Unpublished development/demo milestone |
+| Android pubspec | Candidate `1.0.0+2` | Prior internal APK code1; no higher code found in repository/release records |
 | Backend OpenAPI version | `0.2.0` | Remains independently versioned |
 | Application Alembic head | `0002` | Unchanged |
 | Portfolio candidate | No Version 1.0 tag/release/artifacts created by this checkpoint | `v1.0.0-rc.1`, **development/demo release candidate** |
 
-The RC strategy is approved for planning/progression; only documentation Task A
-is currently authorized. Version values and existing package identities are
-unchanged. No Version 1.0 binaries, signing keys, tag, release, PR or publication
-are created in this checkpoint. Existing Windows outputs are unsigned candidates;
+The RC strategy is approved for planning/progression; Checkpoint A documentation is accepted and local Checkpoint B is authorized.
+Approved client version values are implemented; existing package identities are
+unchanged. Checkpoint B may produce local internal candidates only; no production
+signing keys, tag, release, PR or public distribution is authorized. Windows outputs are unsigned candidates;
 Android debug output uses development signing, not production release signing.
 
 No project license has been selected in the repository. Do not claim an OSS
@@ -166,10 +166,11 @@ not a blind retry/downgrade/stamp. Neither client installer performs this work.
 
 ## Remaining Phase 5 work
 
-**Checkpoint B:** approved version coordination and description metadata, version
-contracts, exact-source build provenance/notice inventory/checksums, stale-installer
-exclusion, retained ordinary Android debug artifact, final serial regressions and
-artifact/native acceptance with explicit coverage limits.
+**Checkpoint B:** version coordination, description metadata and candidate-integrity
+contracts are implemented locally. Exact-source builds, notice/checksum inventory,
+final serial regressions and artifact/native acceptance are recorded in the local
+Checkpoint B completion evidence; their completion is not implied by version metadata.
+Hosted execution and public retention have not occurred on this unpublished branch.
 
 **Checkpoint C:** independently reviewed final evidence and separately authorized
 draft PR/publication. Tag/release, public binary redistribution and any merge need

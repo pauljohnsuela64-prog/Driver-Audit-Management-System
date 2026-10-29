@@ -6,8 +6,8 @@ deployments or retroactively published versions. See
 
 ## Unreleased — proposed Version 1.0 development/demo candidate
 
-Target label: `v1.0.0-rc.1`. Strategy approved; version changes, candidate builds
-and publication remain later checkpoints, not completed release work.
+Target label: `v1.0.0-rc.1`. Strategy approved; candidate version metadata is implemented in local Checkpoint B; candidate
+verification and publication are not implied by these source changes.
 
 ### Documentation — Phase 5 Checkpoint A
 
@@ -20,10 +20,18 @@ and publication remain later checkpoints, not completed release work.
 - Dated release evidence index, proposed version mapping and known coverage limits;
   original historical verification reports retained unchanged.
 
+### Candidate integrity — local Checkpoint B source
+
+- Local source now coordinates Windows1.0.0 and Android1.0.0+2 metadata; backend
+  API0.2.0 stays independent. Artifacts require separate exact-source verification.
+- Fresh Windows output and exact installer inventory prevent stale candidate
+  selection; the complete folder ZIP is included in checksum/upload inventories.
+- Ordinary Android debug build preparation retains embedded/native and resolved
+  dependency notices, source/toolchain provenance and byte checksums. Public
+  redistribution remains held; notice inventory is not licensing clearance.
+
 ### Still pending
 
-- Coordinated proposed Windows1.0.0 and Android1.0.0+2 metadata; backend API0.2.0
-  stays independent. Current values are Windows0.3.0 and Android0.4.0+1.
 - Final-source candidate builds, manifests/notices/checksums, serial regressions,
   native artifact acceptance and hosted CI on the eventual publication HEAD.
 - Explicit publication/distribution/license decisions. No Version1.0 tag, release

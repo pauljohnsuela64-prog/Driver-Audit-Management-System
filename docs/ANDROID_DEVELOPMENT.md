@@ -1,7 +1,7 @@
 # Android audit management development
 
-Current component version is `0.4.0+1`; the proposed Version 1.0 development/demo
-candidate is not yet built or released. See [release readiness](RELEASE_READINESS.md)
+Current candidate version is `1.0.0+2`; the Version 1.0 development/demo
+milestone is not a published release. See [release readiness](RELEASE_READINESS.md)
 for dated evidence and limitations. [Phase 4A](ANDROID_VERIFICATION.md) and
 [Phase 4B](ANDROID_PHASE4B_VERIFICATION.md) verification reports remain historical.
 

@@ -2,15 +2,16 @@
 
 Phase 3E produces an **unsigned test candidate** for Windows 11 x64. It packages the desktop only: a working API and database remain necessary. Production deployment, server credentials, migration 0002 and its restricted runtime grants require separate approval. This installer never performs them.
 
-Current desktop/installer metadata is `0.3.0`. Version `1.0.0` and the
-`v1.0.0-rc.1` development/demo milestone are proposed, not built or released.
+Current candidate desktop/installer metadata is `1.0.0`; the prior Phase 3E
+candidate used `0.3.0`. The `v1.0.0-rc.1` development/demo milestone is not a
+published release. Local candidate results belong to Checkpoint B acceptance.
 See [current readiness and evidence](RELEASE_READINESS.md); retain source/version
 provenance when selecting a reviewed artifact rather than assuming the filename
 alone identifies its contents.
 
 ## Install and connect
 
-1. Obtain `BHLI-Audit-Setup-0.3.0-x64.exe` and checksums from the reviewed CI artifact or `dist/installer/`. Verify its source commit and SHA-256 before use. Unsigned candidates can produce Windows reputation warnings; do not disable security controls. Production distribution needs operator-approved signing.
+1. Select `BHLI-Audit-Setup-1.0.0-x64.exe` and checksums from the exact reviewed candidate output. Do not substitute an old `0.3.0` installer or assume a filename proves provenance. Verify source commit and SHA-256 before use. Candidates are local/internal only until distribution is authorized. Unsigned candidates can produce Windows reputation warnings; do not disable security controls. Production distribution needs operator-approved signing.
 2. Close any running BHLI Audit. Run the installer as your Windows user. It installs under `%LOCALAPPDATA%\Programs\BHLI Audit`, adds a Start Menu shortcut and offers an optional desktop shortcut. Python and VS Code are not required by the installed client.
 3. At first launch, open Connection settings, enter the approved API origin, select Test connection and Save. Remote connections require a trusted HTTPS certificate and restricted networking. HTTP is accepted only for explicit loopback development. No certificate-verification bypass is provided.
 4. Sign in with your individual ADMIN account. Tokens stay in memory. Use normal Create/Edit/Delete/History, My Account and Export to Excel workflows.
@@ -40,8 +41,8 @@ if (-not (Test-Path -LiteralPath .venv-build\Scripts\python.exe)) {
 }
 .\.venv-build\Scripts\python.exe -m pip install --require-hashes -r requirements-build.lock
 .\.venv\Scripts\python.exe -m scripts.acquire_windows_tools
-.\.venv-build\Scripts\python.exe -m scripts.build_windows --iscc build/tools/inno710/ISCC.exe
-.\.venv\Scripts\python.exe -m scripts.packaged_demo
+.\.venv-build\Scripts\python.exe -m scripts.build_windows --iscc build/tools/inno710/ISCC.exe --output-root dist/local-candidate
+.\.venv\Scripts\python.exe -m scripts.packaged_demo --executable dist/local-candidate/BHLIAudit/BHLIAudit.exe
 ```
 
 The last command requires existing developer backend dependencies, prompts for two hidden fictional ADMIN passwords and launches the actual EXE against a temporary loopback API/SQLite database with 60 fictional active audits. Accounts are `demo_admin` and `demo_admin2`; enter the chosen passwords at normal login. Closing the EXE removes the fixture database. It does not load production connection configuration, provision MySQL or add an authentication bypass. Demo passwords can be changed/reset normally without affecting real accounts.

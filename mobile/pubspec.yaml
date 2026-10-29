@@ -1,7 +1,7 @@
 name: bhli_audit
-description: Read-only Android client for the BHLI Audit REST API.
+description: Android audit management client for the BHLI Audit REST API.
 publish_to: none
-version: 0.4.0+1
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.13.0 <4.0.0'

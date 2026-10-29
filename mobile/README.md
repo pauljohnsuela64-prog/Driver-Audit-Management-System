@@ -16,7 +16,6 @@ See [development and disposable demo instructions](../docs/ANDROID_DEVELOPMENT.m
 [current release readiness](../docs/RELEASE_READINESS.md).
 
 No direct MySQL access, Android account administration, offline synchronization,
-Excel/PDF export or signed production distribution is included. Current metadata
-remains `0.4.0+1`; Version 1.0 is a proposed development/demo milestone, not a
-released build. The legacy read-only description in `pubspec.yaml` is scheduled
-for Checkpoint B; behavior already includes the Phase 4B mutations described here.
+Excel/PDF export or signed production distribution is included. No direct MySQL access, Android account administration, offline synchronization,
+Excel/PDF export or signed production distribution is included. Candidate metadata
+is now `1.0.0+2`; Version 1.0 remains an unpublished development/demo milestone.

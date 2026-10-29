@@ -3,10 +3,10 @@ name: Android foundation
 on:
   pull_request:
     branches: [main]
-    paths: ['mobile/**', 'scripts/mobile_demo.py', 'tests/test_mobile_demo.py', '.github/workflows/mobile-tests.yml']
+    paths: ['mobile/**', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
   push:
     branches: [main, 'feat/**']
-    paths: ['mobile/**', 'scripts/mobile_demo.py', 'tests/test_mobile_demo.py', '.github/workflows/mobile-tests.yml']
+    paths: ['mobile/**', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
 
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Initialize isolated dependency caches
         run: |
           echo "PUB_CACHE=$RUNNER_TEMP/pub-cache" >> "$GITHUB_ENV"
@@ -127,5 +128,16 @@ jobs:
       - name: Run unit and widget contracts
         run: flutter test --reporter expanded
       - name: Build internal debug Android application
-        run: flutter build apk --debug
-      # Debug APKs are test outputs only. Distribution/signing belongs to 4C.
+        run: python3 ../scripts/android_candidate.py
+      - name: Retain internal debug candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: bhli-audit-android-internal-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/android-candidate/app-debug.apk
+            artifacts/android-candidate/BUILD-MANIFEST.json
+            artifacts/android-candidate/SHA256SUMS.json
+            artifacts/android-candidate/THIRD_PARTY_NOTICES.txt
+      # Internal candidates only; no production signing or public release.
