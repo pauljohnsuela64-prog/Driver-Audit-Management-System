@@ -1,13 +1,18 @@
-# Phase 2A: FastAPI foundation and authentication
+# FastAPI authentication and session security
 
 The application factory is `backend.main:create_app`. Routes call services and
 repositories. Revision 0001 is preserved; revision 0002 adds account activity history.
 Deploy the new revision and runtime grant only after explicit production approval.
 Audit CRUD and account-management APIs are now available; see
-[backend integration readiness](BACKEND_INTEGRATION_READINESS.md). GUI, mobile
-screens and exports remain outside the implemented backend scope.
+[backend integration readiness](BACKEND_INTEGRATION_READINESS.md). Windows and
+Android clients are implemented; Excel export is a Windows client feature, not
+a backend reporting endpoint. See [current release status](RELEASE_READINESS.md).
 
 ## Local configuration and launch
+
+For a fictional demonstration use [desktop demo](WINDOWS_DESKTOP_DEMO.md) or
+[Android demo](ANDROID_PHASE4B_ACCEPTANCE.md), without `.env` or MySQL. The server
+configuration below is for an already approved deployment, not demo onboarding.
 
 Install the pinned `requirements.txt` in the Python 3.14 virtual environment.
 Set `DAMS_PROD_RUNTIME_URL` in ignored `.env` to the dedicated `dams_prod_app`
@@ -60,8 +65,10 @@ is stored in `auth_sessions`. Expiration is fixed at eight hours, with no refres
 endpoint or sliding renewal. Multiple sessions are allowed. Expired/revoked session
 rows are retained; an explicitly authorized maintenance policy can archive them later.
 
-Bearer credentials can be replayed while valid: protect client storage with native
-OS secure storage and TLS. Every protected request checks the stored session,
+Bearer credentials can be replayed while valid: both implemented clients keep
+tokens in memory only and require trusted HTTPS remotely. No persistent token
+storage is implemented; a future persistence design would need its own security
+review. Every protected request checks the stored session,
 expiration, revocation and the current user's active status and role. Disabled
 users and revoked tokens are rejected on subsequent requests. Account mutations
 recheck the session and role under the account lock before writing; revocation or
@@ -101,10 +108,13 @@ operations can allow both roles. Role changes affect existing sessions on the ne
 request. Role enforcement is tested on routes registered only in tests; those routes
 are absent from the production application/OpenAPI.
 
-Phase 2B must additionally enforce record ownership and visibility: AUDITOR may
-create/view permitted records and edit their own records, never delete records or
-administer users. ADMIN will have full audit/user administration. These policies do
-not create audit or user-management endpoints in Phase 2A.
+The implemented audit services additionally enforce ownership and visibility:
+AUDITOR may create/read shared active records and edit only records owned by their
+authenticated account ID, never delete or administer accounts. ADMIN may manage
+all audits and use the account APIs. Windows admits ADMIN only; Android admits
+both roles with those server rules. See [audit API](AUDIT_API.md) and
+[account endpoints](USER_ACCOUNTS.md). Test-only role-probe routes are not shipping
+API capabilities.
 
 ## Transactions and failures
 
@@ -130,6 +140,9 @@ tokens, database URLs and exception inputs are not logged by application code.
 Unknown usernames still incur a real Argon2 verification to reduce timing differences.
 
 ## Initial administrator and recovery
+
+Production bootstrap/recovery is separately authorized maintenance. These commands
+are not needed by disposable demos, which create their own fictional accounts.
 
 Run locally under the Windows account allowed to read `.env`:
 
@@ -167,13 +180,9 @@ and tear down the empty isolated test database; every API request, bootstrap, re
 and fixture user insert then uses `dams_test_app`. Runtime URLs must match the
 migration test URL's driver, host, port and database. Production is never a test target.
 
-```powershell
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv('.env'); import pytest; raise SystemExit(pytest.main(['-q', '-rs']))"
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv('.env'); import pytest; raise SystemExit(pytest.main(['--mysql', '-q', '-rs']))"
-```
-
-The test process needs `DAMS_TEST_DATABASE_URL` and `DAMS_TEST_RUNTIME_URL` in its
-environment. The commands above load ignored configuration without exposing URLs.
+Use the [safe default test environment](RELEASE_READINESS.md#development-checks)
+without production URLs. For MySQL, [load only the two dedicated test URLs](DATABASE_SETUP.md#loading-ignored-local-configuration-for-tests)
+into an isolated child process; do not load every `.env` variable into tests.
 No new schema revision is needed. The seven approved audit fields are unchanged.
 
 Implementation references: [Argon2-cffi PasswordHasher](https://argon2-cffi.readthedocs.io/en/stable/api.html)

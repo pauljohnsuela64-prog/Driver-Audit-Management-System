@@ -1,5 +1,10 @@
 # Android audit management development
 
+Current component version is `0.4.0+1`; the proposed Version 1.0 development/demo
+candidate is not yet built or released. See [release readiness](RELEASE_READINESS.md)
+for dated evidence and limitations. [Phase 4A](ANDROID_VERIFICATION.md) and
+[Phase 4B](ANDROID_PHASE4B_VERIFICATION.md) verification reports remain historical.
+
 Phase 4B extends the foundation with authenticated creation, owner/ADMIN editing,
 explicit conflict review, ADMIN archiving and archive browsing, and read-only
 history. Search, filters, sorting, pagination and the seven historical business
@@ -104,6 +109,11 @@ at page one. Failed same-query refresh may display clearly marked stale rows.
 ## Delivery boundaries
 
 This phase supplies internal debug build verification, not signed distribution.
+The ordinary default debug APK is distinct from the explicit loopback-demo and
+integration-test builds. Default-candidate launch/settings/HTTP-rejection checks
+do not establish authenticated HTTPS acceptance. That needs isolated trusted test
+HTTPS or an explicit coverage limitation; loopback acceptance is not equivalent.
+Never distribute a test APK with embedded fictional passwords or capture relaxation.
 Production HTTPS, certificates and server deployment remain operator-managed.
 Do not change production migrations, grants, Windows admission rules or backend
 roles to run this client. Physical-device, TalkBack and production TLS acceptance

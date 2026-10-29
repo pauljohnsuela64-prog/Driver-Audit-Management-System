@@ -2,6 +2,12 @@
 
 Phase 3E produces an **unsigned test candidate** for Windows 11 x64. It packages the desktop only: a working API and database remain necessary. Production deployment, server credentials, migration 0002 and its restricted runtime grants require separate approval. This installer never performs them.
 
+Current desktop/installer metadata is `0.3.0`. Version `1.0.0` and the
+`v1.0.0-rc.1` development/demo milestone are proposed, not built or released.
+See [current readiness and evidence](RELEASE_READINESS.md); retain source/version
+provenance when selecting a reviewed artifact rather than assuming the filename
+alone identifies its contents.
+
 ## Install and connect
 
 1. Obtain `BHLI-Audit-Setup-0.3.0-x64.exe` and checksums from the reviewed CI artifact or `dist/installer/`. Verify its source commit and SHA-256 before use. Unsigned candidates can produce Windows reputation warnings; do not disable security controls. Production distribution needs operator-approved signing.
@@ -21,19 +27,26 @@ For portable inspection, retain the **entire** `dist/BHLIAudit` folder; copying 
 
 ## Developer build and fictional demonstration
 
-Use CPython 3.14.10 x64 and a separate build environment:
+These are existing developer build instructions, not a requirement for demo
+onboarding or approval to build a Version 1.0 candidate in Checkpoint A. Use
+CPython 3.14.10 x64, prepared developer dependencies and a separate client-only
+build environment. Reuse environments if present; never replace a developer's
+installed application to test the installer. Use fresh isolated build outputs to
+avoid mixing old installer candidates with a later build:
 
 ```powershell
-python -m venv .venv-build
+if (-not (Test-Path -LiteralPath .venv-build\Scripts\python.exe)) {
+    py -3.14 -m venv .venv-build
+}
 .\.venv-build\Scripts\python.exe -m pip install --require-hashes -r requirements-build.lock
-python -m scripts.acquire_windows_tools
+.\.venv\Scripts\python.exe -m scripts.acquire_windows_tools
 .\.venv-build\Scripts\python.exe -m scripts.build_windows --iscc build/tools/inno710/ISCC.exe
 .\.venv\Scripts\python.exe -m scripts.packaged_demo
 ```
 
 The last command requires existing developer backend dependencies, prompts for two hidden fictional ADMIN passwords and launches the actual EXE against a temporary loopback API/SQLite database with 60 fictional active audits. Accounts are `demo_admin` and `demo_admin2`; enter the chosen passwords at normal login. Closing the EXE removes the fixture database. It does not load production connection configuration, provision MySQL or add an authentication bypass. Demo passwords can be changed/reset normally without affecting real accounts.
 
-CI also builds the folder and installer, checks bundle exclusions, records dependency licenses, source/runtime provenance and checksums, launches the actual frozen client, and tests native install/uninstall/reinstall. Its noninteractive launch smoke does not claim authenticated GUI workflow coverage. See the Phase 3E verification document for actual acceptance results and remaining release gates.
+CI also builds the folder and installer, checks bundle exclusions, records dependency licenses, source/runtime provenance and checksums, launches the actual frozen client, and tests native install/uninstall/reinstall. Its noninteractive launch smoke does not claim authenticated GUI workflow coverage. See the [Phase 3E verification](WINDOWS_DESKTOP_PHASE3E_VERIFICATION.md) for historical acceptance and [release readiness](RELEASE_READINESS.md) for current coverage limits, including the deliberately unperformed latest local installer roundtrip.
 
 ## Deployment boundaries
 

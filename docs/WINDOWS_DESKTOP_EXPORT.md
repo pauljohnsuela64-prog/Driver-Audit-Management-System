@@ -38,4 +38,8 @@ Try all 60 active records, Include deleted (61), My audits as the second adminis
 
 Choose a new filename, export, then open the completed report in Excel. Verify nine columns, leading zeros, Unicode, optional blanks, full remarks, archived status and literal formula-like text. Close the app to stop/remove the temporary API/database; saved export files remain under your control.
 
-PDF, analytics, packaging and a Reports sidebar module are deferred.
+PDF, analytics and a separate Reports sidebar module remain deferred. Windows
+packaging/installation is implemented; see [installation](WINDOWS_INSTALLATION.md)
+and [current release status](RELEASE_READINESS.md). Android does not provide Excel
+export. Existing Excel/native evidence remains in the historical
+[Phase 3D verification report](WINDOWS_DESKTOP_PHASE3D_VERIFICATION.md).
