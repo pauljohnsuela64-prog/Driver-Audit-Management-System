@@ -628,4 +628,30 @@ void main() {
       );
     });
   }
+  test(
+    'queued archive rechecks ADMIN after pending resume before dispatch',
+    () async {
+      final identity = Completer<http.StreamedResponse>();
+      handler = (r) => r.url.path == '/auth/me'
+          ? identity.future
+          : http.StreamedResponse(const Stream.empty(), 204);
+      final resume = session.verifyOnResume();
+      final deletion = session.deleteAudit(1, '"3"');
+      final rejected = expectLater(
+        deletion,
+        throwsA(
+          isA<AuditMutationFailure>()
+              .having((e) => e.failure.status, 'status', 403)
+              .having((e) => e.unconfirmed, 'unconfirmed', false),
+        ),
+      );
+      await tick();
+      expect(requests.where((r) => r.method == 'DELETE'), isEmpty);
+      identity.complete(jsonResponse(userJson(role: 'AUDITOR')));
+      await resume;
+      await rejected;
+      expect(session.user!.role, 'AUDITOR');
+      expect(requests.where((r) => r.method == 'DELETE'), isEmpty);
+    },
+  );
 }

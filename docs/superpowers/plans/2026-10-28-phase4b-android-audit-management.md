@@ -76,10 +76,10 @@
 **Consumes:** current detail/ETag, draft diff and mutation state.
 **Produces:** explicit reload/review/resubmit choices with a newly reviewed baseline; delete returns confirmed/unconfirmed result, never a fabricated restored record.
 
-- [ ] RED tests: AUDITOR non-owner cannot open/submit edit; no AUDITOR delete; role change between display/dispatch handled by server failure; 412 and409 retain same-session draft but never replace If-Match automatically. Per-field latest/proposed choices preserve unrelated latest changes, latest-fetch failure disables Save and repeated conflict restarts review.
-- [ ] RED: lost PATCH response requires refetch; lost DELETE response checks ADMIN include-deleted state; 404 is unavailable, not proof of deletion. New confirmation required after a changed version.
-- [ ] Implement comparison, discard confirmation, read-only archived state and Record-ID/driver/plate delete dialog with accurate soft-delete copy.
-- [ ] GREEN conflict/deletion/controller/widget tests, existing session tests; checkpoint commit.
+- [x] RED tests: AUDITOR non-owner cannot open/submit edit; no AUDITOR delete; role change between display/dispatch handled by server failure; 412 and409 retain same-session draft but never replace If-Match automatically. Per-field latest/proposed choices preserve unrelated latest changes, latest-fetch failure disables Save and repeated conflict restarts review.
+- [x] RED: lost PATCH response requires refetch; lost DELETE response checks ADMIN include-deleted state; 404 is unavailable, not proof of deletion. New confirmation required after a changed version.
+- [x] Implement comparison, discard confirmation, read-only archived state and Record-ID/driver/plate delete dialog with accurate soft-delete copy.
+- [x] GREEN conflict/deletion/controller/widget tests, existing session tests; checkpoint commit.
 
 ## Task 5 — Authorized history and explicit archive browsing
 
@@ -165,3 +165,37 @@ Native Android/emulator, physical-device/TalkBack, real-server mutation integrat
 and eventual full backend/hosted verification remain Task 6. No such acceptance is
 claimed here. Tasks 4?6 remain unimplemented and require further authorization.
 No backend, Windows, schema, migration, grant, dependency or production changes.
+
+
+Checkpoint 4 completed (2026-10-29): same-session original/proposed/latest
+comparison, explicit per-field choices, latest-only concurrent changes preserved,
+changed-only reviewed PATCH, no-op avoidance and repeated-conflict review.
+Back/discard confirms draft loss; canceled waits never imply server rollback.
+ADMIN Archive audit uses fresh detail/ETag and identity confirmation; 204 is
+confirmed separately from list refresh failure. Unknown DELETE uses narrow
+ADMIN-only include-deleted verification; 404 remains unavailable/unconfirmed.
+No broad archive browsing, history, restore or permanent deletion UI was added.
+
+Verification: baseline160 reverified; 25 new conflict/archive tests and one
+session role-after-resume dispatch regression bring the full Flutter suite to
+**186 passed, zero failures/skips**. Focused form/navigation/conflict suite64
+passed. Final formatting checks46 Dart files without changes and
+`flutter analyze --fatal-infos` reports no issues. Local ignored evidence is
+`artifacts/phase4b-cp4-{baseline,focused-final,full-final,analyze-final,format-final}.txt`.
+
+Independent engineering/security and mobile-UX review corrections: all-latest
+no-op handling, display of unrelated concurrent changes, reviewed-PATCH pending
+exit cancellation/gate preservation, retry access-loss exit, same-generation
+role downgrade erasure and dialog dismissal, root discard-dialog logout safety,
+confirmed archive versus actual-list refresh failure, and an ADMIN guard after
+awaited resume before DELETE transport dispatch. Targeted RED/GREEN regressions
+cover the reproduced defects. Re-reviews found no residual confirmed blockers.
+Both themes, portrait/landscape compact320dp at200% text, long Unicode/null
+comparisons, selectable values, padded choice targets and dialog lifecycle pass
+widget checks. Native Android/TalkBack/physical-device and real-server mutation
+acceptance remain unverified and assigned to Task6.
+
+Task4 only is complete. Task5 history/full archive browsing and Task6 acceptance
+remain deferred pending authorization. Backend, Windows, schema, migrations,
+grants, dependencies and production data are unchanged. Local commit only;
+no push, pull request or merge is authorized for this checkpoint.

@@ -87,6 +87,21 @@ class _AuditListScreenState extends State<AuditListScreen> {
     await _list.refresh();
   }
 
+  Future<void> _afterArchived() async {
+    if (!mounted || widget.session.user == null) return;
+    final generation = widget.session.generation;
+    setState(() => _savedMessage = 'Audit archived.');
+    await _list.refresh();
+    if (!mounted || generation != widget.session.generation) return;
+    if (_list.error != null) {
+      setState(
+        () =>
+            _savedMessage = 'Audit archived. The list could not be refreshed.',
+      );
+      throw ApiFailure.network;
+    }
+  }
+
   Future<void> _newAudit({bool review = false}) async {
     if (_openingForm || !mounted) return;
     setState(() {
@@ -173,6 +188,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
           savedMessage: _saveMessage(result),
           onSaved: _afterSaved,
           onVisibilityChanged: _list.refresh,
+          onArchived: _afterArchived,
         ),
       ),
     );
@@ -309,6 +325,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
                     auditId: widget.session.mutations.state.auditId!,
                     onSaved: _afterSaved,
                     onVisibilityChanged: _list.refresh,
+                    onArchived: _afterArchived,
                   ),
                 ),
               ),
@@ -531,6 +548,7 @@ class _AuditListScreenState extends State<AuditListScreen> {
                                   auditId: record.id,
                                   onSaved: _afterSaved,
                                   onVisibilityChanged: _list.refresh,
+                                  onArchived: _afterArchived,
                                 ),
                               ),
                             ),

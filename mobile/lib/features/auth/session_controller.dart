@@ -33,8 +33,14 @@ class SessionController extends ChangeNotifier {
         _mutate((api, token) => api.createAudit(token, attempt)),
     update: (id, etag, patch) =>
         _mutate((api, token) => api.updateAudit(token, id, etag, patch)),
-    delete: (id, etag) =>
-        _mutate((api, token) => api.deleteAudit(token, id, etag)),
+    delete: (id, etag) => _mutate((api, token) {
+      // This delegate runs after shared resume verification. A role may have
+      // changed since the confirmation screen was displayed.
+      if (_user?.role != 'ADMIN') {
+        throw ApiFailure.fromStatus(403);
+      }
+      return api.deleteAudit(token, id, etag);
+    }),
     review: _reviewAudit,
   );
   _LoginAttempt? _pendingLogin;

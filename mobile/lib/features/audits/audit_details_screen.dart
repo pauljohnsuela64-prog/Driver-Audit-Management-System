@@ -17,6 +17,7 @@ class AuditDetailsScreen extends StatefulWidget {
     this.savedMessage,
     this.onSaved,
     this.onVisibilityChanged,
+    this.onArchived,
   });
   final SessionController session;
   final int auditId;
@@ -24,6 +25,7 @@ class AuditDetailsScreen extends StatefulWidget {
   final String? savedMessage;
   final Future<void> Function(AuditFormResult)? onSaved;
   final Future<void> Function()? onVisibilityChanged;
+  final Future<void> Function()? onArchived;
   @override
   State<AuditDetailsScreen> createState() => _AuditDetailsScreenState();
 }
@@ -35,13 +37,169 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
   int _request = 0;
   bool _editing = false;
   String? _savedMessage;
+  bool _archiveDialog = false;
 
   @override
   void initState() {
     super.initState();
     _record = widget.initialRecord;
     _savedMessage = widget.savedMessage;
+    _generation = widget.session.generation;
+    widget.session.addListener(_sessionChanged);
     _load();
+  }
+
+  void _sessionChanged() {
+    final user = widget.session.user;
+    final changedSession =
+        user == null || widget.session.generation != _generation;
+    if (_archiveDialog && mounted && (changedSession || user.role != 'ADMIN')) {
+      Navigator.of(context, rootNavigator: true).pop(false);
+      _archiveDialog = false;
+    }
+    if (mounted) {
+      setState(() {
+        if (changedSession) {
+          _record = null;
+          _error = null;
+          _savedMessage = null;
+        } else if (_record?.deletedAt != null &&
+            !AuditPermissions.canIncludeArchived(user)) {
+          _record = null;
+          _savedMessage = null;
+        }
+      });
+    }
+  }
+
+  late final int _generation;
+
+  bool get _archiveNeedsReview {
+    final state = widget.session.mutations.state;
+    return state.auditId == widget.auditId &&
+        state.kind == AuditMutationKind.delete &&
+        {
+          AuditMutationPhase.unknown,
+          AuditMutationPhase.conflict,
+        }.contains(state.phase);
+  }
+
+  Future<void> _archive() async {
+    final user = widget.session.user;
+    if (_editing || _loading || user?.role != 'ADMIN') return;
+    final generation = widget.session.generation;
+    setState(() {
+      _editing = true;
+      _error = null;
+    });
+    try {
+      final needsReview = _archiveNeedsReview;
+      final fresh = needsReview
+          ? await widget.session.reviewMutation()
+          : await widget.session.fetchAudit(widget.auditId);
+      if (!mounted || generation != widget.session.generation) return;
+      if (widget.session.user?.role != 'ADMIN') {
+        throw ApiFailure.fromStatus(403);
+      }
+      setState(() => _record = fresh);
+      if (fresh.deletedAt != null) {
+        setState(
+          () => _savedMessage = 'This audit is archived. The earlier archive response was not confirmed.',
+        );
+        widget.session.mutations.acknowledgeReview();
+        await widget.onVisibilityChanged?.call();
+        return;
+      }
+      if (!AuditPermissions.canDelete(widget.session.user!, fresh) ||
+          fresh.etag == null) {
+        throw ApiFailure.fromStatus(403);
+      }
+      _archiveDialog = true;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          scrollable: true,
+          title: const Text('Archive this audit?'),
+          content: Text(
+            'Record #${fresh.id}\nDriver Name: ${fresh.driverName}\nPlate Number: ${fresh.plateNumber}\n\nIt will leave the active list. Its history is retained.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Archive audit'),
+            ),
+          ],
+        ),
+      );
+      _archiveDialog = false;
+      if (!mounted ||
+          generation != widget.session.generation ||
+          confirmed != true) {
+        return;
+      }
+      if (widget.session.user?.role != 'ADMIN') {
+        throw ApiFailure.fromStatus(403);
+      }
+      if (needsReview) {
+        if (!identical(widget.session.mutations.state.latest, fresh)) {
+          throw ApiFailure.busy;
+        }
+        widget.session.mutations.acknowledgeReview();
+      }
+      await widget.session.deleteAudit(fresh.id, fresh.etag!);
+      if (!mounted || generation != widget.session.generation) return;
+      setState(() {
+        _record = null;
+        _savedMessage = 'Audit archived.';
+      });
+      try {
+        await (widget.onArchived ?? widget.onVisibilityChanged)?.call();
+      } catch (_) {
+        if (mounted && generation == widget.session.generation) {
+          setState(
+            () => _savedMessage =
+                'Audit archived. The list could not be refreshed.',
+          );
+        }
+      }
+    } on AuditMutationFailure catch (error) {
+      if (!mounted || generation != widget.session.generation) return;
+      setState(() {
+        _error = error.failure.status == 412 || error.failure.status == 409
+            ? 'This audit changed. Review it again and confirm before archiving.'
+            : error.unconfirmed
+            ? 'Archive not confirmed. The server may already have archived this audit. Review its current state before another action.'
+            : error.failure.message;
+        if (error.failure.status == 403 || error.failure.status == 404) {
+          _record = null;
+        }
+      });
+      if (error.failure.status == 403) await widget.session.verifyOnResume();
+    } on ApiFailure catch (error) {
+      if (!mounted || generation != widget.session.generation) return;
+      setState(() {
+        _error = error.status == 404
+            ? 'This audit is unavailable. Its archive outcome is not confirmed.'
+            : error.message;
+        if (error.status == 403 || error.status == 404) _record = null;
+      });
+      if (error.status == 403) await widget.session.verifyOnResume();
+    } catch (_) {
+      if (mounted && generation == widget.session.generation) {
+        setState(
+          () =>
+              _error = 'Unable to review this audit. No archive is confirmed.',
+        );
+      }
+    } finally {
+      if (mounted && generation == widget.session.generation) {
+        setState(() => _editing = false);
+      }
+    }
   }
 
   Future<void> _edit() async {
@@ -244,13 +402,39 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
               ),
               const SizedBox(height: 16),
               if (_savedMessage case final message?) StatusMessage(message),
+              if (record?.deletedAt != null)
+                const StatusMessage('Archived · Read-only'),
+              if (widget.session.user?.role == 'ADMIN' &&
+                  (_archiveNeedsReview ||
+                      (record != null &&
+                          AuditPermissions.canDelete(
+                            widget.session.user!,
+                            record,
+                          ))))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    onPressed: _loading || _editing ? null : _archive,
+                    icon: const Icon(Icons.archive_outlined),
+                    label: Text(
+                      _archiveNeedsReview
+                          ? 'Review archive outcome'
+                          : 'Archive audit',
+                    ),
+                  ),
+                ),
               if (record != null &&
                   widget.session.user != null &&
                   AuditPermissions.canEdit(widget.session.user!, record))
                 Align(
                   alignment: Alignment.centerLeft,
                   child: FilledButton.icon(
-                    onPressed: _loading || _editing ? null : _edit,
+                    onPressed: _loading || _editing || _archiveNeedsReview
+                        ? null
+                        : _edit,
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Edit'),
                   ),
@@ -297,5 +481,11 @@ class _AuditDetailsScreenState extends State<AuditDetailsScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    widget.session.removeListener(_sessionChanged);
+    super.dispose();
   }
 }

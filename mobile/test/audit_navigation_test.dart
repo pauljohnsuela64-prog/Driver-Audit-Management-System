@@ -385,18 +385,19 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.ensureVisible(
+        find.widgetWithText(TextButton, 'Discard my changes'),
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.tap(find.widgetWithText(TextButton, 'Discard my changes'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Leave'));
+      await tester.tap(
+        find.widgetWithText(TextButton, 'Discard my changes').last,
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
-      expect(find.text('Previous save needs review'), findsOneWidget);
       expect(writes, 1);
-      await tester.tap(find.text('Use latest values'));
-      await tester.pumpAndSettle();
       final helper = tester.widget<TextFormField>(
         find.widgetWithText(TextFormField, 'Helper Name (optional)'),
       );
