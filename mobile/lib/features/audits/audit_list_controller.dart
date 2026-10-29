@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/network/api_failure.dart';
 import '../auth/session_controller.dart';
 import 'models.dart';
+import 'audit_permissions.dart';
 
 class AuditListController extends ChangeNotifier {
   AuditListController(this._session) : _generation = _session.generation {
@@ -16,6 +17,20 @@ class AuditListController extends ChangeNotifier {
   AuditPage? _page;
   String? _error;
   bool _loading = false;
+  bool _includeArchived = false;
+  bool get includeArchived => _includeArchived;
+  bool get canIncludeArchived =>
+      _session.user != null &&
+      AuditPermissions.canIncludeArchived(_session.user!);
+
+  Future<void> setIncludeArchived(bool value) async {
+    if (value && !canIncludeArchived) return;
+    if (_includeArchived == value) return;
+    _includeArchived = value;
+    _page = null;
+    await refresh();
+  }
+
   AuditQuery get query => _query;
   AuditPage? get page => _page;
   String? get error => _error;
@@ -23,10 +38,15 @@ class AuditListController extends ChangeNotifier {
   bool get loading => _loading;
 
   void _sessionChanged() {
-    if (_generation == _session.generation) return;
+    if (_generation == _session.generation &&
+        (!_includeArchived || canIncludeArchived)) {
+      if (!_disposed) notifyListeners();
+      return;
+    }
     _generation = _session.generation;
     _request++;
     _page = null;
+    _includeArchived = false;
     _error = null;
     _loading = false;
     _query = AuditQuery();
@@ -47,7 +67,12 @@ class AuditListController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final result = await _session.fetchAudits(query);
+      final includeArchived = _includeArchived;
+      final result = await _session.fetchAudits(
+        query,
+        includeDeleted: includeArchived,
+      );
+      if (includeArchived && !canIncludeArchived) return;
       if (_disposed ||
           request != _request ||
           generation != _session.generation) {

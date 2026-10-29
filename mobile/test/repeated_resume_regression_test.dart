@@ -82,4 +82,60 @@ void main() {
       expect(find.text('Driver Audits'), findsOneWidget);
     },
   );
+  testWidgets(
+    'inactive-only resume hides cached audits until revoked identity is checked',
+    (tester) async {
+      final verified = Completer<http.StreamedResponse>();
+      var delay = false;
+      var calls = 0;
+      final session = SessionController(
+        (origin) => ApiClient(
+          origin,
+          clientFactory: () => RecordingClient((r) {
+            if (r.url.path == '/auth/me' && delay) {
+              calls++;
+              return verified.future;
+            }
+            return switch (r.url.path) {
+              '/auth/login' => jsonResponse(leaseJson()),
+              '/auth/me' => jsonResponse(userJson()),
+              '/audits' => jsonResponse({
+                'items': [auditJson()],
+                'total': 1,
+                'page': 1,
+                'page_size': 25,
+              }),
+              _ => jsonResponse(null, status: 204),
+            };
+          }),
+        ),
+        clock: () => DateTime.utc(2026, 10, 28, 12),
+      );
+      addTearDown(session.dispose);
+      session.setOrigin(ApiOrigin.parse('https://example.com'));
+      await session.signIn('fictional', 'password');
+      await tester.pumpWidget(
+        BhliAuditApp(
+          session: session,
+          settingsStore: MemorySettingsStore(),
+          initialSettings: const PublicSettings(origin: 'https://example.com'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Driver Audits'), findsOneWidget);
+      delay = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      final concealed = find.text('Driver Audits').evaluate().isEmpty;
+      verified.complete(jsonResponse({}, status: 401));
+      await tester.pumpAndSettle();
+      expect(calls, 1);
+      expect(concealed, isTrue);
+      expect(session.user, isNull);
+      expect(find.text('Driver Audits'), findsNothing);
+      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+    },
+  );
 }

@@ -1,5 +1,5 @@
-// Native acceptance only: start scripts.mobile_demo with these fictional
-// passwords and ADB-reverse its loopback port. Never point this at real data.
+// Native acceptance only: use temporary ignored configuration and ADB-reverse
+// the disposable loopback API. Never point this at real data.
 import 'package:bhli_audit/app/bhli_audit_app.dart';
 import 'package:bhli_audit/app/privacy_policy.dart';
 import 'package:bhli_audit/core/network/api_client.dart';
@@ -14,6 +14,8 @@ import 'package:integration_test/integration_test.dart';
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   const originText = String.fromEnvironment('DAMS_DEMO_ORIGIN');
+  const adminPassword = String.fromEnvironment('DAMS_DEMO_ADMIN_PASSWORD');
+  const auditorPassword = String.fromEnvironment('DAMS_DEMO_AUDITOR_PASSWORD');
   testWidgets('both roles read real fictional pages and historical details', (
     tester,
   ) async {
@@ -26,8 +28,8 @@ void main() {
     addTearDown(privacy.dispose);
     await binding.convertFlutterSurfaceToImage();
     for (final account in [
-      ('demo_admin', 'Fictional admin acceptance 2026!'),
-      ('demo_auditor', 'Fictional auditor acceptance 2026!'),
+      ('demo_admin', adminPassword),
+      ('demo_auditor', auditorPassword),
     ]) {
       await session.signIn(account.$1, account.$2);
       expect(session.user?.username, account.$1);

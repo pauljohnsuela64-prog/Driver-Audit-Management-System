@@ -1,9 +1,10 @@
-# Android foundation development
+# Android audit management development
 
-Phase 4A is a read-only Android client. ADMIN and AUDITOR accounts can browse
-shared active driver audits, search, filter dates, sort, paginate and inspect all
-seven historical business fields. Account administration, mutations, archive
-access and offline storage are outside this phase.
+Phase 4B extends the foundation with authenticated creation, owner/ADMIN editing,
+explicit conflict review, ADMIN archiving and archive browsing, and read-only
+history. Search, filters, sorting, pagination and the seven historical business
+fields remain intact. Account administration and offline storage are outside
+this Android scope. See [personal acceptance instructions](ANDROID_PHASE4B_ACCEPTANCE.md).
 
 ## Tools and configuration
 
@@ -17,7 +18,7 @@ From `mobile`, run:
 
 ```text
 flutter pub get --enforce-lockfile
-dart format --output=none --set-exit-if-changed lib test integration_test
+dart format --output=none --set-exit-if-changed lib test integration_test test_driver
 flutter analyze --fatal-infos
 flutter test --reporter expanded
 flutter build apk --debug
@@ -38,7 +39,8 @@ From the project root, using the existing Python virtual environment:
 Enter separate fictional passwords through the hidden prompts. The fixture
 creates a temporary SQLite database and loopback API with 60 active and one
 archived fictional audit. It provisions `demo_admin` and `demo_auditor` through
-normal authenticated backend operations. Ctrl+C removes the fixture. No
+normal authenticated backend operations, plus `demo_auditor_b` as a second
+independent AUDITOR. Choose three separate passwords. Ctrl+C removes the fixture. No
 production configuration is loaded.
 
 Start the retained `bhli_api36` development AVD as documented in the toolchain
@@ -56,16 +58,25 @@ verification bypass, LAN HTTP exception or shipping authentication bypass.
 On this Windows host use the toolchain guide's verified `-gpu host -feature
 -Vulkan` emulator workaround; SwiftShader crashed in the installed emulator.
 
-The native acceptance test uses the fictional passwords documented in
-`mobile/integration_test/fictional_api_test.dart`. Start this disposable fixture
-with those two passwords, reverse its port, then run:
+Native tests take temporary credentials from an **ignored local** dart-define
+JSON file, never source literals or production secrets. The keys are
+`DAMS_DEBUG_LOOPBACK` (true), `DAMS_FICTIONAL_CAPTURE` (true only for deliberate
+fictional screenshots), `DAMS_DEMO_ORIGIN`, `DAMS_DEMO_ADMIN_PASSWORD`,
+`DAMS_DEMO_AUDITOR_PASSWORD`, and `DAMS_DEMO_AUDITOR_B_PASSWORD`. Use the same
+fictional passwords as your newly started fixture, reverse its port, then run:
 
 ```text
-flutter test integration_test/fictional_api_test.dart -d emulator-5554 --dart-define=DAMS_DEBUG_LOOPBACK=true --dart-define=DAMS_DEMO_ORIGIN=http://127.0.0.1:<port>
+flutter drive --driver=test_driver/acceptance_driver.dart --target=integration_test/audit_management_test.dart -d emulator-5554 --dart-define-from-file=../local/native-acceptance.json
 ```
 
 This test is not included in the ordinary unit/widget test total and requires a
 running Android device and isolated API. It must never target real business data.
+Passwords are embedded only in that temporary integration-test APK; do not publish
+it or its define file. Sanitize Gradle `dart-defines` output before sharing logs,
+stop the fixture afterward, and remove the local credential file. For manual
+acceptance use the ordinary `flutter run` command above, which embeds no passwords.
+The older read-only `fictional_api_test.dart` also accepts these credential keys
+and expects a fresh 60-record fixture.
 
 ## Session and privacy behavior
 

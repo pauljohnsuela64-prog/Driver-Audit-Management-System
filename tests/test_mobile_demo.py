@@ -1,3 +1,4 @@
+import secrets
 import warnings
 
 import pytest
@@ -8,8 +9,26 @@ from desktop.models import AuditQuery
 from scripts.mobile_demo import mobile_demonstration
 
 
-ADMIN='fictional mobile administrator passphrase'
-AUDITOR='fictional mobile auditor passphrase'
+ADMIN=secrets.token_urlsafe(24)
+AUDITOR=secrets.token_urlsafe(24)
+AUDITOR_B=secrets.token_urlsafe(24)
+
+
+def test_mobile_fixture_three_separate_accounts():
+    with mobile_demonstration(ADMIN,AUDITOR,AUDITOR_B) as demo:
+        client=ApiClient(Config(demo.origin))
+        identities=[client.sign_in(name,password) for name,password in (
+            ('demo_admin',ADMIN),('demo_auditor',AUDITOR),('demo_auditor_b',AUDITOR_B))]
+        assert [identity.user.role for identity in identities]==['ADMIN','AUDITOR','AUDITOR']
+        assert len({identity.user.id for identity in identities})==3
+        assert client.list_audits(identities[2].token,AuditQuery()).total==60
+
+
+@pytest.mark.parametrize('third',['short',ADMIN,AUDITOR,' '*20])
+def test_mobile_fixture_rejects_invalid_third_password(third):
+    with pytest.raises(ValueError):
+        with mobile_demonstration(ADMIN,AUDITOR,third):
+            pytest.fail('Unsafe third password accepted')
 
 
 def test_mobile_fixture_both_roles_shared_active_records_and_cleanup(monkeypatch):

@@ -19,7 +19,10 @@ class DeferredReadSession extends SessionController {
   @override
   int generation = 1;
   @override
-  Future<AuditPage> fetchAudits(AuditQuery query) => read(query);
+  Future<AuditPage> fetchAudits(
+    AuditQuery query, {
+    bool includeDeleted = false,
+  }) => read(query);
   @override
   Future<void> signOut() async {
     generation++;
