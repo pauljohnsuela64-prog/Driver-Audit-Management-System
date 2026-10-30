@@ -1,5 +1,11 @@
 # MySQL setup
 
+For a fictional demonstration, use the [desktop](WINDOWS_DESKTOP_DEMO.md) or
+[Android](ANDROID_PHASE4B_ACCEPTANCE.md) demo instead. Those own disposable
+SQLite/API fixtures and require neither `.env` nor production MySQL preparation.
+The production procedures below require separate explicit approval, backup/restore
+readiness and a reviewed migration/grant plan. See [release boundaries](RELEASE_READINESS.md#production-deployment-is-separate).
+
 ## Disposable GitHub Actions MySQL
 
 The mysql-tests job starts mysql:8.0 using Docker with an ephemeral port bound only
@@ -17,15 +23,21 @@ Docker bridge clients authenticate as dams_test_app@%; the host assertion accept
 that exact configured identity only in GitHub Actions. Local verification still
 requires dams_test_app@localhost. Cross-database denial probes mysql.user, which
 exists on both disposable and local servers, avoiding a production-named database.
-The existing credential-free SQLite job remains unchanged. Hosted execution is
-verified only after this branch is published; local Docker is not required.
+The credential-free SQLite job is separate. All five jobs, including disposable
+MySQL, passed after the Phase 4B merge at `dfe5789`; see
+[dated hosted evidence](RELEASE_READINESS.md#verification-evidence).
+Local Docker is not required to use the existing dedicated local test database.
 
 Use MySQL 8.0.16 or newer (enforced CHECK constraints). Live Phase 1 verification completed on MySQL 8.0.46 with MySQL80 running.
-Both dedicated databases and all four accounts are provisioned; see
+Both dedicated databases and all four accounts were provisioned in that historical
+execution; see
 [LIVE_MYSQL_REVIEW.md](LIVE_MYSQL_REVIEW.md) for the execution record.
 The MySQL client is outside PATH; Python scripts use PyMySQL directly.
 
 ## Administrator provisioning
+
+Separately authorized database maintenance only: inspect existing targets before
+using setup; do not reprovision the existing environment merely to run a demo.
 
 Run from `C:\BHLI-Audit` after installing requirements:
 
@@ -45,7 +57,7 @@ do not drop databases or reset accounts to bypass errors.
 
 | Target | Database | Migration account | Runtime account |
 | --- | --- | --- | --- |
-| Development | driver_audit_db | dams_prod_migrate | dams_prod_app |
+| Production-named application database (not a test target) | driver_audit_db | dams_prod_migrate | dams_prod_app |
 | Isolated tests | driver_audit_test_phase1 | dams_test_migrate | dams_test_app |
 
 Migration rights are limited to their database. Runtime accounts initially have
@@ -54,11 +66,23 @@ no privileges. After upgrading, apply the table-specific grants in
 
 ## Connection and migration
 
-Copy `.env.example` to `.env`. Set `DATABASE_URL` to a `mysql+pymysql` URL containing
+Preserve any existing `.env`. If approved maintenance needs a new local config,
+copy only when absent:
+
+```powershell
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item -LiteralPath .env.example -Destination .env
+}
+```
+
+Set `DATABASE_URL` to a `mysql+pymysql` URL containing
 the dedicated migration account, its URL-encoded password, localhost, database
 `driver_audit_db`, and `?charset=utf8mb4`. No real credential belongs in source,
-commands committed to Git, logs, or screenshots. The runtime account is for the
-future service; use the migration account only for maintenance.
+commands committed to Git, logs, or screenshots. The API uses `DAMS_PROD_RUNTIME_URL`
+with the runtime account; use the migration account only for maintenance. Use
+SQLAlchemy URL utilities for special characters; never print a complete URL.
+The next commands connect to the configured database: execute them only as part
+of an explicitly approved migration, never from the fictional-demo quick start.
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head
@@ -67,10 +91,14 @@ future service; use the migration account only for maintenance.
 .\.venv\Scripts\python.exe -m alembic check
 ```
 
-Current application head is `0002`. Production remains at `0001` until the separately approved activity migration and grants are applied. Verification connects, checks the recorded head and
+Current application head is `0002`. The supplied production state is `0001`, not
+re-queried by this documentation checkpoint. Upgrade and restricted activity grants
+require separate approval; see [partial-DDL recovery](ADMIN_ACTIVITY.md#explicitly-authorized-deployment-only).
+Verification connects, checks the recorded head and
 compares schema metadata. Autogeneration comparison does not detect every CHECK
 or server-default change; review revisions and integration behavior as well.
-Downgrading to base drops the four DAMS tables and their data: use only an empty
+Downgrading from head to base drops all five application tables and their data:
+use only an empty
 disposable database for roundtrip tests. Never downgrade a populated deployment
 without an explicitly reviewed backup/recovery plan.
 
@@ -103,11 +131,49 @@ See [MySQL GRANT semantics](https://dev.mysql.com/doc/refman/8.0/en/grant.html).
 
 ## Loading ignored local configuration for tests
 
-Tests read their URLs from process environment variables. To load the ignored
-`.env` into only the test process without exposing credentials in arguments:
+Tests read URLs from their process environment, not automatically from `.env`.
+For the approved local test database only, the following child process reads just
+the two test settings, validates their identities and keeps production URLs blank.
+It neither echoes credentials nor passes them as command arguments. The fixtures
+still enforce an empty test schema and runtime grants. Do not replace these guards
+with an unconditional `load_dotenv` of the entire server configuration.
 
 ```powershell
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv('.env'); import pytest; raise SystemExit(pytest.main(['--mysql', '-q', '-rs']))"
+@'
+import os
+from dotenv import dotenv_values
+from sqlalchemy.engine import make_url
+values = dotenv_values('.env')
+for name in ('DATABASE_URL', 'DAMS_PROD_RUNTIME_URL',
+             'DAMS_TEST_DATABASE_URL', 'DAMS_TEST_RUNTIME_URL'):
+    os.environ[name] = ''
+os.environ['PYTHON_DOTENV_DISABLED'] = '1'
+urls = []
+for name, account in (('DAMS_TEST_DATABASE_URL', 'dams_test_migrate'),
+                      ('DAMS_TEST_RUNTIME_URL', 'dams_test_app')):
+    raw = values.get(name)
+    if not raw:
+        raise SystemExit('Both dedicated test settings are required')
+    try:
+        url = make_url(raw)
+    except Exception:
+        raise SystemExit('Invalid dedicated test connection setting') from None
+    if not (url.drivername == 'mysql+pymysql'
+            and url.database == 'driver_audit_test_phase1'
+            and url.username == account and url.password
+            and url.host in ('localhost', '127.0.0.1')
+            and set(url.query) <= {'charset'}
+            and url.query.get('charset', 'utf8mb4') == 'utf8mb4'):
+        raise SystemExit('Refusing an unsafe test connection')
+    urls.append(url)
+    os.environ[name] = raw
+if ((urls[0].host, urls[0].port or 3306, urls[0].database)
+        != (urls[1].host, urls[1].port or 3306, urls[1].database)
+        or urls[0].password == urls[1].password):
+    raise SystemExit('Test accounts must share a target and use separate passwords')
+import pytest
+raise SystemExit(pytest.main(['--mysql', '-q', '-rs']))
+'@ | & .\.venv\Scripts\python.exe -
 ```
 
 `DAMS_TEST_RUNTIME_URL` additionally supplies the dedicated `dams_test_app` URL

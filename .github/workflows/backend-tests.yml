@@ -143,7 +143,7 @@ jobs:
       - name: Launch actual frozen client without developer PATH
         run: python -m tests.desktop.packaged_acceptance --executable dist/BHLIAudit/BHLIAudit.exe --output artifacts/packaged-smoke --smoke
       - name: Verify native installation, preservation and reinstall
-        run: python -m tests.desktop.installer_acceptance --installer dist/installer/BHLI-Audit-Setup-0.3.0-x64.exe --output artifacts/installer-acceptance
+        run: python -m tests.desktop.installer_acceptance --installer dist/installer/BHLI-Audit-Setup-1.0.0-x64.exe --output artifacts/installer-acceptance
       - name: Upload unsigned test candidates and evidence
         uses: actions/upload-artifact@v7
         with:
@@ -154,6 +154,7 @@ jobs:
             dist/BHLIAudit/
             dist/installer/
             dist/SHA256SUMS.json
+            dist/BHLI-Audit-Windows-1.0.0-x64.zip
             artifacts/packaged-smoke/*.png
             artifacts/packaged-smoke/report.json
             artifacts/installer-acceptance/installer-report.json

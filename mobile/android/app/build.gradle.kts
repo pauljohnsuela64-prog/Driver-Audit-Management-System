@@ -4,10 +4,27 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Copy only the approved project license/scope documents, never the repository.
+val prepareApplicationNotices = tasks.register<Sync>("prepareApplicationNotices") {
+    from(rootProject.file("../..")) {
+        include("LICENSE", "NOTICE", "ASSET_RIGHTS.md", "THIRD_PARTY_NOTICES.md",
+            "docs/THIRD_PARTY_COMPLIANCE.md")
+    }
+    into(layout.buildDirectory.dir("generated/application-notices/application-license"))
+}
+
 android {
     namespace = "com.bhli.audit.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    // Reviewed upstream notices/source material only; no application license grant.
+    sourceSets.getByName("main").assets.srcDir(
+        rootProject.file("../../packaging/notices/android/assets")
+    )
+    sourceSets.getByName("main").assets.srcDir(
+        layout.buildDirectory.dir("generated/application-notices").get().asFile
+    )
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -34,6 +51,8 @@ android {
         }
     }
 }
+
+tasks.named("preBuild") { dependsOn(prepareApplicationNotices) }
 
 kotlin {
     compilerOptions {

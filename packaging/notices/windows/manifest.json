@@ -1,0 +1,66 @@
+{
+  "scope": "Supplemental third-party notices only. No application-source or BHLI artwork license is granted. Existing CPython/Pillow/package composite licenses remain required.",
+  "review_date": "2026-10-30",
+  "components": {
+    "Expat": "2.9.0",
+    "OpenSSL": "3.5.9",
+    "FreeType": "2.14.3",
+    "libjpeg-turbo": "3.2.0",
+    "Roboto": "2.137 (2017)"
+  },
+  "openssl_notice_evidence": {
+    "source": "https://codeload.github.com/openssl/openssl/tar.gz/refs/tags/openssl-3.5.9",
+    "sha256": "796831ec533bf41998eaaee9d632d921b8a69f57394fa4086ff01a941113d26d",
+    "members": 6078,
+    "notice_members": 0
+  },
+  "files": [
+    {
+      "path": "expat-2.9.0-COPYING.txt",
+      "sha256": "73cc92f80889ab23c7287b1a11dd50fdec190c3f26ebe5938c579043817d651e",
+      "source": "https://raw.githubusercontent.com/libexpat/libexpat/R_2_9_0/COPYING",
+      "retrieved_utc": "2026-10-30T01:12:38.048613+00:00"
+    },
+    {
+      "path": "openssl-3.5.9-LICENSE.txt",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+      "source": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/LICENSE.txt",
+      "retrieved_utc": "2026-10-30T01:12:38.320297+00:00"
+    },
+    {
+      "path": "freetype-2.14.3-FTL.txt",
+      "sha256": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f",
+      "source": "https://raw.githubusercontent.com/freetype/freetype/VER-2-14-3/docs/FTL.TXT",
+      "retrieved_utc": "2026-10-30T01:12:38.634729+00:00"
+    },
+    {
+      "path": "libjpeg-turbo-3.2.0-LICENSE.md",
+      "sha256": "ba6bceebcba0fdd35488477c2cca8c4632ce82c74dbfbc87d886ce6fc4433579",
+      "source": "https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/3.2.0/LICENSE.md",
+      "retrieved_utc": "2026-10-30T01:12:38.948071+00:00"
+    },
+    {
+      "path": "libjpeg-turbo-3.2.0-README.ijg",
+      "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6",
+      "source": "https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/3.2.0/README.ijg",
+      "retrieved_utc": "2026-10-30T01:12:39.228885+00:00"
+    },
+    {
+      "path": "roboto-2-upstream-LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "source": "https://raw.githubusercontent.com/googlefonts/roboto-2/main/LICENSE",
+      "retrieved_utc": "2026-10-30T01:12:39.521131+00:00"
+    },
+    {
+      "path": "WINDOWS-ACKNOWLEDGMENTS.txt",
+      "sha256": "e5f6411b630a5be50dcab5c285c90fcd5d83660807cdc7a18597fca7768eaed8",
+      "source": "Product acknowledgments based on exact upstream FreeType/IJG/OpenSSL releases and embedded Roboto copyright metadata"
+    },
+    {
+      "path": "InnoSetup-7.1.0-LICENSE.txt",
+      "sha256": "2e5346868c2a18434489824e11d65c3031620f792fefc415d05f19cd441abf5c",
+      "source": "Unmodified license from verified signed Inno Setup 7.1.0 compiler distribution; https://jrsoftware.org/files/is/license.txt",
+      "role": "installer engine redistribution license; compiler not bundled"
+    }
+  ]
+}

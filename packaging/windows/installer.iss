@@ -1,4 +1,4 @@
-#define AppVersion "0.3.0"
+#define AppVersion "1.0.0"
 #ifndef BundleDir
   #define BundleDir "..\..\dist\BHLIAudit"
 #endif

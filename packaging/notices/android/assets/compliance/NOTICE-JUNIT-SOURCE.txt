@@ -1,0 +1,23 @@
+JUnit 4.12 source availability
+
+This distribution includes JUnit 4.12 under the Eclipse Public License 1.0.
+The complete corresponding upstream JUnit 4.12 Program source, including
+its build files and notices, is provided by this distributor in the
+accompanying APK entry assets/compliance/junit-4.12-sources.zip.
+Open the APK using a standard ZIP/archive reader, extract that entry,
+and open the extracted ZIP to obtain the source. No network access or
+separate request to an external service is required.
+The ZIP SHA-256 is 57f446df276958abf22431c0fdbffb11c125ea99c5f973c88cc4596ce4852165.
+
+Upstream release tag: r4.12
+Exact source commit: 64155f8a9babcfcf4263cf4d08253a1556e75481
+Upstream source browser:
+https://github.com/junit-team/junit4/tree/64155f8a9babcfcf4263cf4d08253a1556e75481
+Upstream source archive:
+https://github.com/junit-team/junit4/archive/64155f8a9babcfcf4263cf4d08253a1556e75481.zip
+
+The JUnit Program source is available under EPL-1.0. Its full LICENSE-junit.txt
+and upstream NOTICE.txt are included at the top level of the source ZIP's
+junit4-64155f8a9babcfcf4263cf4d08253a1556e75481 directory and reproduced in
+this distribution's third-party notices. The source archive includes upstream test
+source as part of the JUnit project; this is third-party compliance source.

@@ -1,0 +1,120 @@
+{
+  "scope": "Reviewed supplemental third-party material only; not an application-code or BHLI artwork license. Existing Flutter NOTICES.Z and package/native notices remain required.",
+  "review_date": "2026-10-30",
+  "junit": {
+    "version": "4.12",
+    "source_commit": "64155f8a9babcfcf4263cf4d08253a1556e75481",
+    "source_url": "https://github.com/junit-team/junit4/archive/64155f8a9babcfcf4263cf4d08253a1556e75481.zip",
+    "source_sha256": "57f446df276958abf22431c0fdbffb11c125ea99c5f973c88cc4596ce4852165",
+    "binary_jar_sha256": "59721f0805e223d84b90677887d9ff567dc534d7c502ca903c0c2b17f05c116a"
+  },
+  "material_icons": {
+    "license": "CC-BY-4.0",
+    "source": "https://fonts.google.com/icons",
+    "font_sha256": "d9865b671a09d683d13a863089d8825e0f61a37696ce5d7d448bc8023aa62453"
+  },
+  "files": [
+    {
+      "path": "assets/compliance/NOTICES-NATIVE-ARCHIVES.txt",
+      "sha256": "daab75a602dbf0383de61b61e82d1efb7836ac54b77c0f2c22623e4c55da6a6e",
+      "source": "NATIVE_ARCHIVE_NOTICES.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-JUNIT-SOURCE.txt",
+      "sha256": "32a63baccc1d5d0a081482269a82f35a99e4d54456bd464c497b15e93af4e014",
+      "source": "JUNIT_SOURCE_AVAILABILITY.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-JUNIT-LICENSE.txt",
+      "sha256": "9648bb2891b9813970bddb68d4be8a5e6ec8280d0180a53dfb29236b579c55bb",
+      "source": "https://raw.githubusercontent.com/junit-team/junit4/64155f8a9babcfcf4263cf4d08253a1556e75481/LICENSE-junit.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-JUNIT-UPSTREAM.txt",
+      "sha256": "cffc5b39811d6ef40395a858f209215fa87e8230f1641068200c167014638d32",
+      "source": "https://raw.githubusercontent.com/junit-team/junit4/64155f8a9babcfcf4263cf4d08253a1556e75481/NOTICE.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/junit-4.12-sources.zip",
+      "sha256": "57f446df276958abf22431c0fdbffb11c125ea99c5f973c88cc4596ce4852165",
+      "source": "https://github.com/junit-team/junit4/archive/64155f8a9babcfcf4263cf4d08253a1556e75481.zip",
+      "role": "complete corresponding upstream source"
+    },
+    {
+      "path": "assets/compliance/NOTICE-MATERIALICONS-ATTRIBUTION.txt",
+      "sha256": "33fd3a19133b3de27cd6cea7dda0e60feb88daeca98151bcd5e9de160d669c55",
+      "source": "Embedded MaterialIcons name table and matching Flutter material_fonts license; https://fonts.google.com/icons",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-MATERIALICONS-LICENSE.txt",
+      "sha256": "be698262aecd042c0de6f886cc0af622f8def446462026992cc530275d8a9e74",
+      "source": "Flutter material_fonts/materialicons_license.txt accompanying byte-identical font; https://creativecommons.org/licenses/by/4.0/",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-APACHE-2.0.txt",
+      "sha256": "d103f246ef4c18dab8af0c1dcf6a8af884e5cff554da7261a48ac43c17d98f2e",
+      "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-CHECKER-COMPAT-QUAL.txt",
+      "sha256": "ccaecca6f8b313ebbfd1ba45069c9cb242b530dd75d913c596f60b67a2b13f4c",
+      "source": "https://github.com/typetools/checker-framework/tree/checker-framework-2.5.5",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-CHECKER-UPSTREAM-SCOPE.txt",
+      "sha256": "4486f81fb92032d0fe7dab5b259a9e0871f68808ce4af1ddb3f307e1cc5b455e",
+      "source": "https://raw.githubusercontent.com/typetools/checker-framework/checker-framework-2.5.5/LICENSE.txt",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-GUAVA-LICENSE.txt",
+      "sha256": "8c6db340475136df3c1201d458fa5755698eace76e510471ecc9d857d6083dac",
+      "source": "https://raw.githubusercontent.com/google/guava/v28.1/COPYING",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-DATASTORE-LICENSE.txt",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/datastore/datastore-core-android/1.2.1/datastore-core-android-1.2.1-sources.jar",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-FLUTTER-LICENSE.txt",
+      "sha256": "a3a9fd82f800a47377f7d3f60c60a5c91cae0495be8f329031e1448ce0f5dab9",
+      "source": "https://github.com/flutter/flutter/blob/737ba8f885dc774b53b442759999a312c9461e4e/LICENSE",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-DART-LICENSE.txt",
+      "sha256": "2cfa3ee8e7512e6d44c854b986510810fadc815f93f890373b3a81c1b6ccd256",
+      "source": "Frozen Dart 3.13.7 SDK LICENSE; https://github.com/dart-lang/sdk/blob/3.13.7/LICENSE",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-JNI.txt",
+      "sha256": "af90ebaa4a2c0df62b663a3a1928e15bb13ef8bfc8db5e71cd4a03ff6d761b49",
+      "source": "Exact jni 1.1.1 source headers/LICENSE; https://pub.dev/packages/jni/versions/1.1.1/license",
+      "role": "third-party attribution/license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-NATIVE-INVENTORY.json",
+      "sha256": "dfdf3c1f82fc6f7ef2873fd250b8729bab06bc7a0cd3ae46ce40d932a377ee9b",
+      "source": "existing mergeDebugJavaResource state, exact cached POM inheritance and archive hashes",
+      "role": "native component provenance inventory"
+    },
+    {
+      "path": "assets/compliance/NOTICE-ANIMAL-SNIFFER-ANNOTATIONS.txt",
+      "sha256": "b2cae2bcd3ab0b7a3b2107517403f3a2cf063240e57812c58d761b60287a23f1",
+      "source": "https://github.com/mojohaus/animal-sniffer/blob/animal-sniffer-parent-1.18/animal-sniffer-annotations/src/main/java/org/codehaus/mojo/animal_sniffer/IgnoreJRERequirement.java",
+      "role": "exact source MIT copyright, permission and disclaimer for distributed annotation"
+    }
+  ]
+}

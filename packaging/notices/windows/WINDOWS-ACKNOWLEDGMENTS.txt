@@ -1,0 +1,21 @@
+Supplemental Windows component acknowledgments
+
+FreeType 2.14.3
+This software is based in part on the work of the FreeType Team.
+
+libjpeg-turbo 3.2.0 / Independent JPEG Group
+This software is based in part on the work of the Independent JPEG Group.
+
+OpenSSL 3.5.9
+Copyright (c) 1998-2026 The OpenSSL Project Authors
+Copyright (c) 1995-1998 Eric A. Young, Tim J. Hudson
+All rights reserved.
+Licensed under the Apache License, Version 2.0.
+
+Roboto Regular and Medium, Version 2.137 (2017)
+Copyright 2011 Google Inc. All Rights Reserved.
+Licensed under the Apache License, Version 2.0.
+
+These acknowledgments identify bundled third-party work. They do not modify
+upstream licenses or grant rights in BHLI names, trademarks, or artwork.
+See the accompanying component license texts and complete Pillow wheel notices.

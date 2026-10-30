@@ -1,14 +1,18 @@
-# BHLI Audit desktop — Phase 3C
+# BHLI Audit Windows desktop
 
-Windows desktop foundation: employee sign-in, role-aware collapsible navigation,
+Implemented desktop: individual ADMIN sign-in, collapsible navigation,
 dashboard with real active-audit totals, searchable/filterable/paginated audit table,
 separate details, audit creation/editing, ADMIN soft deletion, chronological history,
-My Account, appearance selection and sign-out.
+My Account, appearance selection, Excel export and sign-out. Client-only packaging
+and a per-user Windows installer are implemented; production distribution remains
+separate. See [installation](WINDOWS_INSTALLATION.md), [Excel export](WINDOWS_DESKTOP_EXPORT.md)
+and [current release readiness](RELEASE_READINESS.md).
 The three primary destinations are Dashboard, Driver Audits and My Account.
 The desktop admits individually authenticated ADMIN accounts only.
 The desktop preserves the seven audit business fields and original auditor snapshot.
 
-See the [current Phase 3C verification and before/after screenshots](WINDOWS_DESKTOP_PHASE3C_VERIFICATION.md).
+The [Phase 3C verification and before/after screenshots](WINDOWS_DESKTOP_PHASE3C_VERIFICATION.md)
+record the historical desktop simplification checkpoint.
 
 See the [Phase 3B verification and screenshots](WINDOWS_DESKTOP_PHASE3B_VERIFICATION.md)
 for independent-review corrections, complete local test results and native evidence.
@@ -34,18 +38,20 @@ run `.\.venv\Scripts\python.exe -m desktop`. Backend dependency pins are unchang
 CustomTkinter 6.0.0 was selected after native Python 3.14.3/Tk 8.6 rendering checks.
 Pillow provides locally drawn DPI-aware icons; no external images/fonts are fetched.
 
-An operator must separately prepare the backend and its restricted runtime account:
+For an already approved/configured backend only, an operator can launch it as
+below. The disposable demo above requires none of these production prerequisites:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.main:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 See [database setup](DATABASE_SETUP.md) and [authentication](AUTHENTICATION.md).
-This desktop assignment does not approve production revision 0002 or its grants.
+This guide does not approve production revision 0002 or its grants.
 Do not start an unprepared production rollout merely to test the GUI. Native checks
 use a fictional transport; real API integration tests use isolated test fixtures.
 
-Default API origin is `http://127.0.0.1:8000`. Override without database credentials:
+Source development defaults to `http://127.0.0.1:8000`; an unconfigured frozen
+client instead requires first-launch API setup. Override without database credentials:
 
 ```powershell
 $env:DAMS_DESKTOP_API_URL = 'https://audit-api.example.com'
@@ -195,18 +201,20 @@ scaling in the verification report; unavailable manual/assistive checks remain l
 Existing SQLite/MySQL CI jobs still run unchanged backend behavior plus desktop
 headless contracts. Native tests are explicitly skipped without opt-in Windows.
 A separate Windows job installs desktop dependencies and opts into native checks.
-Consult the draft PR for exact latest local/hosted counts and run URLs.
+Consult [release readiness](RELEASE_READINESS.md#verification-evidence) for dated
+local/hosted counts and run URLs rather than treating an old phase total as current.
 See the [verification record and native screenshots](WINDOWS_DESKTOP_VERIFICATION.md)
 for measured results, callback root cause and display-scaling limitations.
 The [2026-10-27 independent acceptance](WINDOWS_DESKTOP_ACCEPTANCE.md) adds real-API
 manual demonstration, maximized-window checks and subsequent engineering corrections.
 
-## Remaining work
+## Distribution and deployment limits
 
-Packaging/installers, code signing, update distribution and additional client
-acceptance remain outside this assignment. Production
-HTTPS/network policy, gateway rate limits, backups, service supervision and revision
-0002 rollout remain operator prerequisites. No production rollout, reporting or
-Android implementation is included here. Earlier phase verification documents are
-historical evidence; the revised Phase 3C specification supersedes their desktop
-roadmap references.
+Windows packaging/installation and Excel reporting are implemented. Android audit
+management is a separate implemented client, supporting ADMIN and AUDITOR under
+the existing backend rules; Windows admission stays ADMIN-only. Production code
+signing, automatic update distribution and additional target-machine acceptance
+remain outstanding. HTTPS/network policy, gateway limits, backups/restore, service
+supervision and revision0002 rollout are operator prerequisites. Earlier phase
+verification documents remain historical evidence; see the current release index
+for known local-installer, clean-VM and display-scaling coverage limitations.

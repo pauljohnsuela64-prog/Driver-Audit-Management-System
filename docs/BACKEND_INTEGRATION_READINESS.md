@@ -1,14 +1,18 @@
-# Backend integration readiness â€” Phase 2C, Assignment 3B
+# Backend and native-client integration guide
 
-**PASS for controlled local Windows-client integration.** This is not production
-deployment approval. The Phase 3A read-only Windows client is now documented in
-[WINDOWS_DESKTOP.md](WINDOWS_DESKTOP.md). Activity logging adds revision 0002;
-production upgrade/grants require separate approval. Seven audit fields are unchanged.
+The backend supports the implemented [Windows](WINDOWS_DESKTOP.md) and
+[Android](ANDROID_DEVELOPMENT.md) clients through the same REST contracts.
+Windows admission is ADMIN-only; Android supports ADMIN and AUDITOR ownership
+rules. This is not production deployment approval. Activity logging adds revision
+0002; production upgrade/grants require separate approval. Seven audit fields are
+unchanged. See [current release evidence](RELEASE_READINESS.md).
 
 ## Start and connect
 
-From `C:\BHLI-Audit`, with the existing virtual environment, migrated database,
-restricted runtime grants and protected local server configuration prepared:
+For fictional inspection first use the [desktop demo](WINDOWS_DESKTOP_DEMO.md)
+or [Android demo](ANDROID_PHASE4B_ACCEPTANCE.md); neither needs production setup.
+For an already approved backend, from `C:\BHLI-Audit` with its virtual environment,
+migrated database, restricted grants and protected server configuration prepared:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.main:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
@@ -20,11 +24,12 @@ using the secure CLI in [AUTHENTICATION.md](AUTHENTICATION.md). Integration test
 do not provision production users or modify production records. GET /health is
 liveness only; /docs and /openapi.json describe the current API.
 
-A local CustomTkinter client needs a configurable API base URL (initially
-http://127.0.0.1:8000), HTTP timeouts, JSON support and access to response headers.
-It must connect only to HTTP APIs, never MySQL or server .env credentials. Keep
-network calls off the UI thread and present failures without logging request bodies
-or Authorization headers. No browser/CORS setup is required for a native client.
+The existing clients configure an API origin, bound HTTP requests, parse JSON and
+retain ETags. Network work stays off the Tk UI thread; Flutter uses asynchronous
+transport. Neither connects to MySQL or reads server `.env` credentials. Source
+loopback demos are distinct from default Android HTTPS-only connection policy.
+Failures omit request bodies and Authorization headers. No browser/CORS setup is
+required for these native clients.
 
 ## Implemented client contract
 
@@ -94,7 +99,7 @@ failures. 204 responses have no body. No client should display raw exceptions,
 connection URLs or credentials. UI-specific field hints must follow the documented
 schema; server validation messages intentionally omit submitted data.
 
-## Verified behavior
+## Historical backend integration evidence
 
 tests/test_backend_integration.py exercises one continuous API-only workflow:
 ADMIN login and creation of two AUDITOR accounts; employee login, idempotent audit
@@ -107,7 +112,9 @@ Assignment 3B execution: **1 passed in default SQLite mode; 1 passed in isolated
 MySQL mode; no skips/failures.** This adds missing cross-feature coverage rather
 than repeating Assignment 3A's 99 security checks. MySQL API traffic uses
 dams_test_app; migration credentials only set up/clean driver_audit_test_phase1.
-Full regression and hosted Actions execution are deferred to final publication.
+These are the original Phase 2C Assignment 3B measurements, not current release
+totals. Later complete suites and five-job post-merge CI are indexed in
+[release readiness](RELEASE_READINESS.md#verification-evidence).
 
 ## Deployment requirements and outstanding limitations
 
@@ -123,15 +130,17 @@ Full regression and hosted Actions execution are deferred to final publication.
 - **Rate limits: limited.** Login throttling is process-local (10 attempts/minute
   per client IP), not distributed. Deployment gateway limits remain necessary;
   password-management routes do not have a separate reauthentication limiter.
-- **Client token storage: not implemented.** Prefer in-memory tokens; if persistence
-  is required, use Windows OS-protected credential storage. Never plaintext files,
-  registry values or logs. Clear client tokens on logout/401/password change.
-- **Hosted CI:** both jobs passed at the original Phase 2C checkpoint. The latest
-  activity-extension HEAD must pass both jobs; consult PR #4 checks for current evidence.
+- **Client session storage: implemented in memory only.** Both clients discard
+  tokens on logout/401 and require re-login after restart. No persistent token,
+  credential file, registry token or remember-me feature exists. Android also
+  conceals interrupted screens and verifies identity before revealing them.
+- **Hosted CI:** Android/Flutter, SQLite, disposable MySQL, Windows Desktop and
+  Windows Packaging/Installer passed after Phase 4B merge at `dfe5789`. See the
+  current release index for URLs; the old two-job/PR #4 evidence is historical.
 - Account mutations revalidate authorization under lock; other already-authorized
   in-flight requests are not retroactively canceled. History
   is append-only for runtime accounts, not tamper-proof against database admins.
 
-There is no confirmed backend-code blocker for starting local Windows-client work.
-Deployment configuration, the approved activity rollout and final hosted verification remain
-separate work; this document does not mark the entire Phase 2C complete.
+Local client functionality is implemented and tested. Deployment configuration,
+production activity rollout and final Version 1.0 candidate verification remain
+separate gates; this guide does not approve production operation.
