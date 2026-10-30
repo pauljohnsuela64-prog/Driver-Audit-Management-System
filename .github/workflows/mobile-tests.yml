@@ -3,10 +3,10 @@ name: Android foundation
 on:
   pull_request:
     branches: [main]
-    paths: ['mobile/**', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
+    paths: ['mobile/**', 'packaging/notices/android/**', 'scripts/license_notices.py', 'tests/test_license_notices.py', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
   push:
     branches: [main, 'feat/**']
-    paths: ['mobile/**', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
+    paths: ['mobile/**', 'packaging/notices/android/**', 'scripts/license_notices.py', 'tests/test_license_notices.py', 'scripts/mobile_demo.py', 'scripts/android_candidate.py', 'tests/test_mobile_demo.py', 'tests/test_release_contract.py', '.github/workflows/mobile-tests.yml']
 
 permissions:
   contents: read

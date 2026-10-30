@@ -9,6 +9,11 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // Reviewed upstream notices/source material only; no application license grant.
+    sourceSets.getByName("main").assets.srcDir(
+        rootProject.file("../../packaging/notices/android/assets")
+    )
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

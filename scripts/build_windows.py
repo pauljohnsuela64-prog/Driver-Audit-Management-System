@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 
+from scripts.license_notices import copy_verified_notices, verified_notices
+
 ROOT=Path(__file__).resolve().parents[1]
 FORBIDDEN={'backend','database','migrations','scripts','tests','pytest','sqlalchemy','pymysql','fastapi','uvicorn','dotenv'}
 
@@ -60,6 +62,7 @@ def build(iscc, output_root=None):
     source_sha=subprocess.check_output(['git','-c',f'safe.directory={ROOT.as_posix()}','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     dirty=subprocess.check_output(['git','-c',f'safe.directory={ROOT.as_posix()}','status','--porcelain','--untracked-files=normal'],cwd=ROOT,text=True)
     if dirty:raise SystemExit('Commit reviewed source before building candidates')
+    verified_notices('windows')
     output.mkdir(parents=True,exist_ok=True)
     subprocess.run([sys.executable,'-m','pip','check'],check=True,cwd=ROOT)
     subprocess.run([sys.executable,'-m','PyInstaller','--noconfirm','--clean','--distpath',str(output),
@@ -72,9 +75,10 @@ def build(iscc, output_root=None):
         copy_notices(dist,licenses)
     python_license=Path(sys.base_prefix)/'LICENSE.txt'
     if python_license.is_file():shutil.copyfile(python_license,licenses/'CPython-LICENSE.txt')
+    supplemental=copy_verified_notices('windows',licenses/'SUPPLEMENTAL')
     manifest={'source_sha':source_sha,'python':platform.python_version(),'architecture':platform.machine(),
         'pyinstaller':metadata.version('pyinstaller'),'dependencies':sorted(dependencies,key=lambda d:d['name'].lower()),
-        'modules':modules,'signed_release':False}
+        'modules':modules,'signed_release':False,'supplemental_notices':supplemental}
     (bundle/'BUILD-MANIFEST.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     subprocess.run([str(Path(iscc).resolve()),'/DBundleDir='+str(bundle),'/DOutputDir='+str(output/'installer'),
                     str(ROOT/'packaging/windows/installer.iss')],cwd=ROOT,check=True)

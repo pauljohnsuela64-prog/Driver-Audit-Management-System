@@ -1,0 +1,15 @@
+Material Icons font attribution
+
+Material Icons (MaterialIcons-Regular), Google LLC.
+Copyright 2019 Google LLC. All Rights Reserved.
+Source: Google Material Design Icons, https://fonts.google.com/icons
+The font was supplied in the Flutter SDK material_fonts bundle.
+The accompanying materialicons_license.txt supplies the Creative Commons
+Attribution 4.0 International license (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+Full license text: assets/compliance/NOTICE-MATERIALICONS-LICENSE.txt inside the APK.
+
+The font in this candidate is unmodified from the cached Flutter material_fonts
+asset; SHA-256: d9865b671a09d683d13a863089d8825e0f61a37696ce5d7d448bc8023aa62453.
+Internal font name: Material Icons : 2022-09-07.
+No endorsement by Google is implied.

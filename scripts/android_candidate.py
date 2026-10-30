@@ -9,6 +9,11 @@ import shutil
 import subprocess
 import zipfile
 
+if __package__:
+    from .license_notices import verified_notices, verify_apk_notices
+else:
+    from license_notices import verified_notices, verify_apk_notices
+
 ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / 'mobile'
 BUILD_ARGS = ['build', 'apk', '--debug', '--target', 'lib/main.dart']
@@ -51,7 +56,7 @@ def apk_notices(apk):
     return notices
 
 
-def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed=None):
+def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed=None, supplemental=()):
     if output.exists() and any(output.iterdir()):
         raise ValueError('Candidate output must be empty')
     output.mkdir(parents=True, exist_ok=True)
@@ -69,7 +74,8 @@ def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed
                     pubspec_lock_sha256=digest(MOBILE / 'pubspec.lock'),
                     apk_sha256=digest(output / 'app-debug.apk'),
                     notices_sha256=digest(notice_file),
-                    notice_scope='Embedded APK notices plus resolved Dart/SDK licenses; not redistribution clearance')
+                    supplemental_notices=list(supplemental),
+                    notice_scope='Embedded APK notices plus resolved Dart/SDK and reviewed supplemental notices; not redistribution clearance')
     (output / 'BUILD-MANIFEST.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     hashes = {p.name: digest(p) for p in sorted(output.iterdir()) if p.is_file()}
     (output / 'SHA256SUMS.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
@@ -84,6 +90,7 @@ def build(flutter, output):
         raise SystemExit('Commit reviewed source before building candidates')
     if output.exists() and any(output.iterdir()):
         raise SystemExit('Candidate output must be empty')
+    verified_notices('android')
     env = {k: v for k, v in os.environ.items()
            if not k.startswith('DAMS_') and k not in ('DART_DEFINES', 'FLUTTER_BUILD_ARGS')}
     sha = subprocess.check_output([*git, 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
@@ -97,6 +104,7 @@ def build(flutter, output):
     aapt = sdk / 'build-tools' / pinned['android_build_tools'] / ('aapt2.exe' if os.name == 'nt' else 'aapt2')
     badging = subprocess.check_output([str(aapt), 'dump', 'badging', str(apk)], text=True, encoding='utf-8')
     validate_badging(badging)
+    supplemental = verify_apk_notices(apk)
     notices = apk_notices(apk)
     deps = json.loads(subprocess.check_output([flutter, 'pub', 'deps', '--json'], cwd=MOBILE, env=env))
     versions = {p['name']: p['version'] for p in deps['packages']}
@@ -130,7 +138,7 @@ def build(flutter, output):
     observed['host_platform'] = __import__('platform').system()
     observed['apk_manifest_verified'] = True
     observed['aapt2_version'] = subprocess.check_output([str(aapt), 'version'], text=True).strip()
-    result = write_candidate(apk, output, sha, pinned, inventory, notices, observed)
+    result = write_candidate(apk, output, sha, pinned, inventory, notices, observed, supplemental)
     print(json.dumps(dict(source_sha=sha, version=result['version'], apk_sha256=result['apk_sha256'])))
 
 
