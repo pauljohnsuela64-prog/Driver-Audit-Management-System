@@ -1,14 +1,24 @@
 # Client third-party compliance records
 
-These records concern bundled third-party code and resources. They do not apply
-an application-source license, identify a legal copyright owner, grant BHLI
-trademark/artwork rights, or authorize public distribution.
+These records concern bundled third-party code and resources. Authorized original
+source contributions use [Apache 2.0](../LICENSE), with approved attribution in
+[NOTICE](../NOTICE) and explicit [asset/branding exclusions](../ASSET_RIGHTS.md).
+The [third-party index](../THIRD_PARTY_NOTICES.md) does not relicense upstream work,
+grant BHLI trademark/artwork rights or authorize public publication.
 
 ## Offline notice inclusion
 
 `packaging/notices/windows/manifest.json` and
 `packaging/notices/android/manifest.json` record reviewed supplemental material
 and its SHA-256. The builders validate all listed bytes before packaging.
+The root `LICENSE`, `NOTICE`, `ASSET_RIGHTS.md`, `THIRD_PARTY_NOTICES.md` and
+this compliance document are also copied byte-for-byte into the Windows bundle
+and Android `assets/application-license/`. The Android notice sidecar includes
+all five texts; the original directory structure supports their relative links.
+Builders check the official Apache text and reject stale/missing scope documents.
+Gradle copies only these five explicitly selected documents into generated assets,
+not the repository or local configuration.
+
 Builds never download source or license material dynamically. Existing package,
 CPython, Pillow and Flutter composite notices remain required; the supplemental
 files do not replace them or certify every transitive component.

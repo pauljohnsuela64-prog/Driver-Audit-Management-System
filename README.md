@@ -71,7 +71,7 @@ HTTP is used only for disposable development demonstrations.
 | Backend | Python 3.14, FastAPI, Pydantic, SQLAlchemy, Alembic, PyMySQL |
 | Authentication | Argon2id passwords; opaque bearer sessions stored as digests |
 | Database | MySQL 8 / InnoDB / utf8mb4; disposable SQLite fixtures |
-| Windows | CustomTkinter, Pillow, openpyxl; PyInstaller + per-user Inno Setup |
+| Windows | CustomTkinter, Pillow, XlsxWriter; PyInstaller + per-user Inno Setup |
 | Android | Flutter / Dart, Material 3; pinned toolchain and dependency lock |
 | Automation | GitHub Actions: Flutter, SQLite, disposable MySQL, Windows desktop and installer |
 
@@ -146,11 +146,29 @@ These suites overlap; skips are not passes and the totals must not be added.
 [Release readiness](docs/RELEASE_READINESS.md) identifies exact evidence sources,
 operator acceptance, pending checks and current component versions.
 [CHANGELOG](CHANGELOG.md) separates merged functionality from the proposed
-`v1.0.0-rc.1` milestone. No Version 1.0 artifact or production signing is claimed.
+`v1.0.0-rc.1` milestone. No public Version 1.0 release or production signing is claimed.
 
 Physical-device, API 24, TalkBack and production HTTPS acceptance remain unverified.
 The current local installer roundtrip was held to preserve an existing installation;
 hosted disposable installer verification passed. Clean end-user Windows VM/reboot
-and mixed-DPI acceptance remain incomplete. No project license has been selected
-in this repository; public source visibility does not establish redistribution
-permission. Production release and public binary distribution require separate decisions.
+and mixed-DPI acceptance remain incomplete. Production release and public binary
+publication require separate authorization; the source license below does not
+constitute deployment or publication approval.
+
+## License and branding
+
+Copyright 2026 Paul John Suela. The original BHLI Audit application source
+contributions the owner has authority to license use the
+[Apache License, Version 2.0](LICENSE); see [NOTICE](NOTICE).
+
+BHLI names and trademarks, logos, and the specifically listed protected artwork
+and screenshots are excluded from that grant. [Asset rights and exact paths](ASSET_RIGHTS.md)
+define the scope without asserting that BHLI owns every excluded asset. Permission
+to distribute official branded builds is not a general downstream trademark or
+artwork sublicense. [Third-party components](THIRD_PARTY_NOTICES.md) retain their
+respective licenses, attribution and source-availability conditions.
+
+Public source availability grants no access to real company records, credentials
+or authenticated services. Official downloadable applications, if separately
+published, remain development/demo candidates; no public Version 1.0 release or
+production approval is created by this licensing checkpoint.

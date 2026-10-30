@@ -1,10 +1,54 @@
-"""Offline inclusion of reviewed third-party notices; never an application license grant."""
+"""Offline, byte-verified inclusion of project and upstream license documents."""
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import zipfile
 
 NOTICE_ROOT = Path(__file__).resolve().parents[1] / 'packaging' / 'notices'
+APPLICATION_ROOT = Path(__file__).resolve().parents[1]
+APPLICATION_FILES = ('LICENSE', 'NOTICE', 'ASSET_RIGHTS.md', 'THIRD_PARTY_NOTICES.md',
+                     'docs/THIRD_PARTY_COMPLIANCE.md')
+APACHE_SHA256 = 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30'
+
+
+def application_notices():
+    payloads = []
+    for name in APPLICATION_FILES:
+        source = APPLICATION_ROOT / name
+        if not source.is_file() or source.stat().st_size > 1024 * 1024:
+            raise ValueError('Missing or oversized application license document: ' + name)
+        data = source.read_bytes()
+        if name == 'LICENSE' and hashlib.sha256(data).hexdigest() != APACHE_SHA256:
+            raise ValueError('Modified official application license')
+        payloads.append((name, data))
+    return payloads
+
+
+def copy_application_notices(destination):
+    payloads = application_notices()
+    for name, data in payloads:
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    return [{'path': name, 'sha256': hashlib.sha256(data).hexdigest()}
+            for name, data in payloads]
+
+
+def verify_apk_application_notices(apk):
+    payloads = application_notices()
+    with zipfile.ZipFile(apk) as archive:
+        names = archive.namelist()
+        expected = {'assets/application-license/' + name for name, _ in payloads}
+        actual = {name for name in names if name.startswith('assets/application-license/')
+                  and not name.endswith('/')}
+        if actual != expected:
+            raise ValueError('Unreviewed or missing application license document')
+        for name, data in payloads:
+            entry = 'assets/application-license/' + name
+            if names.count(entry) != 1 or archive.read(entry) != data:
+                raise ValueError('Missing or modified application license document: ' + name)
+    return [{'path': name, 'apk_path': 'assets/application-license/' + name,
+             'sha256': hashlib.sha256(data).hexdigest()} for name, data in payloads]
 
 
 def verified_notices(platform):

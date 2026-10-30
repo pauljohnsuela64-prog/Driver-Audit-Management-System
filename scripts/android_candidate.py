@@ -10,9 +10,11 @@ import subprocess
 import zipfile
 
 if __package__:
-    from .license_notices import verified_notices, verify_apk_notices
+    from .license_notices import (verified_notices, verify_apk_notices,
+                                 application_notices, verify_apk_application_notices)
 else:
-    from license_notices import verified_notices, verify_apk_notices
+    from license_notices import (verified_notices, verify_apk_notices,
+                                application_notices, verify_apk_application_notices)
 
 ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / 'mobile'
@@ -56,7 +58,8 @@ def apk_notices(apk):
     return notices
 
 
-def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed=None, supplemental=()):
+def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed=None,
+                    supplemental=(), application=()):
     if output.exists() and any(output.iterdir()):
         raise ValueError('Candidate output must be empty')
     output.mkdir(parents=True, exist_ok=True)
@@ -75,6 +78,7 @@ def write_candidate(apk, output, sha, toolchain, dependencies, notices, observed
                     apk_sha256=digest(output / 'app-debug.apk'),
                     notices_sha256=digest(notice_file),
                     supplemental_notices=list(supplemental),
+                    application_license_notices=list(application),
                     notice_scope='Embedded APK notices plus resolved Dart/SDK and reviewed supplemental notices; not redistribution clearance')
     (output / 'BUILD-MANIFEST.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     hashes = {p.name: digest(p) for p in sorted(output.iterdir()) if p.is_file()}
@@ -91,6 +95,7 @@ def build(flutter, output):
     if output.exists() and any(output.iterdir()):
         raise SystemExit('Candidate output must be empty')
     verified_notices('android')
+    application_notices()
     env = {k: v for k, v in os.environ.items()
            if not k.startswith('DAMS_') and k not in ('DART_DEFINES', 'FLUTTER_BUILD_ARGS')}
     sha = subprocess.check_output([*git, 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
@@ -105,7 +110,15 @@ def build(flutter, output):
     badging = subprocess.check_output([str(aapt), 'dump', 'badging', str(apk)], text=True, encoding='utf-8')
     validate_badging(badging)
     supplemental = verify_apk_notices(apk)
+    project_notices = verify_apk_application_notices(apk)
     notices = apk_notices(apk)
+    existing = {name for name, _ in notices}
+    # Include scope documents in the sidecar as well as the APK. LICENSE and
+    # NOTICE are already collected by apk_notices; avoid duplicating them.
+    for name, data in application_notices():
+        entry = 'assets/application-license/' + name
+        if entry not in existing:
+            notices.append((entry, data.decode('utf-8')))
     deps = json.loads(subprocess.check_output([flutter, 'pub', 'deps', '--json'], cwd=MOBILE, env=env))
     versions = {p['name']: p['version'] for p in deps['packages']}
     config_path = MOBILE / '.dart_tool/package_config.json'
@@ -138,7 +151,8 @@ def build(flutter, output):
     observed['host_platform'] = __import__('platform').system()
     observed['apk_manifest_verified'] = True
     observed['aapt2_version'] = subprocess.check_output([str(aapt), 'version'], text=True).strip()
-    result = write_candidate(apk, output, sha, pinned, inventory, notices, observed, supplemental)
+    result = write_candidate(apk, output, sha, pinned, inventory, notices, observed,
+                             supplemental, project_notices)
     print(json.dumps(dict(source_sha=sha, version=result['version'], apk_sha256=result['apk_sha256'])))
 
 

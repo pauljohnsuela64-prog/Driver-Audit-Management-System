@@ -1,3 +1,5 @@
 # Keep reviewed upstream bytes, including their original whitespace, on every host.
 # Hash validation replaces whitespace cleanup for this third-party-only directory.
 packaging/notices/** -text -whitespace
+# The approved application license is the exact official English byte stream.
+LICENSE -text

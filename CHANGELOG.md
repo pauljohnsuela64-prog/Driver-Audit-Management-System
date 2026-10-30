@@ -30,11 +30,25 @@ verification and publication are not implied by these source changes.
   dependency notices, source/toolchain provenance and byte checksums. Public
   redistribution remains held; notice inventory is not licensing clearance.
 
+### Local licensing - Phase 5 Checkpoint C
+
+- Copyright 2026 Paul John Suela; unmodified Apache License 2.0 for authorized
+  original source contributions, with project NOTICE and an exact 66-path
+  protected-asset exclusion inventory.
+- BHLI marks and protected artwork/screenshots are excluded; third-party
+  components retain their own licenses. Official branded-build permission is not
+  a general downstream trademark or artwork sublicense.
+- Verified Windows native/font notices and Android native/font/JUnit attribution;
+  JUnit's complete upstream source and EPL notices accompany the ordinary APK.
+- Client packages retain the project license, attribution and scope documents in
+  addition to component notices; manifests/checksums use fresh committed builds.
+- Local implementation only: no public upload, PR, tag, release or merge.
+
 ### Still pending
 
 - Final-source candidate builds, manifests/notices/checksums, serial regressions,
   native artifact acceptance and hosted CI on the eventual publication HEAD.
-- Explicit publication/distribution/license decisions. No Version1.0 tag, release
+- Explicit publication/distribution and merge decisions. No Version1.0 tag, release
   or public binary distribution is created by documentation cleanup.
 
 ## Merged development baseline — through Phase 4B
@@ -58,5 +72,6 @@ This is a source milestone, not an assertion of a tagged release.
   Windows/Android acceptance and operator acceptance. Results have separate scopes;
   no unique combined test total or production-readiness certification is claimed.
 
-No project license is declared here. Production migrations/grants, real data,
+Original-source licensing and exclusions are defined in [LICENSE](LICENSE),
+[NOTICE](NOTICE) and [ASSET_RIGHTS](ASSET_RIGHTS.md). Production migrations/grants, real data,
 server infrastructure, production signing and deployment remain separately approved.

@@ -1,6 +1,6 @@
 # Release readiness — development/demo
 
-Updated for Phase 5 candidate preparation, 2026-10-29 (Asia/Manila). This is the current
+Updated for Phase 5 candidate preparation, 2026-10-30 (Asia/Manila). This is the current
 status index; original phase specifications and verification reports remain
 historical records. **Documentation cleanup is not a new release, build, test run
 or production approval.**
@@ -41,10 +41,19 @@ unchanged. Checkpoint B may produce local internal candidates only; no productio
 signing keys, tag, release, PR or public distribution is authorized. Windows outputs are unsigned candidates;
 Android debug output uses development signing, not production release signing.
 
-No project license has been selected in the repository. Do not claim an OSS
-license or redistribute binaries on the assumption that a public repository
-grants permission. Ownership/branding/distribution terms and dependency notices
-require an operator decision before public binary distribution.
+The operator has approved **Copyright 2026 Paul John Suela** and
+[Apache License 2.0](../LICENSE) for authorized original source contributions.
+[NOTICE](../NOTICE), [asset rights](../ASSET_RIGHTS.md) and
+[third-party notices](../THIRD_PARTY_NOTICES.md) define the scope: protected
+artwork/screenshots and BHLI marks are excluded; upstream components retain their
+own terms. No downstream branding sublicense or access to real company records
+is granted. This local licensing approval does not authorize a push, public
+binary upload, PR, tag, release, merge or production deployment.
+
+Client packaging includes the official license, project attribution and scope
+index alongside the existing component notices. Licensing changes require fresh
+candidate provenance/checksums, recorded locally after a committed-source rebuild;
+old candidate hashes must not be presented as hashes of the rebuilt files.
 
 ## Verification evidence
 
@@ -145,7 +154,8 @@ Flutter commands and tool pins are in [Android development](ANDROID_DEVELOPMENT.
   end-user Windows VM/reboot, mixed-monitor and all display-scale coverage remain
   incomplete; CI and developer PATH isolation do not replace target-PC acceptance.
 - Windows candidates are unsigned; Android is internal/debug. No signed production
-  distribution, automatic update service or license grant is supplied.
+  distribution or automatic update service is supplied. The source-code grant is
+  separately limited by the asset and third-party exclusions above.
 - Offset pagination can shift during concurrent writes, including export. RAM-only
   uncertain creation state is lost on process death; inspect before recreating.
 - Cancellation cannot retract a server commit or saved export. Reports are
@@ -172,9 +182,12 @@ final serial regressions and artifact/native acceptance are recorded in the loca
 Checkpoint B completion evidence; their completion is not implied by version metadata.
 Hosted execution and public retention have not occurred on this unpublished branch.
 
-**Checkpoint C:** independently reviewed final evidence and separately authorized
-draft PR/publication. Tag/release, public binary redistribution and any merge need
-their explicit approval; a stable Version1.0 or production release is not implied.
+**Checkpoint C:** third-party compliance remediation and the approved original-code
+Apache 2.0 license are implemented locally. Independent review and focused
+packaging checks accompany exact-source candidate builds. GitHub publication,
+draft PR, public artifact uploads, tag/release and merge still require separate
+explicit authorization; neither a stable Version 1.0 nor production readiness is
+implied. Existing native/device and deployment limitations remain in force.
 
 See the [approved plan](superpowers/plans/2026-10-29-phase5-v1-release-preparation.md),
 [design](superpowers/specs/2026-10-29-phase5-v1-release-preparation-design.md),
