@@ -23,7 +23,7 @@ android {
         rootProject.file("../../packaging/notices/android/assets")
     )
     sourceSets.getByName("main").assets.srcDir(
-        layout.buildDirectory.dir("generated/application-notices")
+        layout.buildDirectory.dir("generated/application-notices").get().asFile
     )
 
     compileOptions {
