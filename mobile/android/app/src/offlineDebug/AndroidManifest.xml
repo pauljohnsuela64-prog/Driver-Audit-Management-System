@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- No VM-service network access either: this build is genuinely offline. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+</manifest>

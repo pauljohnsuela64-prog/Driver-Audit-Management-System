@@ -33,6 +33,7 @@ android {
 
     defaultConfig {
         applicationId = "com.bhli.audit.mobile"
+        manifestPlaceholders["appLabel"] = "BHLI Audit"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
@@ -43,6 +44,19 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "edition"
+    productFlavors {
+        create("online") {
+            dimension = "edition"
+        }
+        create("offline") {
+            dimension = "edition"
+            applicationId = "com.bhli.audit.offline"
+            versionNameSuffix = "-offline-dev"
+            manifestPlaceholders["appLabel"] = "BHLI Audit Offline"
+        }
     }
 
     buildTypes {

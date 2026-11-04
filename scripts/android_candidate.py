@@ -18,7 +18,7 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / 'mobile'
-BUILD_ARGS = ['build', 'apk', '--debug', '--target', 'lib/main.dart']
+BUILD_ARGS = ['build', 'apk', '--debug', '--flavor', 'online', '--target', 'lib/main.dart']
 
 
 def validate_badging(text):
@@ -104,7 +104,7 @@ def build(flutter, output):
     if actual['frameworkRevision'] != pinned['framework_revision'] or actual['dartSdkVersion'] != pinned['dart']:
         raise SystemExit('Unexpected Flutter/Dart toolchain')
     subprocess.run([flutter, *BUILD_ARGS], cwd=MOBILE, env=env, check=True)
-    apk = MOBILE / 'build/app/outputs/flutter-apk/app-debug.apk'
+    apk = MOBILE / 'build/app/outputs/flutter-apk/app-online-debug.apk'
     sdk = Path(env.get('ANDROID_HOME') or env.get('ANDROID_SDK_ROOT') or '')
     aapt = sdk / 'build-tools' / pinned['android_build_tools'] / ('aapt2.exe' if os.name == 'nt' else 'aapt2')
     badging = subprocess.check_output([str(aapt), 'dump', 'badging', str(apk)], text=True, encoding='utf-8')
