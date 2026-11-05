@@ -126,7 +126,7 @@ class SqliteRepository:
     def _initialize(self):
         db = self._connection
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        tables = {row["name"]: row["sql"] for row in db.execute("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'android_metadata'")}
+        tables = {row["name"]: row["sql"] for row in db.execute("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT GLOB 'sqlite_*'")}
         if db.execute("SELECT 1 FROM sqlite_master WHERE type IN ('view','trigger') LIMIT 1").fetchone() is not None:
             raise _schema_error()
         if version == 0 and not tables:
@@ -141,8 +141,7 @@ class SqliteRepository:
             raise _schema_error()
         # The v1 schema is owned by this app. Check its complete definition,
         # including constraints, rather than accepting same-named weak tables.
-        canonical = lambda sql: "".join(sql.split())
-        if any(canonical(tables[name]) != canonical(sql) for name, sql in _SCHEMA.items()):
+        if tables != _SCHEMA:
             raise _schema_error()
         try:
             meta = dict(db.execute("SELECT key,value FROM app_meta"))

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/offline/models.dart';
+import 'package:bhli_audit/offline/models.dart';
 
 void main() {
   final contract = jsonDecode(

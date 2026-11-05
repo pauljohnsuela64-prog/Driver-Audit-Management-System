@@ -389,3 +389,52 @@ def test_malformed_stored_actor_rejects_audit_and_history_writes(repo, field, va
     assert repo._connection.execute(f"SELECT {field} FROM local_profile").fetchone()[0] == value
     assert repo.read(audit.id) == audit
     assert repo.history(audit.id).items[0].after == audit
+
+
+@pytest.mark.parametrize("version", [0, 1])
+@pytest.mark.parametrize("table", ["sqliteXForeign", "android_metadata"])
+def test_foreign_table_names_are_refused_without_any_initialization(tmp_path, version, table):
+    path = tmp_path / "foreign-table.db"
+    if version:
+        repo = SqliteRepository(path)
+        audit = seed(repo)
+        repo.close()
+    with sqlite3.connect(path) as db:
+        db.execute(f"CREATE TABLE {table} (x INTEGER)")
+        db.execute(f"INSERT INTO {table} VALUES (1)")
+        before_schema = db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall()
+        before_dump = tuple(db.iterdump())
+    before_bytes = path.read_bytes()
+    error("schema", lambda: SqliteRepository(path))
+    assert path.read_bytes() == before_bytes
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == version
+        assert db.execute(f"SELECT x FROM {table}").fetchall() == [(1,)]
+        assert db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall() == before_schema
+        assert tuple(db.iterdump()) == before_dump
+        if version:
+            assert db.execute("SELECT id,revision FROM audit_records").fetchall() == [(audit.id, 1)]
+        else:
+            assert db.execute("SELECT name FROM sqlite_master WHERE name='audit_records'").fetchall() == []
+
+
+@pytest.mark.parametrize("original,altered", [("'CREATE'", "'CR EATE'"), ("'UPDATE'", "'UP\tDATE'"), ("'ARCHIVE'", "'ARCH IVE'")])
+def test_quoted_constraint_whitespace_is_rejected_without_database_changes(tmp_path, original, altered):
+    path = tmp_path / "quoted-constraint.db"
+    repo = SqliteRepository(path)
+    profile = repo.save_profile("Original Auditor")
+    repo.close()
+    with sqlite3.connect(path) as db:
+        sql = db.execute("SELECT sql FROM sqlite_master WHERE name='audit_events'").fetchone()[0]
+        db.execute("DROP TABLE audit_events")
+        db.execute(sql.replace(original, altered))
+        before_schema = db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall()
+        before_dump = tuple(db.iterdump())
+    before_bytes = path.read_bytes()
+    error("schema", lambda: SqliteRepository(path))
+    assert path.read_bytes() == before_bytes
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("SELECT id,name FROM local_profile").fetchall() == [(profile.id, "Original Auditor")]
+        assert db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall() == before_schema
+        assert tuple(db.iterdump()) == before_dump

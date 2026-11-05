@@ -67,4 +67,3 @@ def test_frozen_offline_failure_is_sanitized_and_distinct(monkeypatch):
     monkeypatch.setattr(module, 'start', lambda: (_ for _ in ()).throw(ValueError('private fixture path')))
     monkeypatch.setattr(module, 'show_error', lambda: seen.append(True))
     assert module.run() == 1 and seen == [True]
-
