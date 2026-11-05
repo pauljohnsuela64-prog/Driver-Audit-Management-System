@@ -33,6 +33,7 @@ android {
 
     defaultConfig {
         applicationId = "com.bhli.audit.mobile"
+        manifestPlaceholders["appLabel"] = "BHLI Audit"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
@@ -43,6 +44,20 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "edition"
+    productFlavors {
+        create("online") {
+            dimension = "edition"
+        }
+        create("offline") {
+            dimension = "edition"
+            applicationId = "com.bhli.audit.offline"
+            versionNameSuffix = "-offline-dev"
+            manifestPlaceholders["appLabel"] = "BHLI Audit Offline"
+        }
     }
 
     buildTypes {
@@ -62,4 +77,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Match the existing locked integration_test runtime graph. AGP consistent
+    // resolution rejects newer test-only versions against that reviewed graph.
+    androidTestImplementation("androidx.test:runner:1.3.0")
+    androidTestImplementation("androidx.test:rules:1.2.0")
 }

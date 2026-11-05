@@ -65,6 +65,7 @@ Thumbs.db
 # Future client build output; preserve build scripts and source
 node_modules/
 .gradle/
+.kotlin/
 .dart_tool/
 /mobile/**/build/
 /mobile/local.properties

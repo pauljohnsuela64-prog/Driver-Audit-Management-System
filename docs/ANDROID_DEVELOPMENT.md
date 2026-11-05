@@ -26,7 +26,7 @@ flutter pub get --enforce-lockfile
 dart format --output=none --set-exit-if-changed lib test integration_test test_driver
 flutter analyze --fatal-infos
 flutter test --reporter expanded
-flutter build apk --debug
+flutter build apk --debug --flavor online --target lib/main.dart
 ```
 
 Run resource-intensive commands serially on a 16 GB Windows development host.
@@ -53,7 +53,7 @@ guide. Use the exact port printed by the fixture:
 
 ```text
 adb -s emulator-5554 reverse tcp:<port> tcp:<port>
-flutter run -d emulator-5554 --dart-define=DAMS_DEBUG_LOOPBACK=true
+flutter run --flavor online -d emulator-5554 --dart-define=DAMS_DEBUG_LOOPBACK=true
 ```
 
 In Connection setup, enter the printed `http://127.0.0.1:<port>` origin, test

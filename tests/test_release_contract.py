@@ -34,7 +34,7 @@ def test_android_candidate_upload_excludes_test_configuration():
     from scripts.android_candidate import BUILD_ARGS
     workflow = (ROOT/'.github/workflows/mobile-tests.yml').read_text()
     assert 'permissions:\n  contents: read' in workflow
-    assert BUILD_ARGS == ['build', 'apk', '--debug', '--target', 'lib/main.dart']
+    assert BUILD_ARGS == ['build', 'apk', '--debug', '--flavor', 'online', '--target', 'lib/main.dart']
     assert 'run: python3 ../scripts/android_candidate.py' in workflow
     upload = workflow.split('- name: Retain internal debug candidate\n', 1)[1]
     assert 'retention-days: 14' in upload

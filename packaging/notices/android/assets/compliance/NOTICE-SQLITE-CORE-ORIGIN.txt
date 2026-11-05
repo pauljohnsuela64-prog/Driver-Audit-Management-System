@@ -1,0 +1,7 @@
+SQLite native asset provenance (Phase 6B development build)
+
+The sqlite3 3.5.2 Dart package uses build hooks that can include libsqlite3.so even when reached through a host-test dependency. The application repository still uses sqflite_android and the Android platform SQLite. No database encryption is enabled.
+
+The Dart wrapper license is retained in NOTICE-DART-SQLITE3-3.5.2-LICENSE.txt. Upstream SQLite core is dedicated to the public domain: https://www.sqlite.org/copyright.html . This provenance note is not a new license or a warranty.
+
+Pinned binary provenance and SHA-256 values: sqlite3 3.5.2 lib/src/hook/asset_hashes.dart in the pub.dev archive selected by pubspec.lock. Upstream binary release: https://github.com/simolus3/sqlite3.dart/releases/tag/sqlite3-3.5.2 . Native output hashes and ABI inspection accompany local Phase6B verification evidence.
