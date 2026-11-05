@@ -1,9 +1,36 @@
 """Offline draft and view adapters: no Tk interpreter or networking required."""
 from datetime import datetime, timezone
+from pathlib import Path
+import subprocess
+import sys
 from threading import Event
 from types import SimpleNamespace
 
 import pytest
+
+
+def test_pure_presentation_contracts_run_without_gui_dependencies():
+    script = '''
+import importlib.abc
+import sys
+
+class NoGuiImports(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'customtkinter', 'tkinter'}:
+            raise ModuleNotFoundError(f'{fullname} is unavailable in headless CI', name=fullname)
+
+sys.meta_path.insert(0, NoGuiImports())
+import pytest
+raise SystemExit(pytest.main([
+    sys.argv[1], '-q', '-k',
+    'not test_pure_presentation_contracts_run_without_gui_dependencies',
+]))
+'''
+    result = subprocess.run(
+        [sys.executable, '-c', script, str(Path(__file__).resolve())],
+        cwd=Path(__file__).resolve().parents[3], capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def values(**changes):
@@ -62,7 +89,7 @@ def test_snapshot_adapter_preserves_uuid_and_archived_revision():
 
 
 def test_close_error_published_after_drain_is_shown_before_destroying_ui():
-    from desktop.offline.app import OfflineApplication
+    from desktop.offline.lifecycle import OfflineLifecycle
     from desktop.offline.models import OfflineError
     stopped = Event()
     outcome = []
@@ -74,26 +101,26 @@ def test_close_error_published_after_drain_is_shown_before_destroying_ui():
         _shutdown_write_error=None,
         _show_close_error=lambda error: outcome.append(('warning', error.code)),
         after=lambda *args: None, poll=lambda: None)
-    controller._finish_close = lambda: OfflineApplication._finish_close(controller)
-    OfflineApplication.poll(controller)
+    controller._finish_close = lambda: OfflineLifecycle._finish_close(controller)
+    OfflineLifecycle.poll(controller)
     assert outcome == [('warning', 'storage')]
 
 
 def test_admitted_write_failure_is_retained_when_close_was_requested():
-    from desktop.offline.app import OfflineApplication
+    from desktop.offline.lifecycle import OfflineLifecycle
     from desktop.offline.models import OfflineError
     callbacks = []
     worker = SimpleNamespace(submit=lambda work, done, **options: callbacks.append(done) or True)
     controller = SimpleNamespace(worker=worker, closing=False, mutation_pending=False)
-    OfflineApplication.mutate(controller, lambda repo: None, lambda result, error: None)
+    OfflineLifecycle.mutate(controller, lambda repo: None, lambda result, error: None)
     controller.closing = True
     callbacks[0](None, OfflineError('storage', 'Local operation failed.'))
     retained = getattr(controller, '_shutdown_write_error', None)
     assert retained is not None and retained.code == 'storage'
 
 
-def test_final_drain_write_failure_requires_acknowledgment_even_when_database_closed(monkeypatch):
-    from desktop.offline import app as module
+def test_final_drain_write_failure_requires_acknowledgment_even_when_database_closed():
+    from desktop.offline.lifecycle import OfflineLifecycle
     from desktop.offline.models import OfflineError
     stopped = Event()
     stopped.set()
@@ -102,7 +129,7 @@ def test_final_drain_write_failure_requires_acknowledgment_even_when_database_cl
         worker=SimpleNamespace(stopped=stopped, drain=lambda: None, close_error=None),
         collector=SimpleNamespace(close=lambda: outcome.append('collected')),
         _shutdown_write_error=OfflineError('storage', 'Submitted change not confirmed.'),
-        _show_close_error=lambda error: outcome.append('warning'))
-    monkeypatch.setattr(module, 'destroy_view', lambda target: outcome.append('destroyed'))
-    module.OfflineApplication._finish_close(controller)
+        _show_close_error=lambda error: outcome.append('warning'),
+        _destroy_window=lambda: outcome.append('destroyed'))
+    OfflineLifecycle._finish_close(controller)
     assert outcome == ['warning'] and not controller.closed
