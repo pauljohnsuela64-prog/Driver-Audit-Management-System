@@ -8,8 +8,9 @@ HEADINGS = ('Audit Date','Driver Name','Helper Name','Station','Plate Number','A
 
 
 class AuditTable(ctk.CTkFrame):
-    def __init__(self,parent,on_open,height=10):
+    def __init__(self,parent,on_open,height=10,id_parser=int,archive_label='Deleted'):
         super().__init__(parent,fg_color='transparent',corner_radius=0)
+        self.id_parser,self.archive_label=id_parser,archive_label
         self.columnconfigure(0,weight=1)
         self.rowconfigure(0,weight=1)
         scale=self._get_widget_scaling()
@@ -60,7 +61,7 @@ class AuditTable(ctk.CTkFrame):
         for index,record in enumerate(records):
             values=[getattr(record,k) or '—' for k in COLUMNS]
             if record.deleted_at:
-                values[1]='[Deleted] '+record.driver_name
+                values[1]=f'[{self.archive_label}] '+record.driver_name
             self.tree.insert('', 'end',iid=str(record.id),values=values,tags=('alternate',) if index%2 else ())
         if selected is not None and self.tree.exists(str(selected)):
             self.tree.selection_set(str(selected))
@@ -70,7 +71,7 @@ class AuditTable(ctk.CTkFrame):
 
     def selected(self):
         selection=self.tree.selection()
-        return int(selection[0]) if selection else None
+        return self.id_parser(selection[0]) if selection else None
 
     def _set_scaling(self,*args,**kwargs):
         super()._set_scaling(*args,**kwargs)

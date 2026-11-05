@@ -20,6 +20,7 @@ for the complete component texts distributed with each candidate.
 | Android native/Gradle components | Reviewed archive notices and native-coordinate inventory under `assets/compliance/`; includes JNI AOSP/Dart, DataStore, Hamcrest, animal-sniffer, Guava and Checker annotation attribution |
 | Android MaterialIcons | `assets/compliance/NOTICE-MATERIALICONS-ATTRIBUTION.txt` and `NOTICE-MATERIALICONS-LICENSE.txt`; the matching bundled font uses CC BY 4.0 |
 | Android JUnit 4.12 | EPL 1.0 license, upstream NOTICE, source-availability statement and complete source ZIP under `assets/compliance/` |
+| Windows offline SQLite | Built-in CPython sqlite3 wrapper and retained SQLite runtime; CPython composite license plus `THIRD_PARTY_LICENSES/SUPPLEMENTAL/SQLITE-CORE-PROVENANCE.txt`. Candidate manifest records actual version and binary hash. |
 | Android offline SQLite plugins | sqflite/sqflite_android/sqflite_common BSD 2-Clause notices under `assets/compliance/NOTICE-SQFLITE-*`; Flutter dependency notices remain included. The pinned host-test sqlite3 3.5.2 dependency also emits a native build-hook asset; retain its MIT wrapper license and SQLite public-domain provenance under `assets/compliance/NOTICE-DART-SQLITE3-*` and `NOTICE-SQLITE-CORE-ORIGIN.txt`. The application repository uses platform SQLite. |
 
 ## JUnit source availability

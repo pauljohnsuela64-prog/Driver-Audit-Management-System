@@ -30,6 +30,9 @@ class Details(ctk.CTkFrame):
         for child in self.body.winfo_children():
             destroy_view(child)
         StatePanel(self.body,'Loading audit details').grid(row=0,column=0,sticky='ew')
+        if getattr(self.app,'offline',False):
+            self.app.read_audit(self.audit_id,self.finished)
+            return
         client,token,audit_id=self.app.client,self.app.session.login.token,self.audit_id
         include_deleted=self.app.session.login.user.role=='ADMIN' and self.app.query.include_deleted
         self.app.request(lambda:client.get_audit(token,audit_id,include_deleted=True) if include_deleted else client.get_audit(token,audit_id),self.finished)
@@ -47,13 +50,20 @@ class Details(ctk.CTkFrame):
         self.loaded=True
         self.record=record
         label(self.body,'Audit details',28).grid(row=0,column=0,sticky='w',padx=24,pady=(24,4))
-        label(self.body,'Deleted audit · Read-only' if record.deleted_at else 'Original auditor attribution · Preserved',12,True).grid(row=1,column=0,sticky='w',padx=24,pady=(0,16))
-        from desktop.audit_operations import can_edit
-        user=self.app.session.login.user
-        if can_edit(record,user.id,user.role):
+        offline=getattr(self.app,'offline',False)
+        label(self.body,('Archived audit · Read-only' if offline else 'Deleted audit · Read-only') if record.deleted_at else 'Original auditor attribution · Preserved',12,True).grid(row=1,column=0,sticky='w',padx=24,pady=(0,16))
+        if offline:
+            editable=not record.deleted_at
+        else:
+            from desktop.audit_operations import can_edit
+            user=self.app.session.login.user
+            editable=can_edit(record,user.id,user.role)
+        if editable:
             button(self.actions,'Edit audit',lambda:self.app.open_edit(record),True,width=140).pack(side='left',padx=(0,8))
         button(self.actions,'History',lambda:self.app.navigate('Audit History',record.id),width=100).pack(side='left',padx=(0,8))
-        if user.role=='ADMIN' and not record.deleted_at:
+        if offline and not record.deleted_at:
+            button(self.actions,'Archive audit',lambda:self.app.confirm_archive(record),width=140).pack(side='right')
+        elif not offline and user.role=='ADMIN' and not record.deleted_at:
             button(self.actions,'Delete audit',lambda:self.app.confirm_delete(record),width=140).pack(side='right')
         fields=[('Driver Name',record.driver_name),('Helper Name',record.helper_name),('Audit Date',record.audit_date),
                 ('Station',record.station),('Plate Number',record.plate_number),('Remarks',record.remarks),('Audited By',record.audited_by_name)]
@@ -64,5 +74,5 @@ class Details(ctk.CTkFrame):
             box.insert('1.0',value or 'Not provided')
             box.configure(state='disabled')
             box.grid(row=3+i*2,column=0,sticky='ew',padx=24,pady=(4,4))
-        label(self.body,f'Record #{record.id} · Version {record.version}\nCreated {record.created_at:%Y-%m-%d %H:%M UTC} · Updated {record.updated_at:%Y-%m-%d %H:%M UTC}',
+        label(self.body,f'Record #{record.id} · {"Revision" if offline else "Version"} {record.version}\nCreated {record.created_at:%Y-%m-%d %H:%M UTC} · Updated {record.updated_at:%Y-%m-%d %H:%M UTC}',
               12,True,justify='left',wraplength=500).grid(row=16,column=0,sticky='w',padx=24,pady=24)

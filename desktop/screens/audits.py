@@ -12,6 +12,7 @@ class Audits(ctk.CTkFrame):
     def __init__(self,parent,app):
         super().__init__(parent,fg_color='transparent')
         self.app=app
+        self.offline=getattr(app,'offline',False)
         self.loaded=False
         self.last_error=None
         self.total=0
@@ -32,18 +33,22 @@ class Audits(ctk.CTkFrame):
         button(toolbar,'Filters',self.toggle_filters,width=80).grid(row=0,column=3)
         self.create_button=button(toolbar,'New audit',app.open_create,True,width=130)
         self.create_button.grid(row=1,column=0,columnspan=4,sticky='w',pady=(8,0))
-        from desktop.export_ui import choose_export,open_folder
-        self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
-        self.export_button.grid(row=1,column=1,sticky='w',padx=(30,0),pady=(8,0))
-        export_status=ctk.CTkFrame(self,fg_color='transparent')
-        export_status.grid(row=6,column=0,sticky='ew',pady=(8,0))
-        export_status.columnconfigure(0,weight=1)
-        self.export_status=label(export_status,'',12,True,anchor='w',justify='left',wraplength=420)
-        self.export_status.grid(row=0,column=0,sticky='ew')
-        self.cancel_export=button(export_status,'Cancel export',app.export_job.cancel,width=120)
-        self.cancel_export.grid(row=0,column=1,padx=(8,0))
-        self.export_folder=button(export_status,'Open folder',lambda:open_folder(app),width=110)
-        self.export_folder.grid(row=0,column=2,padx=(8,0))
+        if self.offline:
+            label(toolbar,'Offline reports and backup are planned for Phase 6E.',12,True,
+                  wraplength=350).grid(row=1,column=1,columnspan=3,sticky='w',padx=(16,0),pady=(8,0))
+        else:
+            from desktop.export_ui import choose_export,open_folder
+            self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
+            self.export_button.grid(row=1,column=1,sticky='w',padx=(30,0),pady=(8,0))
+            export_status=ctk.CTkFrame(self,fg_color='transparent')
+            export_status.grid(row=6,column=0,sticky='ew',pady=(8,0))
+            export_status.columnconfigure(0,weight=1)
+            self.export_status=label(export_status,'',12,True,anchor='w',justify='left',wraplength=420)
+            self.export_status.grid(row=0,column=0,sticky='ew')
+            self.cancel_export=button(export_status,'Cancel export',app.export_job.cancel,width=120)
+            self.cancel_export.grid(row=0,column=1,padx=(8,0))
+            self.export_folder=button(export_status,'Open folder',lambda:open_folder(app),width=110)
+            self.export_folder.grid(row=0,column=2,padx=(8,0))
         self.options=ctk.CTkFrame(self,fg_color=color('surface'),corner_radius=12)
         self.options.grid(row=1,column=0,sticky='ew',pady=(0,8))
         for col in range(3):
@@ -51,11 +56,13 @@ class Audits(ctk.CTkFrame):
         self.station=self.field(self.options,'Station',0,0)
         self.date_from=self.field(self.options,'From · YYYY-MM-DD',0,1)
         self.date_to=self.field(self.options,'To · YYYY-MM-DD',0,2)
-        self.mine=checkbox(self.options,text='My audits',font=font())
-        self.mine.grid(row=2,column=0,sticky='w',padx=12,pady=12)
+        self.mine=None
+        if not self.offline:
+            self.mine=checkbox(self.options,text='My audits',font=font())
+            self.mine.grid(row=2,column=0,sticky='w',padx=12,pady=12)
         self.include_deleted=None
-        if app.session.login.user.role=='ADMIN':
-            self.include_deleted=checkbox(self.options,text='Include deleted',font=font())
+        if self.offline or app.session.login.user.role=='ADMIN':
+            self.include_deleted=checkbox(self.options,text='Include archived' if self.offline else 'Include deleted',font=font())
             self.include_deleted.grid(row=3,column=0,columnspan=3,sticky='w',padx=12,pady=(0,12))
         button(self.options,'Apply filters',self.apply,True,width=120).grid(row=2,column=1,padx=8,pady=12,sticky='e')
         button(self.options,'Clear all',self.clear,width=100).grid(row=2,column=2,padx=12,pady=12,sticky='e')
@@ -72,7 +79,8 @@ class Audits(ctk.CTkFrame):
         self.detail_button.grid(row=0,column=3,padx=(8,0))
         self.notice=Notice(self)
         self.notice.grid(row=3,column=0,sticky='ew',pady=(0,8))
-        self.table=AuditTable(self,self.open_selected)
+        self.table=AuditTable(self,self.open_selected,
+                              **(dict(id_parser=str,archive_label='Archived') if self.offline else {}))
         self.table.grid(row=4,column=0,sticky='nsew')
         pager=ctk.CTkFrame(self,fg_color='transparent')
         pager.grid(row=5,column=0,sticky='ew',pady=(12,0))
@@ -93,9 +101,10 @@ class Audits(ctk.CTkFrame):
 
     def filter_state(self):
         return (self.search_field.get(),self.search.get(),self.station.get(),self.date_from.get(),
-                self.date_to.get(),self.mine.get(),self.sort.get(),self.include_deleted.get() if self.include_deleted else 0)
+                self.date_to.get(),self.mine.get() if self.mine else 0,self.sort.get(),self.include_deleted.get() if self.include_deleted else 0)
 
     def render_export(self):
+        if self.offline:return
         job=self.app.export_job
         self.export_button.configure(state='disabled' if job.pending else 'normal')
         self.export_status.configure(text=job.message)
@@ -117,7 +126,7 @@ class Audits(ctk.CTkFrame):
         self.size.set(str(q.page_size))
         for field,widget in [('station',self.station),('date_from',self.date_from),('date_to',self.date_to)]:
             widget.insert(0,getattr(q,field))
-        if q.audited_by_user_id:
+        if q.audited_by_user_id and self.mine:
             self.mine.select()
         if self.include_deleted and q.include_deleted:
             self.include_deleted.select()
@@ -161,7 +170,7 @@ class Audits(ctk.CTkFrame):
             query=AuditQuery(page_size=int(self.size.get()),sort=SORTS[self.sort.get()],
                 include_deleted=bool(self.include_deleted and self.include_deleted.get()),
                 date_from=self.date_from.get().strip(),date_to=self.date_to.get().strip(),
-                audited_by_user_id=self.app.session.login.user.id if self.mine.get() else None,**values)
+                audited_by_user_id=self.app.session.login.user.id if self.mine and self.mine.get() else None,**values)
         except ValueError:
             self.notice.show('Check search length (200 maximum) and dates (YYYY-MM-DD, start before end).')
             return
@@ -193,6 +202,9 @@ class Audits(ctk.CTkFrame):
         self.notice.show('Loading driver audits…',False)
         for b in (self.previous,self.next,self.detail_button):
             b.configure(state='disabled')
+        if self.offline:
+            self.app.read_audits(self.app.query,self.finished)
+            return
         client,token,query=self.app.client,self.app.session.login.token,self.app.query
         self.app.request(lambda:client.list_audits(token,query),self.finished)
 

@@ -2,7 +2,6 @@
 import tkinter as tk
 import customtkinter as ctk
 
-from desktop.api import ApiError
 from desktop.audit_operations import (FIELDS,LABELS,LIMITS,ValidationError,normalize,
                                       changed_fields,CreationIntent,ambiguous,can_edit)
 from desktop.components.common import button,entry,label,Notice,destroy_view

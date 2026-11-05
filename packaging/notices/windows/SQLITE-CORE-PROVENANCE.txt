@@ -1,0 +1,7 @@
+SQLite core provenance ? Windows Offline development candidate
+
+The offline application uses Python's built-in sqlite3 module and the SQLite native library shipped with the retained CPython runtime. No database encryption extension is enabled. The actual runtime/library version and the native binary SHA-256 are recorded in each candidate BUILD-MANIFEST.json; the bundled DLL must match the retained runtime DLL exactly.
+
+The upstream SQLite authors dedicate their deliverable library code and documentation to the public domain. Primary upstream statement, verified 2026-11-05: https://www.sqlite.org/copyright.html . This provenance note is not a new license, a warranty or a grant covering BHLI artwork.
+
+The CPython composite license is also retained as THIRD_PARTY_LICENSES/CPython-LICENSE.txt. The package/module source and ordinary online application are preserved separately.

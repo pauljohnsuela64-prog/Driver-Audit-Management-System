@@ -17,7 +17,7 @@ class AuditHistory(ctk.CTkFrame):
         self.rowconfigure(2,weight=1)
         header=ctk.CTkFrame(self,fg_color='transparent')
         header.grid(row=0,column=0,sticky='ew',pady=(0,12))
-        label(header,f'Audit #{audit_id} · History',24).pack(side='left')
+        label(header,'Local audit history' if getattr(app,'offline',False) else f'Audit #{audit_id} · History',24).pack(side='left')
         button(header,'Back to details',lambda:app.navigate('Audit Details',audit_id),width=140).pack(side='right')
         self.notice=Notice(self)
         self.notice.grid(row=1,column=0,sticky='ew',pady=(0,8))
@@ -46,6 +46,9 @@ class AuditHistory(ctk.CTkFrame):
         self.previous.configure(state='disabled');self.next.configure(state='disabled')
         for child in self.body.winfo_children():
             destroy_view(child)
+        if getattr(self.app,'offline',False):
+            self.app.read_history(self.audit_id,self.page,self.finished)
+            return
         client,token,audit_id,page=self.app.client,self.app.session.login.token,self.audit_id,self.page
         include_deleted=self.app.session.login.user.role=='ADMIN'
         self.app.request(lambda:client.audit_history(token,audit_id,page,include_deleted=include_deleted),self.finished)
@@ -57,7 +60,10 @@ class AuditHistory(ctk.CTkFrame):
             return
         self.loaded=True
         self.events=page
-        self.notice.show('No history events.' if not page.items else 'Oldest events first · Actor IDs identify who performed each action.',False)
+        offline=getattr(self.app,'offline',False)
+        self.notice.show('No history events.' if not page.items else
+                         'Newest events first · Names are historical, locally declared snapshots.' if offline else
+                         'Oldest events first · Actor IDs identify who performed each action.',False)
         self.count.configure(text=f'{page.total:,} events · Page {page.page}')
         self.previous.configure(state='normal' if page.page>1 else 'disabled')
         self.next.configure(state='normal' if page.page*25<page.total and page.page<10000 else 'disabled')
@@ -66,7 +72,8 @@ class AuditHistory(ctk.CTkFrame):
             card=ctk.CTkFrame(self.body,fg_color=color('raised'),corner_radius=8)
             card.grid(row=i,column=0,sticky='ew',padx=12,pady=8)
             card.columnconfigure(0,weight=1)
-            title=f'{event.action} · {event.created_at:%Y-%m-%d %H:%M:%S UTC} · User #{event.actor_user_id}'
+            actor=event.actor_name if offline else f'User #{event.actor_user_id}'
+            title=f'{event.action} · {event.created_at:%Y-%m-%d %H:%M:%S UTC} · {actor}'
             event_button=button(card,title,lambda event=event:self.select(event))
             event_button.grid(row=0,column=0,sticky='ew',padx=12,pady=12)
             self.event_buttons[event.id]=event_button
@@ -86,6 +93,8 @@ class AuditHistory(ctk.CTkFrame):
             self.body._parent_canvas.yview_moveto(max(0,selected.winfo_y()-8)/max(1,region[3]))
 
     def render_event(self,parent,event):
+        if getattr(self.app,'offline',False):
+            return self.app.render_history_event(parent,event)
         before,after=event.before_data,event.after_data
         lines=[f'Original auditor: {after.audited_by_name} · Owner user #{after.audited_by_user_id}']
         for key in (*FIELDS,'audited_by_name'):

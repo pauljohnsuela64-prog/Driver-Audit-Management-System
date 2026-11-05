@@ -6,7 +6,8 @@
     "OpenSSL": "3.5.9",
     "FreeType": "2.14.3",
     "libjpeg-turbo": "3.2.0",
-    "Roboto": "2.137 (2017)"
+    "Roboto": "2.137 (2017)",
+    "SQLite (Windows offline runtime)": "3.50.4"
   },
   "openssl_notice_evidence": {
     "source": "https://codeload.github.com/openssl/openssl/tar.gz/refs/tags/openssl-3.5.9",
@@ -61,6 +62,12 @@
       "sha256": "2e5346868c2a18434489824e11d65c3031620f792fefc415d05f19cd441abf5c",
       "source": "Unmodified license from verified signed Inno Setup 7.1.0 compiler distribution; https://jrsoftware.org/files/is/license.txt",
       "role": "installer engine redistribution license; compiler not bundled"
+    },
+    {
+      "path": "SQLITE-CORE-PROVENANCE.txt",
+      "sha256": "e82e88917817cc65baa62f37262db26f46b455d3a3284e2601e858ad6548d481",
+      "source": "https://www.sqlite.org/copyright.html",
+      "role": "Offline runtime core provenance; exact binary version/hash recorded by build script"
     }
   ]
 }

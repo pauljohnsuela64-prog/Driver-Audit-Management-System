@@ -5,7 +5,7 @@ from desktop.theme import color, font, icon
 
 
 class Shell(ctk.CTkFrame):
-    def __init__(self,parent,app):
+    def __init__(self,parent,app,local_profile=None,destinations=None):
         super().__init__(parent,fg_color=color('bg'),corner_radius=0)
         self.app,self.collapsed = app,False
         self.columnconfigure(1,weight=1)
@@ -20,8 +20,8 @@ class Shell(ctk.CTkFrame):
         self.toggle = button(self.sidebar,'Collapse navigation',self.collapse,width=200)
         self.toggle.grid(row=1,column=0,padx=12,pady=(0,24),sticky='ew')
         self.nav_buttons,self.images = {},[]
-        for row,destination in enumerate(app.session.destinations,2):
-            image=icon(self,destination)
+        for row,destination in enumerate(destinations if destinations is not None else app.session.destinations,2):
+            image=icon(self,'My Account' if destination=='Local profile' else destination)
             self.images.append(image)
             b=button(self.sidebar,destination,lambda d=destination: app.navigate(d),image=image,
                       anchor='w',width=200)
@@ -40,21 +40,27 @@ class Shell(ctk.CTkFrame):
         header.columnconfigure(0,weight=1)
         self.heading=label(header,'Dashboard',20)
         self.heading.grid(row=0,column=0,sticky='w',padx=24,pady=(12,0))
-        user=app.session.login.user
-        display_name=user.full_name if len(user.full_name)<=28 else user.full_name[:27]+'…'
-        self.identity=label(header,f'{display_name} · {user.role}',12,True)
+        if local_profile is not None:
+            name,identity_suffix=local_profile.name,'Local · self-declared'
+        else:
+            user=app.session.login.user
+            name,identity_suffix=user.full_name,user.role
+        display_name=name if len(name)<=28 else name[:27]+'…'
+        self.identity=label(header,f'{display_name} · {identity_suffix}',12,True)
         self.identity.grid(row=1,column=0,sticky='w',padx=24,pady=(0,12))
         self.appearance=option_menu(header,values=['Light','Dark'],command=app.set_theme,width=88,
                                         font=font(12),fg_color=color('primary'),text_color=color('on_primary'))
         self.appearance.set(ctk.get_appearance_mode())
         self.appearance.grid(row=0,column=1,rowspan=2,padx=8)
-        self.account=button(header,'Account',self.toggle_menu,width=100)
+        self.account=button(header,'Local profile' if local_profile is not None else 'Account',self.toggle_menu,width=110 if local_profile is not None else 100)
         self.account.grid(row=0,column=2,rowspan=2,padx=(0,16))
         self.menu=ctk.CTkFrame(main,fg_color=color('surface'))
-        user=app.session.login.user
-        label(self.menu,f'{user.full_name} · {user.role}',wraplength=450).pack(side='left',padx=16)
-        button(self.menu,'My Account',lambda: app.navigate('My Account'),width=110).pack(side='left',padx=4,pady=8)
-        button(self.menu,'Sign Out',app.logout,width=100).pack(side='left',padx=4,pady=8)
+        label(self.menu,f'{name} · {identity_suffix}',wraplength=450).pack(side='left',padx=16)
+        if local_profile is not None:
+            button(self.menu,'Local profile',lambda: app.navigate('Local profile'),width=120).pack(side='left',padx=4,pady=8)
+        else:
+            button(self.menu,'My Account',lambda: app.navigate('My Account'),width=110).pack(side='left',padx=4,pady=8)
+            button(self.menu,'Sign Out',app.logout,width=100).pack(side='left',padx=4,pady=8)
         self.content=ctk.CTkFrame(main,fg_color='transparent')
         self.content.grid(row=2,column=0,sticky='nsew',padx=24,pady=16)
         self.notice=Notice(main)
