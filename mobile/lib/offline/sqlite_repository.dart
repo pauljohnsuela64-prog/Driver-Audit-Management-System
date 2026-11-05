@@ -42,7 +42,9 @@ class SqliteOfflineRepository implements OfflineRepository {
             (await txn.rawQuery('PRAGMA user_version')).first.values.first
                 as int;
         final tables = await txn.rawQuery(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+          // Android creates android_metadata before application schema setup.
+          // It is platform-owned, not a fifth application table.
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'android_metadata'",
         );
         if (version == 0 && tables.isEmpty) {
           await txn.execute(

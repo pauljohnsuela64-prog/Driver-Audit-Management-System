@@ -47,6 +47,43 @@ void main() {
     await directory.delete(recursive: true);
   });
 
+  test(
+    'Android platform metadata permits fresh initialization and reopen',
+    () async {
+      final nativePath = '${directory.path}/android-platform.db';
+      final platform = await databaseFactoryFfi.openDatabase(nativePath);
+      await platform.execute('CREATE TABLE android_metadata (locale TEXT)');
+      await platform.insert('android_metadata', {'locale': 'en_US'});
+      await platform.close();
+      var native = await SqliteOfflineRepository.open(
+        nativePath,
+        factory: databaseFactoryFfi,
+      );
+      try {
+        expect(await native.profile(), isNull);
+        expect((await native.list(const AuditFilter())).total, 0);
+        await native.saveProfile('Fictional Platform Auditor');
+        final record = await native.create(newUuid(), values());
+        await native.close();
+        native = await SqliteOfflineRepository.open(
+          nativePath,
+          factory: databaseFactoryFfi,
+        );
+        expect(
+          (await native.read(record.id)).auditedByName,
+          'Fictional Platform Auditor',
+        );
+      } finally {
+        await native.close();
+      }
+      final inspection = await databaseFactoryFfi.openDatabase(nativePath);
+      expect(
+        (await inspection.query('android_metadata')).single['locale'],
+        'en_US',
+      );
+      await inspection.close();
+    },
+  );
   test('empty installation requires profile and preserves historic actor on rename', () async {
     expect(await repo.profile(), isNull);
     expect((await repo.list(AuditFilter())).total, 0);
