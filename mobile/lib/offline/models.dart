@@ -23,9 +23,12 @@ bool validOfflineDate(String value) {
 }
 
 String offlineText(String value, int limit, {bool optional = false}) {
-  final text = optional
-      ? value.replaceAll(RegExp(r'^[\s\u001c-\u001f]+|[\s\u001c-\u001f]+$'), '')
-      : value.trim();
+  // Match the established Android contract, including Python's additional
+  // separators for optional values. String.trim/RegExp \s differ for NEL/BOM.
+  final pattern = optional
+      ? r'^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$'
+      : r'^[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$';
+  final text = value.replaceAll(RegExp(pattern), '');
   if ((!optional && text.isEmpty) || text.runes.length > limit) invalidInput();
   return text;
 }

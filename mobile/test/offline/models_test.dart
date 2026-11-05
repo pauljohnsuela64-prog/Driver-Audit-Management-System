@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bhli_audit/offline/models.dart';
 
 void main() {
+  test('preserves established Android Unicode trimming rules exactly', () {
+    final values = AuditValues(
+      driverName: '\u0085Driver\u0085',
+      helperName: '\u0085\u001c',
+      auditDate: '2026-11-05',
+      station: 'Station',
+      plateNumber: '\ufeff00047\ufeff',
+      remarks: '\u0085Note\u0085',
+    );
+    expect(values.driverName, 'Driver');
+    expect(values.helperName, isNull);
+    expect(values.plateNumber, '\ufeff00047\ufeff');
+    expect(values.remarks, 'Note');
+  });
   test('normalizes six values and rejects impossible calendar dates', () {
     final values = AuditValues(
       driverName: ' Ada ',
