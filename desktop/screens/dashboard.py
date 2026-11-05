@@ -30,6 +30,9 @@ class Dashboard(ctk.CTkScrollableFrame):
         for child in self.body.winfo_children():
             destroy_view(child)
         StatePanel(self.body,'Loading dashboard','Retrieving the latest audit overview…').grid(row=0,column=0,sticky='ew')
+        if getattr(self.app,'offline',False):
+            self.app.read_audits(AuditQuery(page_size=5),self.finished)
+            return
         client,token=self.app.client,self.app.session.login.token
         self.app.request(lambda: client.list_audits(token,AuditQuery(page_size=5)),self.finished)
 
@@ -45,10 +48,11 @@ class Dashboard(ctk.CTkScrollableFrame):
         summary.grid(row=0,column=0,sticky='ew',pady=(0,24))
         label(summary,'ACTIVE DRIVER AUDITS',12,True).pack(anchor='w',padx=24,pady=(20,0))
         label(summary,f'{page.total:,}',36).pack(anchor='w',padx=24,pady=(0,4))
-        label(summary,'All active records visible to your account',12,True).pack(anchor='w',padx=24,pady=(0,16))
+        label(summary,'Active records stored on this computer' if getattr(self.app,'offline',False) else 'All active records visible to your account',12,True).pack(anchor='w',padx=24,pady=(0,16))
         label(self.body,'Most recently created',20).grid(row=1,column=0,sticky='w',pady=(0,12))
         if page.items:
-            table=AuditTable(self.body,lambda: self.open_selected(table),height=5)
+            table=AuditTable(self.body,lambda: self.open_selected(table),height=5,
+                             **(dict(id_parser=str,archive_label='Archived') if getattr(self.app,'offline',False) else {}))
             table.grid(row=2,column=0,sticky='ew')
             table.set_rows(page.items)
             button(self.body,'View selected audit',lambda: self.open_selected(table),width=180).grid(row=3,column=0,sticky='w',pady=12)
