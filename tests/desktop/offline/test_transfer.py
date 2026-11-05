@@ -112,3 +112,50 @@ def test_canonical_rejects_unsupported_values(value):
     from desktop.offline.transfer import canonical_json
     from desktop.offline.models import OfflineError
     with pytest.raises(OfflineError): canonical_json(value)
+
+
+def test_actual_dart_generated_package_matches_python_canonical_streams():
+    from pathlib import Path
+    from desktop.offline.transfer import decode_transfer, encode_transfer
+    folder = Path('mobile/test/fixtures/transfer')
+    dart_raw = (folder/'dart-v1.bhlitransfer').read_bytes()
+    result = decode_transfer(dart_raw)
+    assert result.audits[0]['driver_name'] == sample()[1][0]['driver_name']
+    assert result.content_sha256 == decode_transfer(encode_transfer(*sample())).content_sha256
+    with zipfile.ZipFile(io.BytesIO(dart_raw)) as archive:
+        for name in archive.namelist():
+            assert archive.read(name) == (folder/name).read_bytes()
+
+
+def test_reject_regular_entry_with_dos_directory_flag():
+    import struct
+    from desktop.offline.transfer import decode_transfer, encode_transfer
+    from desktop.offline.models import OfflineError
+    raw = bytearray(encode_transfer(*sample()))
+    central = raw.find(b'PK\x01\x02')
+    attr = struct.unpack_from('<I', raw, central + 38)[0]
+    struct.pack_into('<I', raw, central + 38, attr | 0x10)
+    with pytest.raises(OfflineError): decode_transfer(bytes(raw))
+
+
+def test_reject_ambiguous_local_central_timestamps():
+    import struct
+    from desktop.offline.transfer import decode_transfer, encode_transfer
+    from desktop.offline.models import OfflineError
+    raw = bytearray(encode_transfer(*sample()))
+    struct.pack_into('<H', raw, 10, 1)
+    with pytest.raises(OfflineError): decode_transfer(bytes(raw))
+
+
+def test_reject_oversized_central_directory_before_zip_library_allocates(monkeypatch):
+    import struct
+    import desktop.offline.transfer as module
+    from desktop.offline.models import OfflineError
+    original = module.encode_transfer(*sample())
+    tail = list(struct.unpack('<4s4H2IH', original[-22:]))
+    tail[5] += 46
+    bad = original[:-22] + b'X'*46 + struct.pack('<4s4H2IH', *tail)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Untrusted central directory reached allocating ZIP parser')
+    monkeypatch.setattr(module.zipfile, 'ZipFile', forbidden)
+    with pytest.raises(OfflineError): module.decode_transfer(bad)

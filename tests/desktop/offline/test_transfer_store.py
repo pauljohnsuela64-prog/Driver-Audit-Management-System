@@ -107,3 +107,34 @@ def test_same_package_uuid_different_content_rejected(tmp_path):
         with pytest.raises(OfflineError): TransferStore(b).preview(bad)
     finally:
         a.close(); b.close()
+
+
+def test_final_commit_failure_rolls_back_receipt_and_import(tmp_path):
+    from desktop.offline.transfer_store import TransferStore
+    a, b = stores(tmp_path)
+    try:
+        a.create(new_uuid(), VALUES)
+        raw = TransferStore(a).export()
+        preview = TransferStore(b).preview(raw)
+        b._connection.execute('CREATE TEMP TABLE guard(id INTEGER PRIMARY KEY, parent INTEGER REFERENCES guard(id) DEFERRABLE INITIALLY DEFERRED)')
+        b._connection.execute('CREATE TEMP TRIGGER fail_commit AFTER INSERT ON main.transfer_receipts BEGIN INSERT INTO guard VALUES(1,2); END')
+        with pytest.raises(OfflineError): TransferStore(b).apply(raw, preview)
+        assert b.list(AuditFilter(include_archived=True)).total == 0
+        assert b._connection.execute('SELECT count(*) FROM transfer_receipts').fetchone()[0] == 0
+        assert b._connection.execute('SELECT count(*) FROM auditor_identities').fetchone()[0] == 1
+        b._connection.execute('DROP TRIGGER fail_commit')
+        assert TransferStore(b).apply(raw, preview).imported == 1
+    finally:
+        a.close(); b.close()
+
+
+def test_export_checks_byte_budget_while_collecting_snapshot(tmp_path, monkeypatch):
+    import desktop.offline.transfer_store as module
+    a, b = stores(tmp_path)
+    try:
+        a.create(new_uuid(), VALUES)
+        monkeypatch.setattr(module, 'MAX_BYTES', 10, raising=False)
+        with pytest.raises(OfflineError): module.TransferStore(a).export()
+        assert a.list(AuditFilter()).total == 1
+    finally:
+        a.close(); b.close()

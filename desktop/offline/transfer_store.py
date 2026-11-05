@@ -5,7 +5,7 @@ import json
 
 from .models import OfflineError, new_uuid, valid_date
 from .transfer import (
-    AUDIT_KEYS, MAX_AUDITS, MAX_EVENTS, canonical_json, decode_transfer,
+    AUDIT_KEYS, MAX_AUDITS, MAX_EVENTS, MAX_BYTES, MAX_LINE, canonical_json, decode_transfer,
     encode_transfer, invalid,
 )
 
@@ -111,14 +111,24 @@ class TransferStore:
             where = ' WHERE ' + ' AND '.join(clauses) if clauses else ''
             rows = self.db.execute('SELECT * FROM audit_records' + where + ' ORDER BY id LIMIT ?', (*args, MAX_AUDITS + 1))
             audits, events = [], []
+            used = 0
+            def append_bounded(target, value):
+                nonlocal used
+                size = len(canonical_json(value).encode('ascii')) + 1
+                used += size
+                if size > MAX_LINE or used > MAX_BYTES:
+                    invalid()
+                target.append(value)
             for row in rows:
                 _canceled(cancel)
                 if len(audits) >= MAX_AUDITS:
                     invalid()
-                audits.append(wire_audit({key: row[key] for key in AUDIT_KEYS}))
-                events.extend(self._events(row['id']))
-                if len(events) > MAX_EVENTS:
-                    invalid()
+                append_bounded(audits, wire_audit({key: row[key] for key in AUDIT_KEYS}))
+                for event in self.db.execute('SELECT * FROM audit_events WHERE audit_id=? ORDER BY revision', (row['id'],)):
+                    _canceled(cancel)
+                    if len(events) >= MAX_EVENTS:
+                        invalid()
+                    append_bounded(events, wire_event(event))
             source = self.db.execute("SELECT value FROM app_meta WHERE key='installation_id'").fetchone()[0]
         _canceled(cancel)
         manifest = dict(format='bhli-audit-transfer', format_version=1, package_id=new_uuid(),

@@ -169,6 +169,7 @@ def validate_content(manifest, audits, events):
     for event in events:
         _shape(event, EVENT_KEYS)
         validate_uuid(event['id'])
+        validate_uuid(event['audit_id'])
         validate_uuid(event['actor_profile_id'])
         if event['id'] in ids or event['audit_id'] not in records:
             invalid()
@@ -265,7 +266,9 @@ def _unzip(raw):
         invalid()
     try:
         end = struct.unpack('<4s4H2IH', raw[-22:])
-        if end[0] != b'PK\x05\x06' or end[1:5] != (0, 0, 3, 3) or end[7] != 0 or end[5] + end[6] != len(raw) - 22:
+        if (end[0] != b'PK\x05\x06' or end[1:5] != (0, 0, 3, 3) or end[7] != 0
+                or end[5] != sum(46 + len(name) for name in NAMES)
+                or end[5] + end[6] != len(raw) - 22):
             invalid()
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             infos = archive.infolist()
@@ -277,7 +280,8 @@ def _unzip(raw):
             total = 0
             for i in infos:
                 if (i.header_offset != offset or i.compress_type != 0 or i.flag_bits not in (0, 0x800)
-                        or i.extra or i.comment or stat.S_IFMT(i.external_attr >> 16) not in (0, stat.S_IFREG)
+                        or i.extra or i.comment or i.external_attr & 0x10
+                        or stat.S_IFMT(i.external_attr >> 16) not in (0, stat.S_IFREG)
                         or i.compress_size != i.file_size or i.file_size > MAX_BYTES):
                     invalid()
                 header = struct.unpack_from('<4s5H3I2H', raw, offset)
@@ -289,6 +293,7 @@ def _unzip(raw):
                 offset += 30 + len(name) + i.file_size
                 c = struct.unpack_from('<4s6H3I5H2I', raw, central)
                 if (c[0] != b'PK\x01\x02' or c[2] > 20 or c[3] != i.flag_bits or c[4] != 0
+                        or c[5:7] != header[4:6]
                         or c[7:10] != (i.CRC, i.file_size, i.file_size) or c[10:14] != (len(name), 0, 0, 0)
                         or c[16] != i.header_offset or raw[central+46:central+46+len(name)] != name):
                     invalid()
@@ -322,4 +327,7 @@ def decode_transfer(raw):
             or [r['id'] for r in audits] != sorted(r['id'] for r in audits)
             or [(r['audit_id'], r['revision']) for r in events] != sorted((r['audit_id'], r['revision']) for r in events)):
         invalid()
-    return TransferPackage(manifest, tuple(audits), tuple(events), hashlib.sha256(m+a+e).hexdigest())
+    digest = hashlib.sha256()
+    for entry in (m, a, e):
+        digest.update(entry)
+    return TransferPackage(manifest, tuple(audits), tuple(events), digest.hexdigest())
