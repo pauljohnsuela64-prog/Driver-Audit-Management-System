@@ -1,0 +1,20 @@
+{
+  "vectors": [
+    {"name":"trim and nullable optional fields","input":{"driver_name":"  Driver  ","helper_name":" \t ","audit_date":"2024-02-29","station":"  Station  ","plate_number":"  TEST  ","remarks":null},"expected":{"driver_name":"Driver","helper_name":null,"audit_date":"2024-02-29","station":"Station","plate_number":"TEST","remarks":null}},
+    {"name":"NEL trims and BOM remains","input":{"driver_name":"\u0085\ufeffDriver\u0085","audit_date":"1000-01-01","station":"\u0085Station\u0085","plate_number":"TEST","remarks":"\u0085\ufeff\u0085"},"expected":{"driver_name":"\ufeffDriver","helper_name":null,"audit_date":"1000-01-01","station":"Station","plate_number":"TEST","remarks":"\ufeff"}},
+    {"name":"required separators preserved optional separators trimmed","input":{"driver_name":"\u001cDriver\u001f","helper_name":"\u001cHelper\u001f","audit_date":"9999-12-31","station":"\u001dStation\u001e","plate_number":"TEST","remarks":"\u001c\u001f"},"expected":{"driver_name":"\u001cDriver\u001f","helper_name":"Helper","audit_date":"9999-12-31","station":"\u001dStation\u001e","plate_number":"TEST","remarks":null}},
+    {"name":"combining accents are not composed","input":{"driver_name":"é 😀","audit_date":"2024-01-01","station":"Station","plate_number":"TEST"},"expected":{"driver_name":"é 😀","helper_name":null,"audit_date":"2024-01-01","station":"Station","plate_number":"TEST","remarks":null}},
+    {"name":"required control separator alone retained","input":{"driver_name":"\u001c","audit_date":"2024-01-01","station":"Station","plate_number":"TEST"},"expected":{"driver_name":"\u001c","helper_name":null,"audit_date":"2024-01-01","station":"Station","plate_number":"TEST","remarks":null}},
+    {"name":"date whitespace rejected","input":{"driver_name":"Driver","audit_date":" 2024-01-01","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"non leap date rejected","input":{"driver_name":"Driver","audit_date":"2023-02-29","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"year below 1000 rejected","input":{"driver_name":"Driver","audit_date":"0999-12-31","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"year above 9999 rejected","input":{"driver_name":"Driver","audit_date":"10000-01-01","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"date trailing newline rejected","input":{"driver_name":"Driver","audit_date":"2024-01-01\n","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"unknown field rejected","input":{"driver_name":"Driver","audit_date":"2024-01-01","station":"Station","plate_number":"TEST","audited_by_name":"Injected"},"error":"validation"},
+    {"name":"required null rejected","input":{"driver_name":null,"audit_date":"2024-01-01","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"optional nontext rejected","input":{"driver_name":"Driver","audit_date":"2024-01-01","station":"Station","plate_number":"TEST","helper_name":1},"error":"validation"},
+    {"name":"empty required NEL rejected","input":{"driver_name":"\u0085","audit_date":"2024-01-01","station":"Station","plate_number":"TEST"},"error":"validation"},
+    {"name":"required missing rejected","input":{"audit_date":"2024-01-01","station":"Station","plate_number":"TEST"},"error":"validation"}
+  ],
+  "codepoint_limits":{"driver_name":200,"helper_name":200,"station":150,"plate_number":30,"remarks":10000}
+}
