@@ -115,6 +115,36 @@
       "sha256": "b2cae2bcd3ab0b7a3b2107517403f3a2cf063240e57812c58d761b60287a23f1",
       "source": "https://github.com/mojohaus/animal-sniffer/blob/animal-sniffer-parent-1.18/animal-sniffer-annotations/src/main/java/org/codehaus/mojo/animal_sniffer/IgnoreJRERequirement.java",
       "role": "exact source MIT copyright, permission and disclaimer for distributed annotation"
+    },
+    {
+      "path": "assets/compliance/NOTICE-SQFLITE-sqflite-2.4.5.txt",
+      "sha256": "c81f9454cf3107c116bc3c1fd22b7d751523a2b11e17cf90c0db3327d3c9e0da",
+      "source": "https://pub.dev/packages/sqflite/versions/2.4.5",
+      "role": "Verbatim BSD-2-Clause SQLite plugin notice"
+    },
+    {
+      "path": "assets/compliance/NOTICE-DART-SQLITE3-3.5.2-LICENSE.txt",
+      "sha256": "67e5d73a3a0c6e41f33d688a672b1161bf7f16e04da9ae48a7a14f1ba7436a4d",
+      "source": "Pinned sqlite3 3.5.2 package LICENSE; https://pub.dev/packages/sqlite3/versions/3.5.2/license",
+      "role": "Verbatim MIT Dart wrapper license"
+    },
+    {
+      "path": "assets/compliance/NOTICE-SQLITE-CORE-ORIGIN.txt",
+      "sha256": "482b930a462d2e6da28d07414100bd1918aa88419ff1cc8a95668f836c840aa3",
+      "source": "Pinned sqlite3 3.5.2 hook metadata; https://www.sqlite.org/copyright.html",
+      "role": "Native SQLite provenance note"
     }
-  ]
+  ],
+  "offline_sqlite": {
+    "review_date": "2026-11-05",
+    "packages": [
+      "sqflite-2.4.5",
+      "sqflite_android-2.4.5",
+      "sqflite_common-2.5.15",
+      "sqflite_common_ffi-2.4.5"
+    ],
+    "license": "BSD-2-Clause; exact package license bytes retained",
+    "note": "sqflite_android uses the platform SQLite. FFI is a host-test dependency; any build-hook assets require actual artifact inspection. Existing native inventory describes its original reviewed cohort, not an assertion that every later dependency is listed there.",
+    "native_hook": "sqlite3 3.5.2 dev dependency includes native hook assets; MIT wrapper and public-domain SQLite origin retained. Runtime repository uses platform SQLite."
+  }
 }

@@ -82,7 +82,7 @@ Set the port printed by **your current** server; do not reuse a port from a repo
 $demoPort = Read-Host 'Port printed by the disposable server'
 adb -s emulator-5554 reverse "tcp:$demoPort" "tcp:$demoPort"
 Set-Location C:\BHLI-Audit\mobile
-flutter run --debug -d emulator-5554 --dart-define=DAMS_DEBUG_LOOPBACK=true
+flutter run --debug --flavor online -d emulator-5554 --dart-define=DAMS_DEBUG_LOOPBACK=true
 ```
 
 In Connection setup/settings enter `http://127.0.0.1:<your-port>`, test the

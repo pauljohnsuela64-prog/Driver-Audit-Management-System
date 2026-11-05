@@ -44,6 +44,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     flavorDimensions += "edition"
@@ -76,4 +77,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Match the existing locked integration_test runtime graph. AGP consistent
+    // resolution rejects newer test-only versions against that reviewed graph.
+    androidTestImplementation("androidx.test:runner:1.3.0")
+    androidTestImplementation("androidx.test:rules:1.2.0")
 }

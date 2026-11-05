@@ -7,6 +7,29 @@ import re
 import zipfile
 
 
+def inspect_source(entry, lib_root):
+    """Follow project imports so shared widgets cannot pull in remote sessions."""
+    lib_root = Path(lib_root).resolve()
+    pending, seen = [Path(entry).resolve()], set()
+    while pending:
+        source = pending.pop()
+        if source in seen:
+            continue
+        if not source.is_relative_to(lib_root):
+            raise ValueError('Source import escapes application library')
+        seen.add(source)
+        text = source.read_text(encoding='utf-8-sig')
+        for uri in re.findall(r"(?:import|export)\s+['\"]([^'\"]+)['\"]", text):
+            if (uri.startswith('package:http/') or '/core/network/' in '/' + uri
+                    or '/features/auth/' in '/' + uri):
+                raise ValueError('Offline entry imports remote transport/authentication')
+            if uri.startswith('package:bhli_audit/'):
+                pending.append((lib_root / uri.removeprefix('package:bhli_audit/')).resolve())
+            elif ':' not in uri:
+                pending.append((source.parent / uri).resolve())
+    return sorted(str(path.relative_to(lib_root)) for path in seen)
+
+
 def inspect_candidate(apk, badging):
     match = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", badging)
     if (not match or match.groups() != ('com.bhli.audit.offline', '2', '1.0.0-offline-dev')
@@ -33,5 +56,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apk', required=True, type=Path)
     parser.add_argument('--badging', required=True, type=Path)
+    parser.add_argument('--entry', type=Path, default=Path('mobile/lib/main_offline.dart'))
     args = parser.parse_args()
-    print(json.dumps(inspect_candidate(args.apk, args.badging.read_text(encoding='utf-8-sig')), indent=2))
+    result = inspect_candidate(args.apk, args.badging.read_text(encoding='utf-8-sig'))
+    result['source_imports'] = inspect_source(args.entry, Path('mobile/lib'))
+    print(json.dumps(result, indent=2))

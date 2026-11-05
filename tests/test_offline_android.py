@@ -16,6 +16,18 @@ def test_online_builder_selects_online_flavor_explicitly():
     assert BUILD_ARGS == ['build', 'apk', '--debug', '--flavor', 'online', '--target', 'lib/main.dart']
 
 
+def test_offline_import_graph_rejects_transitive_transport(tmp_path):
+    from scripts.offline_android import inspect_source
+    lib = tmp_path / 'lib'
+    lib.mkdir()
+    (lib / 'main_offline.dart').write_text("import 'app.dart';")
+    (lib / 'app.dart').write_text("import 'package:flutter/material.dart';")
+    assert len(inspect_source(lib / 'main_offline.dart', lib)) == 2
+    (lib / 'app.dart').write_text("import 'package:http/http.dart';")
+    with pytest.raises(ValueError, match='transport'):
+        inspect_source(lib / 'main_offline.dart', lib)
+
+
 def test_offline_candidate_accepts_only_its_separate_identity(tmp_path):
     from scripts.offline_android import inspect_candidate
     apk = tmp_path / 'offline.apk'
