@@ -73,6 +73,8 @@ class TransferController:
                 if token.is_set():
                     raise OfflineError('cancelled', 'Transfer cancelled before import.')
                 preview = TransferStore(repo).preview(raw)
+                if token.is_set():
+                    raise OfflineError('cancelled', 'Transfer cancelled before import.')
                 return raw, preview
             return work
         return self._submit(factory, lambda result: self.view.preview_ready(*result), 'Reading and validating all audits and history...')

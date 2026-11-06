@@ -50,6 +50,43 @@ def test_cancel_sets_worker_token_without_touching_ui_from_work():
     assert token.is_set()
 
 
+def test_cancel_during_real_preview_does_not_publish_preview(tmp_path, monkeypatch):
+    import pytest
+    from desktop.offline.models import OfflineError, new_uuid
+    from desktop.offline.repository import SqliteRepository
+    from desktop.offline.transfer_controller import TransferController
+    from desktop.offline.transfer_store import TransferStore
+    source = SqliteRepository(tmp_path / 'cancel-source.db')
+    source.save_profile('Fictional Source')
+    source.create(new_uuid(), dict(driver_name='Fictional Driver', helper_name=None,
+        audit_date='2026-01-01', station='Station', plate_number='001', remarks=None))
+    path = tmp_path / 'cancel-preview.bhlitransfer'
+    path.write_bytes(TransferStore(source).export())
+    source.close()
+    target = SqliteRepository(tmp_path / 'cancel-target.db')
+    app = App(); view = View(); view.preview_ready = lambda *args: view.results.append(args)
+    controller = TransferController(app, view)
+    original = TransferStore.preview
+    def preview_then_cancel(store, raw):
+        result = original(store, raw)
+        controller.cancel_event.set()
+        return result
+    monkeypatch.setattr(TransferStore, 'preview', preview_then_cancel)
+    controller.preview(path)
+    try:
+        work, done = app.pending[0]
+        with pytest.raises(OfflineError) as error:
+            work(target)
+        assert error.value.code == 'cancelled'
+        done(None, error.value)
+        assert view.results == []
+        assert not controller.pending
+        assert target._connection.execute('SELECT COUNT(*) FROM audit_records').fetchone()[0] == 0
+        assert target._connection.execute('SELECT COUNT(*) FROM transfer_receipts').fetchone()[0] == 0
+    finally:
+        target.close()
+
+
 def test_real_worker_export_file_preview_import_and_duplicate_recheck(tmp_path):
     import time
     from desktop.offline.lifecycle import OfflineLifecycle
