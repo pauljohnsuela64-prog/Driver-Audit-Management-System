@@ -1,0 +1,3 @@
+# Offline-only extension of retained online Windows build closure.
+-r requirements-build.lock
+-r requirements-offline-security.lock

@@ -52,7 +52,7 @@ def verify_apk_application_notices(apk):
 
 
 def verified_notices(platform):
-    if platform not in ('windows', 'android'):
+    if platform not in ('windows', 'android', 'windows-offline-security'):
         raise ValueError('Unknown notice platform')
     root = (NOTICE_ROOT / platform).resolve()
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
@@ -81,6 +81,12 @@ def verified_notices(platform):
         actual = {p.relative_to(root).as_posix() for p in assets if p.is_file()}
         if actual != seen or any(p.is_symlink() for p in assets):
             raise ValueError('Unreviewed Android notice asset')
+    if platform == 'windows-offline-security':
+        files = list(root.rglob('*'))
+        actual = {p.relative_to(root).as_posix() for p in files
+                  if p.is_file() and p != root / 'manifest.json'}
+        if actual != seen or any(p.is_symlink() for p in files):
+            raise ValueError('Unreviewed offline security notice asset')
     return manifest, payloads
 
 

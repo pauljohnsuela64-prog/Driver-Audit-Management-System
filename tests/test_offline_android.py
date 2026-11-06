@@ -51,7 +51,9 @@ def test_offline_candidate_rejects_network_permissions(tmp_path, permission):
 
 
 @pytest.mark.parametrize('name', ['assets/demo.db', 'assets/user.sqlite', 'assets/data.sqlite3',
-                                 'assets/server.env', 'assets/.env', 'secret.jks', '../private'])
+                                 'assets/server.env', 'assets/.env', 'secret.jks', '../private',
+                                 'assets/copy.bhlibackup', 'assets/copy.bhlitransfer',
+                                 'assets/flutter_assets/fixtures/backup/vector.json'])
 def test_offline_candidate_rejects_private_or_populated_payload(tmp_path, name):
     from scripts.offline_android import inspect_candidate
     apk = tmp_path / 'offline.apk'
