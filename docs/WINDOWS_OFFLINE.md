@@ -34,19 +34,19 @@ Confirmed saves remain distinct from a failed subsequent list refresh. Dirty uns
 
 ## SQLite and shutdown
 
-The built-in `sqlite3` repository owns schema version 1: `app_meta`, singleton `local_profile`, `audit_records` and `audit_events`. Record, profile, event and installation IDs are UUIDv4; timestamps are UTC; revisions increase with committed changes. Every audit mutation and history insert shares one `BEGIN IMMEDIATE` transaction. Read counts/items share a read snapshot. Foreign keys are enabled. A no-op edit does not add history. Original CREATE payloads remain available for safe same-UUID replay after later edits.
+The built-in `sqlite3` repository owns schema version 2: `app_meta`, singleton `local_profile`, `audit_records`, `audit_events`, `auditor_identities` and `transfer_receipts`. Record, profile, event and installation IDs are UUIDv4; timestamps are UTC; revisions increase with committed changes. Every audit mutation and history insert shares one `BEGIN IMMEDIATE` transaction. Read counts/items share a read snapshot. Foreign keys are enabled. A no-op edit does not add history. Original CREATE payloads remain available for safe same-UUID replay after later edits.
 
-Initialization creates schema 1 only for an empty version-0 database. Unsupported/newer, foreign, corrupt or incomplete databases are refused without reset, deletion or downgrade. Invalid stored profile attribution is rejected before it can create more unusable records. Locks, full storage, read-only files and failed transactions are reported safely. SQL inputs are parameterized; sort identifiers are allowlisted.
+Initialization creates schema 2 for an empty database or transactionally migrates a validated owned version-1 database, preserving records, events, sequence and current profile. Unsupported/newer, foreign, corrupt or incomplete databases are refused without reset, deletion or downgrade. Invalid stored profile attribution is rejected before it can create more unusable records. Locks, full storage, read-only files and failed transactions are reported safely. SQL inputs are parameterized; sort identifiers are allowlisted.
 
 One non-daemon worker creates, uses and closes its SQLite connection on its owning thread. GUI callbacks are delivered only by the GUI thread. Read invalidation cannot discard an admitted mutation. Close stops new admissions, drains submitted work and closes the connection before destroying Tk. Pending failures and close failures must be acknowledged; closing does not turn an unconfirmed save into a success.
 
-Windows uses its own application identity in metadata. The logical columns, UUIDs, snapshots and normalization are compatible foundations for future transfer; copying raw Android/Windows database files is **not** a supported interchange format. Phase 6D must define import receipts, provenance, validation and a versioned migration instead of replacing databases.
+Windows retains its own application identity in metadata. [Manual transfer](OFFLINE_TRANSFER.md) uses a shared validated `.bhlitransfer` package with preview, new-only import, exact duplicate detection, conflict skips and atomic receipts. Imported origins/history actors remain independent of the current local profile. Copying raw Android/Windows database files is **not** a supported interchange format.
 
 ## Reporting and later phases
 
 The original Excel engine/source is preserved. Offline report controls are intentionally absent. Future reports can consume immutable `LocalAudit` pages through the local repository/worker seam; snapshot consistency and complete report generation must be implemented and tested in Phase 6E. There is no daily/weekly/monthly/custom offline reporting or backup hidden behind a placeholder.
 
-Phase 6D: manual transfer. Phase 6E: reports and backup/restore. Phase 6F: signed distribution and installation/release acceptance. Phase 6G: employee-ready cleanup. None is implemented by Phase 6C.
+Phase 6D adds manual transfer locally; publication requires approval. Phase 6E reports/backup, Phase 6F signed distribution and Phase 6G employee-ready cleanup remain deferred.
 
 ## Local verification and candidates
 
