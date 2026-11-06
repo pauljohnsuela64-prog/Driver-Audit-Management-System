@@ -1,6 +1,6 @@
 """Owned SQLite definitions and transactional v1 replacement migration."""
 import json
-from .models import OfflineError, validate_uuid, normalize_name
+from .models import FIELDS, OfflineError, validate_uuid, normalize_name
 
 V1 = {'app_meta': 'CREATE TABLE app_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)', 'local_profile': 'CREATE TABLE local_profile (singleton INTEGER PRIMARY KEY CHECK(singleton = 1), id TEXT UNIQUE NOT NULL, name TEXT NOT NULL)', 'audit_records': 'CREATE TABLE audit_records (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, profile_id TEXT NOT NULL REFERENCES local_profile(id), driver_name TEXT NOT NULL, helper_name TEXT, audit_date TEXT NOT NULL, station TEXT NOT NULL, plate_number TEXT NOT NULL, remarks TEXT, audited_by_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision >= 1), archived_at TEXT)', 'audit_events': "CREATE TABLE audit_events (id TEXT PRIMARY KEY NOT NULL, audit_id TEXT NOT NULL REFERENCES audit_records(id), revision INTEGER NOT NULL CHECK(revision >= 1), action TEXT NOT NULL CHECK(action IN ('CREATE','UPDATE','ARCHIVE')), actor_name TEXT NOT NULL, actor_profile_id TEXT NOT NULL, created_at TEXT NOT NULL, before_json TEXT, after_json TEXT NOT NULL, UNIQUE(audit_id, revision))"}
 V2 = dict(V1)
@@ -28,9 +28,12 @@ def migrate(db, audit, snapshot, timestamp):
     identities = set()
     try:
         for row in db.execute('SELECT id,name FROM local_profile'):
-            validate_uuid(row['id']); normalize_name(row['name']); identities.add(row['id'])
+            validate_uuid(row['id'])
+            if normalize_name(row['name']) != row['name']: invalid()
+            identities.add(row['id'])
         for row in db.execute('SELECT * FROM audit_records'):
             current = audit(row); identities.add(current.profile_id)
+            if any(row[key] != getattr(current, key) for key in (*FIELDS, 'audited_by_name')): invalid()
             previous = None
             events = db.execute('SELECT * FROM audit_events WHERE audit_id=? ORDER BY revision', (current.id,)).fetchall()
             if len(events) != current.revision: invalid()
@@ -59,6 +62,7 @@ def migrate(db, audit, snapshot, timestamp):
                         if parsed.archived_at != parsed.updated_at: invalid()
                         if any(after[key] != previous[key] for key in ('driver_name','helper_name','audit_date','station','plate_number','remarks')): invalid()
                     elif event['action'] != 'UPDATE' or parsed.archived: invalid()
+                    elif all(after[key] == previous[key] for key in FIELDS): invalid()
                 previous = after
             if previous is None or audit(previous) != current: invalid()
     except (ValueError, TypeError, KeyError):

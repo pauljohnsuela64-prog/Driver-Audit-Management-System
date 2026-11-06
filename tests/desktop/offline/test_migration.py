@@ -122,3 +122,19 @@ def test_migration_rejects_create_actor_mismatch_without_changes(tmp_path,field,
     before=dump(path)
     with pytest.raises(OfflineError): SqliteRepository(path)
     assert dump(path)==before
+
+
+@pytest.mark.parametrize('damage',['noop','record','profile'])
+def test_migration_rejects_invalid_normalization_and_noop_history(tmp_path,damage):
+    path=tmp_path/'invalid.db'; legacy(path)
+    with sqlite3.connect(path) as db:
+        if damage=='record': db.execute("UPDATE audit_records SET driver_name=' Driver '")
+        elif damage=='profile': db.execute("UPDATE local_profile SET name=' Renamed Auditor '")
+        else:
+            after=json.loads(db.execute('SELECT after_json FROM audit_events WHERE revision=2').fetchone()[0])
+            after['archived_at']=None
+            db.execute("UPDATE audit_events SET action='UPDATE',after_json=? WHERE revision=2",(json.dumps(after),))
+            db.execute('UPDATE audit_records SET archived_at=NULL')
+    before=dump(path)
+    with pytest.raises(OfflineError): SqliteRepository(path)
+    assert dump(path)==before

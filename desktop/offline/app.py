@@ -190,7 +190,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             return
         if not force and not self.leave_form(lambda: self.navigate(destination, audit_id, force=True)):
             return
-        if destination not in (*self.destinations, 'Audit Details', 'Audit History', 'Create Audit', 'Edit Audit'):
+        if destination not in (*self.destinations, 'Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Transfer audits'):
             return
         self.worker.invalidate_reads()
         self._generation += 1
@@ -198,13 +198,16 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             destroy_view(self.screen)
         self.screen = None
         self.destination = destination
-        self.shell.select(destination)
+        self.shell.select('Driver Audits' if destination == 'Transfer audits' else destination)
         if destination == 'Dashboard':
             from desktop.screens.dashboard import Dashboard
             screen = Dashboard(self.shell.content, self)
         elif destination == 'Driver Audits':
             from desktop.screens.audits import Audits
             screen = Audits(self.shell.content, self)
+        elif destination == 'Transfer audits':
+            from desktop.offline.transfer_ui import TransferView
+            screen = TransferView(self.shell.content, self)
         elif destination == 'Audit Details':
             from desktop.screens.details import Details
             screen = Details(self.shell.content, self, audit_id)
@@ -249,6 +252,9 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
                 return False
             self.draft = None
         return True
+
+    def open_transfer(self):
+        self.navigate('Transfer audits')
 
     def open_create(self):
         if self.closing or self.profile is None:
@@ -347,7 +353,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             return
         if self.shell and self.shell.menu.winfo_ismapped():
             self.shell.hide_menu()
-        elif self.destination in ('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit'):
+        elif self.destination in ('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Transfer audits'):
             self.navigate('Driver Audits')
 
     def close(self, force=False):
