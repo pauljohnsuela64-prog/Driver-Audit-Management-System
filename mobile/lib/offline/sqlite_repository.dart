@@ -1,12 +1,16 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
 
 import 'models.dart';
 import 'repository.dart';
+import 'schema.dart';
+import 'transfer_store.dart';
 
 /// One admitted-operation queue owns this connection, including shutdown.
-class SqliteOfflineRepository implements OfflineRepository {
+class SqliteOfflineRepository
+    implements OfflineRepository, OfflineTransferRepository {
   SqliteOfflineRepository._(this._db);
   final Database _db;
   Future<void> _tail = Future.value();
@@ -47,66 +51,26 @@ class SqliteOfflineRepository implements OfflineRepository {
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'android_metadata'",
         );
         if (version == 0 && tables.isEmpty) {
-          await txn.execute(
-            'CREATE TABLE app_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)',
+          final objects = await txn.rawQuery(
+            "SELECT name FROM sqlite_master WHERE name NOT GLOB 'sqlite_*' AND name != 'android_metadata'",
           );
-          await txn.execute(
-            'CREATE TABLE local_profile (singleton INTEGER PRIMARY KEY CHECK(singleton = 1), id TEXT UNIQUE NOT NULL, name TEXT NOT NULL)',
-          );
-          await txn.execute(
-            'CREATE TABLE audit_records (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, profile_id TEXT NOT NULL REFERENCES local_profile(id), driver_name TEXT NOT NULL, helper_name TEXT, audit_date TEXT NOT NULL, station TEXT NOT NULL, plate_number TEXT NOT NULL, remarks TEXT, audited_by_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision >= 1), archived_at TEXT)',
-          );
-          await txn.execute(
-            "CREATE TABLE audit_events (id TEXT PRIMARY KEY NOT NULL, audit_id TEXT NOT NULL REFERENCES audit_records(id), revision INTEGER NOT NULL CHECK(revision >= 1), action TEXT NOT NULL CHECK(action IN ('CREATE','UPDATE','ARCHIVE')), actor_name TEXT NOT NULL, actor_profile_id TEXT NOT NULL, created_at TEXT NOT NULL, before_json TEXT, after_json TEXT NOT NULL, UNIQUE(audit_id, revision))",
-          );
-          await txn.execute(
-            'CREATE INDEX audit_records_date ON audit_records(audit_date, seq)',
-          );
-          await txn.execute(
-            'CREATE INDEX audit_records_archive ON audit_records(archived_at, seq)',
-          );
-          await txn.execute(
-            'CREATE INDEX audit_records_station ON audit_records(station, seq)',
-          );
+          if (objects.isNotEmpty) throw _schemaFailure;
+          for (final sql in offlineV2Tables.values) {
+            await txn.execute(sql);
+          }
+          await createOfflineIndexes(txn);
           await txn.insert('app_meta', {'key': 'app_id', 'value': _appId});
           await txn.insert('app_meta', {
             'key': 'installation_id',
             'value': newUuid(),
           });
-          await txn.execute('PRAGMA user_version = 1');
+          await verifyOfflineSchema(txn, 2);
+          await txn.execute('PRAGMA user_version = 2');
         } else {
-          if (version != 1 ||
-              tables.map((r) => r['name']).toSet().difference({
-                'app_meta',
-                'local_profile',
-                'audit_records',
-                'audit_events',
-              }).isNotEmpty ||
-              tables.length != 4) {
-            throw _schemaFailure;
-          }
-          final meta = await txn.query('app_meta');
-          final values = {for (final row in meta) row['key']: row['value']};
-          if (values['app_id'] != _appId ||
-              values['installation_id'] is! String ||
-              !validOfflineUuid(values['installation_id'] as String)) {
-            throw _schemaFailure;
-          }
-          // Validate the expected columns before accepting an existing database.
-          try {
-            await txn.rawQuery('SELECT id, name FROM local_profile LIMIT 0');
-            await txn.rawQuery(
-              'SELECT seq,id,profile_id,driver_name,helper_name,audit_date,station,plate_number,remarks,audited_by_name,created_at,updated_at,revision,archived_at FROM audit_records LIMIT 0',
-            );
-            await txn.rawQuery(
-              'SELECT id,audit_id,revision,action,actor_name,actor_profile_id,created_at,before_json,after_json FROM audit_events LIMIT 0',
-            );
-            if ((await txn.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
-              throw _schemaFailure;
-            }
-          } on DatabaseException catch (_) {
-            throw _schemaFailure;
-          }
+          if (version != 1 && version != 2) throw _schemaFailure;
+          await verifyOfflineSchema(txn, version);
+          final identities = await validateOfflineRows(txn, version);
+          if (version == 1) await migrateOfflineV1(txn, identities);
         }
       });
       return SqliteOfflineRepository._(db);
@@ -134,6 +98,38 @@ class SqliteOfflineRepository implements OfflineRepository {
     });
     _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
+  }
+
+  @override
+  Future<Uint8List> exportTransfer({
+    String? dateFrom,
+    String? dateTo,
+    bool Function()? cancel,
+  }) => _run(
+    (txn) => exportTransferTransaction(
+      txn,
+      dateFrom: dateFrom,
+      dateTo: dateTo,
+      cancel: cancel,
+    ),
+  );
+
+  @override
+  Future<ImportPreview> previewTransfer(Uint8List raw) {
+    final frozen = freezeTransferBytes(raw);
+    return _run((txn) => previewTransferTransaction(txn, frozen));
+  }
+
+  @override
+  Future<ImportResult> applyTransfer(
+    Uint8List raw,
+    ImportPreview preview, {
+    bool Function()? cancel,
+  }) {
+    final frozen = freezeTransferBytes(raw);
+    return _run(
+      (txn) => applyTransferTransaction(txn, frozen, preview, cancel: cancel),
+    );
   }
 
   static void _id(String id) {
@@ -210,6 +206,7 @@ class SqliteOfflineRepository implements OfflineRepository {
       name: normalized,
     );
     if (previous == null) {
+      await txn.insert('auditor_identities', {'id': profile.id});
       await txn.insert('local_profile', {
         'singleton': 1,
         'id': profile.id,

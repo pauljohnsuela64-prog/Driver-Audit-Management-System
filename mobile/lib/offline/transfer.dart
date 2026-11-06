@@ -405,7 +405,7 @@ Uint8List _zip(List<Uint8List> data) {
       ..setUint32(20, bytes.length, Endian.little)
       ..setUint32(24, bytes.length, Endian.little)
       ..setUint16(28, name.length, Endian.little)
-      ..setUint32(38, 0x01800000, Endian.little)
+      ..setUint32(38, 0x81800000, Endian.little)
       ..setUint32(42, offset, Endian.little);
     central.add(c.buffer.asUint8List());
     central.add(name);

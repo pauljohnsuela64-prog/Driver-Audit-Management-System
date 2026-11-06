@@ -207,16 +207,16 @@ void main() {
   test('newer schemas are rejected without modifying their records', () async {
     await repo.close();
     final db = await databaseFactoryFfi.openDatabase(path);
-    await db.execute('PRAGMA user_version = 2');
+    await db.execute('PRAGMA user_version = 3');
     await db.close();
     await expectLater(
       SqliteOfflineRepository.open(path, factory: databaseFactoryFfi),
       throwsA(failure('schema')),
     );
     final check = await databaseFactoryFfi.openDatabase(path);
-    expect(await check.getVersion(), 2);
+    expect(await check.getVersion(), 3);
     expect(await check.query('app_meta'), isNotEmpty);
-    await check.execute('PRAGMA user_version = 1');
+    await check.execute('PRAGMA user_version = 2');
     await check.close();
   });
   test('foreign keys are enabled on the repository connection', () async {
