@@ -68,9 +68,10 @@ def test_excessive_line_count_rejected_before_json_allocation(monkeypatch):
 
 def test_accepted_legacy_offset_spellings_survive_complete_backup(tmp_path):
     from tests.desktop.offline.test_migration import legacy
+    from contextlib import closing
     import sqlite3
     path=tmp_path/'legacy.db'; legacy(path)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         for field in ('created_at','updated_at','archived_at'):
             db.execute('UPDATE audit_records SET '+field+'=replace('+field+",'00:00:00+00:00','08:00:00+08:00')")
     repo=SqliteRepository(path)  # Existing v1 migration accepts equal UTC instants.

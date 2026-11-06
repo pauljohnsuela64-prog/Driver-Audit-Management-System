@@ -52,6 +52,8 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             self.screen = None
             self.destination = ''
             self.mutation_pending = False
+            from desktop.offline.report_ui import ReportController
+            self.report_job = ReportController(self)
             self.closing = self.closed = False
             self._generation = 0
             self._retry_bootstrap = False
@@ -126,6 +128,10 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
 
     def report_callback_exception(self, exc, value, traceback):
         self._notice('The interface could not complete this action. Your local data was not reset. Try Refresh.')
+
+    def poll(self):
+        self.report_job.poll()
+        super().poll()
 
     def _notice(self, message, error=True):
         if self.closed:
@@ -364,6 +370,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         if self.dialog is not None:
             self.dialog.dismiss()
         self.closing = True
+        self.report_job.cancel()
         self.worker.invalidate_reads()
         self._generation += 1
         self.worker.close()
