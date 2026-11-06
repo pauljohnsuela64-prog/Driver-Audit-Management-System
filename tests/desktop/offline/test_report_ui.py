@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import subprocess
 import sys
+import pytest
 
 from desktop.offline.models import AuditFilter, OfflineError
 from desktop.offline.report_ui import ReportController, choose_export
@@ -39,6 +40,22 @@ def test_durable_job_retains_result_and_late_cancel_cannot_undo_save():
     assert '0' in job.message and 'saved' in job.message.lower()
     job.cancel()
     assert job.result == result
+
+
+@pytest.mark.parametrize('failed', [False, True])
+def test_shutdown_preserves_file_failure_or_saved_cleanup_warning(failed):
+    root = app()
+    root._shutdown_write_error = None
+    job = ReportController(root)
+    assert job.start(AuditFilter(), Path('fictional.xlsx'))
+    root.closing = True
+    failure = OfflineError('report_cleanup', 'The owned temporary report could not be removed.')
+    result = ReportResult(Path('fictional.xlsx'), 1, str(failure))
+    root.worker.done(None if failed else result, failure if failed else None)
+    assert root._shutdown_write_error is not None
+    assert 'temporary report' in str(root._shutdown_write_error)
+    if not failed:
+        assert 'saved' in str(root._shutdown_write_error).lower()
 
 
 def test_queue_rejection_and_closing_are_truthful_and_retriable():

@@ -59,6 +59,11 @@ class ReportController:
                     self.message += ' ' + result.cleanup_warning
             if not app.closing:
                 app._notice(self.message, bool(error))
+            elif ((error and getattr(error, 'code', None) != 'cancelled') or
+                    (result and result.cleanup_warning)):
+                previous = getattr(app, '_shutdown_write_error', None)
+                app._shutdown_write_error = OfflineError('report_file',
+                    (str(previous) + '\n' if previous else '') + self.message)
         # Durable admission is intentional even though snapshot SQL is read-only:
         # normal navigation invalidates reads and must not drop file completions.
         if not app.worker.submit(work, done, write=True):
