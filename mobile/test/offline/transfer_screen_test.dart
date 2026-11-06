@@ -6,6 +6,7 @@ import 'package:bhli_audit/offline/transfer_screen.dart';
 import 'package:bhli_audit/offline/transfer_documents.dart';
 import 'package:bhli_audit/offline/sqlite_repository.dart';
 import 'package:bhli_audit/offline/models.dart';
+import 'package:bhli_audit/ui/core/audit_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -162,6 +163,60 @@ void main() {
       expect(docs.saves, 1);
     },
   );
+  for (final brightness in [Brightness.light, Brightness.dark]) {
+    transferTestWidgets(
+      'compact 200 percent ${brightness.name} date-range export stays usable',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetViewInsets);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        for (final date in ['2026-11-05', '2026-11-06']) {
+          await repo.create(
+            newUuid(),
+            AuditValues(
+              driverName: 'Fictional Unicode \u674e',
+              auditDate: date,
+              station: 'North',
+              plateNumber: '00047',
+            ),
+          );
+        }
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: auditTheme(brightness),
+            home: OfflineTransferScreen(
+              repository: repo,
+              documents: LocalDocuments(),
+            ),
+          ),
+        );
+        await tester.ensureVisible(find.byType(CheckboxListTile));
+        await tester.tap(find.byType(CheckboxListTile));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byType(TextFormField).first);
+        await tester.enterText(find.byType(TextFormField).first, '2026-11-06');
+        await tester.ensureVisible(find.byType(TextFormField).last);
+        await tester.enterText(find.byType(TextFormField).last, '2026-11-06');
+        tester.view.viewInsets = const FakeViewPadding(bottom: 220);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Prepare export'));
+        await tester.tap(find.text('Prepare export'));
+        await settleTransfer(tester);
+        expect(
+          find.text('1 audits prepared, including archived records.'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(find.text('Close'));
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+      },
+    );
+  }
 }
 
 Future<void> settleTransfer(WidgetTester tester) async {

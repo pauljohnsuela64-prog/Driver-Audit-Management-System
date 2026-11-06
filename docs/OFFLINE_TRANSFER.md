@@ -89,6 +89,29 @@ the receiving profile and unrelated records, and cannot overwrite an existing
 audit to restore an old version. Backup/restore, reporting and employee-release
 preparation are later phases. No real data transfer or release is authorized.
 
+## Measured development acceptance
+
+API 36 native acceptance used a fresh, read-only Android emulator with 2 GiB RAM,
+not an employee device. A 33,540,814-byte package containing 2,000 audits and
+10,000 events was decoded, previewed and imported successfully. The debug test
+process peaked at 626,315,264 bytes RSS (about 597 MiB); decode took 8.705 seconds
+and the cumulative decode/preview/import probe took 61.762 seconds. The resulting
+test database was 45,162,496 bytes. These are observed single-run measurements,
+not performance guarantees or proof of safety on every Android device.
+
+Host probes accepted the same package and rejected over-limit, compressed,
+duplicate-entry and deeply nested inputs. Python and Dart also exchanged actual
+SQLite repository exports with unchanged canonical records/history, distinct
+recipient profiles, archived records, Unicode and leading-zero identifiers.
+
+Native local SAF save/open/cancel, independent-process persistence, and four
+real-bridge fault-provider tests passed. The fault provider is a virtual test-APK
+fixture with no user-file backing; it does not replace the genuine system-picker
+grant tests. Native Windows transfer and light/dark compact layouts were also
+checked. Physical devices, API 24, cloud/removable-storage providers, physical
+USB/Bluetooth copying and power-loss recovery remain unverified. Keep the build
+fictional-data-only; do not infer employee readiness from emulator acceptance.
+
 ## Developer verification
 
 Focused Python contracts: `python -m pytest tests/desktop/offline -q` (native tests
