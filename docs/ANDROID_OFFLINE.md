@@ -1,6 +1,6 @@
 ﻿# BHLI Audit Offline Android - Phase 6B
 
-Development build only: use fictional records. Backup/restore and transfer are not implemented; uninstalling/clearing app data or losing the device can permanently lose records. This is not employee-ready software.
+Development build only: use fictional records. [Manual transfer](OFFLINE_TRANSFER.md) is available; backup/restore is not. Uninstalling/clearing app data or losing the device can permanently lose records. This is not employee-ready software.
 
 ## Separate editions
 
@@ -25,11 +25,11 @@ Native Android uses sqflite2.4.5. Host tests use sqflite_common_ffi2.4.5 against
 
 One admitted-operation queue owns each repository connection. A transaction includes the audit mutation, expected-revision check and history insertion. Closing rejects new work, waits for admitted work and then closes the handle. UI disposal cannot reverse a committed transaction. Creation reuses one lower-case UUIDv4 and compares the original CREATE payload on retry, including after later edits; mismatched UUID reuse conflicts.
 
-Database path is the private app database directory plus `bhli_offline.db` (not a bundled database). Initial user_version0/empty creates schema1 atomically; unsupported/newer or foreign/incomplete schemas are refused without destructive downgrade/reset. Foreign keys are enabled on every connection. Android's reserved `android_metadata` table is preserved and excluded from the application-table inventory; it is not audit data or a fifth application table. No Alembic/MySQL migration runs.
+Database path is the private app database directory plus `bhli_offline.db` (not a bundled database). Empty databases create schema 2 atomically; owned populated version-1 databases migrate transactionally without replacing their data. Unsupported/newer or foreign/incomplete schemas are refused without destructive downgrade/reset. Foreign keys are enabled on every connection. Android's reserved `android_metadata` table remains platform-owned. No Alembic/MySQL migration runs.
 
 Schema1 has app_meta (application/installation identity), singleton local_profile (stable UUID/name), audit_records (internal sequence, UUID, exactly seven business values, profile UUID, UTC timestamps, revision, archive timestamp) and audit_events (UUID, audit FK, revision/action, actor UUID/name, immutable before/after snapshots). No account/session tables are imported. No history deletion method exists.
 
-Future Phase6D must design an explicit schema migration for import receipts and cross-device provenance/profile references. Those tables and transfer logic are deliberately absent now; raw schema1 files are not a published transfer contract.
+Phase 6D adds `auditor_identities` and `transfer_receipts`. Record origins and history actors reference the identity registry independently of the singleton current local profile. Original UUID/name snapshots remain unchanged on import and subsequent edits. Transfer uses the validated version-1 `.bhlitransfer` contract; raw database files are not an interchange format.
 
 ## Local verification commands
 
@@ -53,12 +53,12 @@ Online build/run commands now explicitly select `--flavor online`. `scripts/andr
 
 The app-private database is not separately application-encrypted. Relying on an unlocked device or locally entered name does not establish verified identity or tamper-proof history. Native screenshot protection stays enabled in the ordinary app. Android cloud backup/device transfer rules exclude the offline database; manual backup is a later phase, so keep all Phase6B work fictional.
 
-There is no server, internet requirement, local server installer, Windows offline implementation, file transfer, report export, backup, PIN/password scheme or cloud synchronization. No production data/grants/migrations are accessed. Updates must preserve the same package, compatible signer, version progression and database migrations; a signature mismatch is an error, never permission to uninstall. Stable employee distribution signing remains a separately approved activity.
+There is no server, internet requirement, local server installer, report export, backup, PIN/password scheme or cloud synchronization. The Windows offline peer and manual file transfer operate without a server. No production data/grants/migrations are accessed. Updates must preserve the same package, compatible signer, version progression and database migrations; a signature mismatch is an error, never permission to uninstall. Stable employee distribution signing remains a separately approved activity.
 
 ## Deferred phases
 
 - 6C: Windows SQLite/offline workflows.
-- 6D: shared transfer format, preview/import, duplicates and explicit conflict handling.
+- 6D: shared transfer format, preview/import, duplicates and explicit conflict handling (implemented locally; publication requires approval).
 - 6E: reports, backup and restoration.
 - 6F: comprehensive offline artifact/release acceptance.
 - 6G: employee-ready cleanup and final zero-demo-data packaging.

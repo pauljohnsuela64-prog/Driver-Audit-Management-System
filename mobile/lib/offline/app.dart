@@ -6,6 +6,8 @@ import 'details.dart';
 import 'form.dart';
 import 'models.dart';
 import 'repository.dart';
+import 'transfer_screen.dart';
+import 'transfer_store.dart';
 
 const offlineDevelopmentWarning =
     'Development: fictional data only. This device has no backup. Uninstalling or clearing app data can permanently remove local audits.';
@@ -201,6 +203,21 @@ class _OfflineHomeState extends State<_OfflineHome> {
     await load(resetPage: changed == true);
   }
 
+  Future<void> transfer(bool importing) async {
+    final repository = widget.repository;
+    if (loading || repository is! OfflineTransferRepository) return;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OfflineTransferScreen(
+          repository: repository as OfflineTransferRepository,
+          importing: importing,
+        ),
+      ),
+    );
+    if (mounted) await load();
+  }
+
   Future<void> settings() async {
     if (profile == null) return;
     final updated = await Navigator.push<LocalProfile>(
@@ -315,6 +332,16 @@ class _OfflineHomeState extends State<_OfflineHome> {
                           : () => setState(() => filtersOpen = !filtersOpen),
                       child: const Text('Filters'),
                     ),
+                    if (widget.repository is OfflineTransferRepository) ...[
+                      OutlinedButton(
+                        onPressed: loading ? null : () => transfer(false),
+                        child: const Text('Export Audits'),
+                      ),
+                      OutlinedButton(
+                        onPressed: loading ? null : () => transfer(true),
+                        child: const Text('Import Audits'),
+                      ),
+                    ],
                     OutlinedButton(
                       onPressed: loading ? null : load,
                       child: const Text('Refresh'),

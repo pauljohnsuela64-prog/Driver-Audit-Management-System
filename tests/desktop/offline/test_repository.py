@@ -224,7 +224,7 @@ def test_schema_refusal_preserves_existing_database(tmp_path, damage):
     seed(repo)
     repo.close()
     with sqlite3.connect(path) as db:
-        if damage == "newer": db.execute("PRAGMA user_version=2")
+        if damage == "newer": db.execute("PRAGMA user_version=3")
         if damage == "unversioned": db.execute("PRAGMA user_version=0")
         if damage == "foreign": db.execute("UPDATE app_meta SET value='foreign' WHERE key='app_id'")
         if damage == "missing_column": db.execute("ALTER TABLE audit_records RENAME COLUMN station TO secret")
@@ -408,7 +408,7 @@ def test_foreign_table_names_are_refused_without_any_initialization(tmp_path, ve
     error("schema", lambda: SqliteRepository(path))
     assert path.read_bytes() == before_bytes
     with sqlite3.connect(path) as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == version
+        assert db.execute("PRAGMA user_version").fetchone()[0] == (2 if version else 0)
         assert db.execute(f"SELECT x FROM {table}").fetchall() == [(1,)]
         assert db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall() == before_schema
         assert tuple(db.iterdump()) == before_dump
@@ -434,7 +434,7 @@ def test_quoted_constraint_whitespace_is_rejected_without_database_changes(tmp_p
     error("schema", lambda: SqliteRepository(path))
     assert path.read_bytes() == before_bytes
     with sqlite3.connect(path) as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
         assert db.execute("SELECT id,name FROM local_profile").fetchall() == [(profile.id, "Original Auditor")]
         assert db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall() == before_schema
         assert tuple(db.iterdump()) == before_dump

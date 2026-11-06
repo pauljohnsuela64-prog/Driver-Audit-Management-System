@@ -1,6 +1,6 @@
 """A thread-owned SQLite store; each public operation has one transaction.
 
-Version 1 is created only for empty databases. Existing files are never reset.
+Version 2 is created for empty databases; owned v1 files migrate atomically. Existing files are never reset.
 The Windows identity deliberately does not promise raw Android DB interchange.
 """
 from contextlib import contextmanager
@@ -17,13 +17,9 @@ from .models import (
 )
 
 
+from .schema import V2 as _SCHEMA, owned, indexes, migrate
+
 _APP_ID = "com.bhli.audit.offline.windows"
-_SCHEMA = {
-    "app_meta": "CREATE TABLE app_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)",
-    "local_profile": "CREATE TABLE local_profile (singleton INTEGER PRIMARY KEY CHECK(singleton = 1), id TEXT UNIQUE NOT NULL, name TEXT NOT NULL)",
-    "audit_records": "CREATE TABLE audit_records (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL, profile_id TEXT NOT NULL REFERENCES local_profile(id), driver_name TEXT NOT NULL, helper_name TEXT, audit_date TEXT NOT NULL, station TEXT NOT NULL, plate_number TEXT NOT NULL, remarks TEXT, audited_by_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision >= 1), archived_at TEXT)",
-    "audit_events": "CREATE TABLE audit_events (id TEXT PRIMARY KEY NOT NULL, audit_id TEXT NOT NULL REFERENCES audit_records(id), revision INTEGER NOT NULL CHECK(revision >= 1), action TEXT NOT NULL CHECK(action IN ('CREATE','UPDATE','ARCHIVE')), actor_name TEXT NOT NULL, actor_profile_id TEXT NOT NULL, created_at TEXT NOT NULL, before_json TEXT, after_json TEXT NOT NULL, UNIQUE(audit_id, revision))",
-}
 _SORTS = {"created": "seq ASC", "-created": "seq DESC", "audit_date": "audit_date ASC, seq ASC", "-audit_date": "audit_date DESC, seq DESC"}
 
 
@@ -132,16 +128,15 @@ class SqliteRepository:
         if version == 0 and not tables:
             for sql in _SCHEMA.values():
                 db.execute(sql)
-            for name, fields in (("date", "audit_date, seq"), ("archive", "archived_at, seq"), ("station", "station, seq")):
-                db.execute(f"CREATE INDEX audit_records_{name} ON audit_records({fields})")
+            indexes(db)
             db.executemany("INSERT INTO app_meta (key,value) VALUES (?,?)", (("app_id", _APP_ID), ("installation_id", new_uuid())))
-            db.execute("PRAGMA user_version=1")
+            db.execute("PRAGMA user_version=2")
             return
-        if version != 1 or set(tables) != set(_SCHEMA):
+        if version not in (1, 2):
             raise _schema_error()
         # The v1 schema is owned by this app. Check its complete definition,
         # including constraints, rather than accepting same-named weak tables.
-        if tables != _SCHEMA:
+        if not owned(db, version):
             raise _schema_error()
         try:
             meta = dict(db.execute("SELECT key,value FROM app_meta"))
@@ -156,6 +151,9 @@ class SqliteRepository:
             if error.code == "validation":
                 raise _schema_error() from None
             raise
+
+        if version == 1:
+            migrate(db, _audit, _snapshot, _timestamp)
 
     def _profile(self):
         row = self._connection.execute("SELECT id,name FROM local_profile WHERE singleton=1").fetchone()
@@ -177,6 +175,7 @@ class SqliteRepository:
             name = normalize_name(name)
             previous = self._profile()
             profile = LocalProfile(previous.id if previous else new_uuid(), name)
+            self._connection.execute("INSERT OR IGNORE INTO auditor_identities(id) VALUES (?)", (profile.id,))
             self._connection.execute("INSERT INTO local_profile(singleton,id,name) VALUES (1,?,?) ON CONFLICT(singleton) DO UPDATE SET name=excluded.name", (profile.id, profile.name))
             return profile
 

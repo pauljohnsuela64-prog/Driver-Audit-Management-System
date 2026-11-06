@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name="com.bhli.audit.mobile.TransferDocumentsTestActivity" android:exported="false" />
+        <provider android:name="com.bhli.audit.mobile.TransferFaultDocumentsProvider"
+            android:authorities="com.bhli.audit.offline.test.transferfault"
+            android:exported="true" android:grantUriPermissions="true"
+            />
+    </application>
+</manifest>
