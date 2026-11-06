@@ -5,3 +5,5 @@ packaging/notices/** -text -whitespace
 LICENSE -text
 # Transfer golden streams and packages are byte contracts, never host newlines.
 mobile/test/fixtures/transfer/** -text
+# Encrypted backup vectors and canonical NDJSON must remain byte-identical.
+mobile/test/fixtures/backup/** -text
