@@ -5,12 +5,16 @@ import 'package:sqflite/sqflite.dart';
 
 import 'models.dart';
 import 'repository.dart';
+import 'reporting.dart';
 import 'schema.dart';
 import 'transfer_store.dart';
 
 /// One admitted-operation queue owns this connection, including shutdown.
 class SqliteOfflineRepository
-    implements OfflineRepository, OfflineTransferRepository {
+    implements
+        OfflineRepository,
+        OfflineTransferRepository,
+        OfflineReportingRepository {
   SqliteOfflineRepository._(this._db);
   final Database _db;
   Future<void> _tail = Future.value();
@@ -131,6 +135,20 @@ class SqliteOfflineRepository
       (txn) => applyTransferTransaction(txn, frozen, preview, cancel: cancel),
     );
   }
+
+  @override
+  Future<OfflineReportSnapshot> reportSnapshot(
+    AuditFilter filter, {
+    bool includeRows = false,
+    bool Function()? cancel,
+  }) => _run(
+    (txn) => reportSnapshotTransaction(
+      txn,
+      filter,
+      includeRows: includeRows,
+      cancel: cancel,
+    ),
+  );
 
   static void _id(String id) {
     if (!validOfflineUuid(id)) invalidInput();

@@ -7,6 +7,8 @@ import 'form.dart';
 import 'models.dart';
 import 'repository.dart';
 import 'transfer_screen.dart';
+import 'reporting.dart';
+import 'report_screen.dart';
 import 'transfer_store.dart';
 
 const offlineDevelopmentWarning =
@@ -203,6 +205,31 @@ class _OfflineHomeState extends State<_OfflineHome> {
     await load(resetPage: changed == true);
   }
 
+  Future<void> report() async {
+    final repository = widget.repository;
+    if (loading || repository is! OfflineReportingRepository) return;
+    if (driver.text.trim() != filter.driver ||
+        plate.text.trim() != filter.plate ||
+        station.text.trim() != filter.station ||
+        dateFrom.text != (filter.dateFrom ?? '') ||
+        dateTo.text != (filter.dateTo ?? '')) {
+      setState(
+        () => error =
+            'Apply or discard your filter edits before opening the report.',
+      );
+      return;
+    }
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OfflineReportScreen(
+          repository: repository as OfflineReportingRepository,
+          filter: filter,
+        ),
+      ),
+    );
+  }
+
   Future<void> transfer(bool importing) async {
     final repository = widget.repository;
     if (loading || repository is! OfflineTransferRepository) return;
@@ -332,6 +359,11 @@ class _OfflineHomeState extends State<_OfflineHome> {
                           : () => setState(() => filtersOpen = !filtersOpen),
                       child: const Text('Filters'),
                     ),
+                    if (widget.repository is OfflineReportingRepository)
+                      OutlinedButton(
+                        onPressed: loading ? null : report,
+                        child: const Text('View report summary'),
+                      ),
                     if (widget.repository is OfflineTransferRepository) ...[
                       OutlinedButton(
                         onPressed: loading ? null : () => transfer(false),
