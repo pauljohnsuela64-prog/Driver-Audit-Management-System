@@ -138,3 +138,20 @@ def test_migration_rejects_invalid_normalization_and_noop_history(tmp_path,damag
     before=dump(path)
     with pytest.raises(OfflineError): SqliteRepository(path)
     assert dump(path)==before
+
+
+def test_migration_rejects_noncanonical_history_actor_without_changes(tmp_path):
+    path = tmp_path/'actor-name.db'
+    legacy(path)
+    with sqlite3.connect(path) as db:
+        db.execute("UPDATE audit_events SET actor_name=' Historical Auditor ' WHERE revision=2")
+    before = dump(path)
+
+    with pytest.raises(OfflineError) as caught:
+        SqliteRepository(path)
+
+    assert caught.value.code == 'corrupt'
+    assert dump(path) == before
+    with sqlite3.connect(path) as db:
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 1
+        assert db.execute('SELECT actor_name FROM audit_events WHERE revision=2').fetchone()[0] == ' Historical Auditor '

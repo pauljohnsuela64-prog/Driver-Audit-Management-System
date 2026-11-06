@@ -39,7 +39,8 @@ def migrate(db, audit, snapshot, timestamp):
             if len(events) != current.revision: invalid()
             for revision, event in enumerate(events, 1):
                 validate_uuid(event['id']); validate_uuid(event['actor_profile_id'])
-                identities.add(event['actor_profile_id']); normalize_name(event['actor_name'])
+                identities.add(event['actor_profile_id'])
+                if normalize_name(event['actor_name']) != event['actor_name']: invalid()
                 before = None if event['before_json'] is None else json.loads(event['before_json'])
                 after = json.loads(event['after_json'])
                 parsed = audit(after)
