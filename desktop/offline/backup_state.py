@@ -205,20 +205,25 @@ def _snapshot(rows,sequence,platform,metadata=None):
 def capture_state(repository, *, cancel=lambda:False):
     repository._check()
     with repository._transaction():
-        db=repository._connection
-        if (db.execute('PRAGMA user_version').fetchone()[0]!=2 or not owned(db,2)
-                or db.execute("SELECT 1 FROM sqlite_master WHERE type IN ('view','trigger') LIMIT 1").fetchone()): invalid()
-        rows={}; used=0
-        for table in TABLES:
-            rows[table]=[]
-            for source in db.execute('SELECT * FROM '+table+' ORDER BY '+ORDERS[table]):
-                if cancel(): raise OfflineError('cancelled','Backup cancelled before completion.')
-                row=dict(source); line=canonical({'kind':table,'row':row})+b'\n'; used+=len(line)
-                if len(line)>MAX_LINE or used>MAX_BYTES or len(rows[table])>=CAPS[table]: invalid()
-                rows[table].append(row)
-        sequence=db.execute("SELECT seq FROM sqlite_sequence WHERE name='audit_records'").fetchone()
-        watermark=None if sequence is None else sequence[0]
-        validated=_prepare(rows,'windows',watermark)
+        return capture_transaction_state(repository._connection, cancel=cancel)
+
+
+def capture_transaction_state(db, *, cancel=lambda:False):
+    """Validate state inside an already owned transaction; never nest BEGIN."""
+    if not db.in_transaction: invalid()
+    if (db.execute('PRAGMA user_version').fetchone()[0]!=2 or not owned(db,2)
+            or db.execute("SELECT 1 FROM sqlite_master WHERE type IN ('view','trigger') LIMIT 1").fetchone()): invalid()
+    rows={}; used=0
+    for table in TABLES:
+        rows[table]=[]
+        for source in db.execute('SELECT * FROM '+table+' ORDER BY '+ORDERS[table]):
+            if cancel(): raise OfflineError('cancelled','Backup cancelled before completion.')
+            row=dict(source); line=canonical({'kind':table,'row':row})+b'\n'; used+=len(line)
+            if len(line)>MAX_LINE or used>MAX_BYTES or len(rows[table])>=CAPS[table]: invalid()
+            rows[table].append(row)
+    sequence=db.execute("SELECT seq FROM sqlite_sequence WHERE name='audit_records'").fetchone()
+    watermark=None if sequence is None else sequence[0]
+    validated=_prepare(rows,'windows',watermark)
     return _snapshot(validated,watermark,'windows')
 
 
