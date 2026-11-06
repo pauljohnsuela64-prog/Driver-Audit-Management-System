@@ -111,6 +111,49 @@ def test_commit_failure_classifies_actual_state_without_retry(setup_store, tmp_p
     assert capture_state(repo).rows == (incoming.rows if lost_ack else current.rows)
 
 
+@pytest.mark.parametrize('journal', ['delete', 'wal'])
+def test_actual_sqlite_full_restores_no_partial_rows(setup_store, tmp_path, journal):
+    from desktop.offline.backup_jobs import BackupJobs
+    repo, jobs, store, _, _, current = setup_store
+    source_dir = tmp_path / 'fictional-large-source'
+    source_dir.mkdir()
+    source = SqliteRepository(source_dir / 'source.db', lease=StoreLease.acquire(source_dir))
+    try:
+        source.save_profile('Fictional large backup auditor')
+        for index in range(30):
+            source.create(new_uuid(), dict(VALUES, driver_name=f'Fictional {index}', remarks='x' * 10000))
+        incoming_jobs = BackupJobs(source, source_dir / 'encrypted')
+        incoming = incoming_jobs.create(PASSWORD)
+        selected = tmp_path / 'fictional-large-incoming.bhlibackup'
+        incoming_jobs.publish(incoming.id, selected)
+    finally:
+        source.close()
+    repo._connection.execute('PRAGMA journal_mode=' + journal)
+    preview = store.inspect_restore(selected, PASSWORD)
+    ticket = store.prepare_restore(preview.id, PASSWORD, tmp_path / 'full-current-recovery.bhlibackup')
+    pages = repo._connection.execute('PRAGMA page_count').fetchone()[0]
+    assert repo._connection.execute(f'PRAGMA max_page_count={pages}').fetchone()[0] == pages
+    errors = []
+    connection = repo._connection
+
+    class RecordingConnection:
+        def __getattr__(self, name):
+            return getattr(connection, name)
+
+        def execute(self, *args, **kwargs):
+            try:
+                return connection.execute(*args, **kwargs)
+            except sqlite3.Error as error:
+                errors.append(getattr(error, 'sqlite_errorcode', 0) & 255)
+                raise
+
+    repo._connection = RecordingConnection()
+    result = store.apply_restore(ticket)
+    assert sqlite3.SQLITE_FULL in errors
+    assert result.outcome == 'ORIGINAL'
+    assert capture_state(repo).digest == current.digest
+
+
 def test_partial_table_failure_rolls_back_every_owned_row_and_sequence(setup_store, tmp_path):
     repo, jobs, store, source, incoming, current = setup_store
     preview = store.inspect_restore(source, PASSWORD)
