@@ -46,9 +46,7 @@ Future<BackupState> inspectBackupSqlite(
 }) async {
   _need(authenticatedPayload.length <= 64 * 1024 * 1024);
   final payload = Uint8List.fromList(authenticatedPayload);
-  final state = await Isolate.run(
-    () => decodeBackupState(payload, platform: 'android'),
-  );
+  final state = await _decodeDetached(payload);
   Database? scratch;
   try {
     scratch = await (factory ?? databaseFactory).openDatabase(
@@ -121,18 +119,10 @@ Future<BackupState> inspectBackupSqlite(
       _need(sequence.length == (state.sequence == null ? 0 : 1));
       if (sequence.isNotEmpty) _need(sequence.single['seq'] == state.sequence);
       // Revalidate complete SQLite readback, including raw JSON/timestamps, off UI.
-      final verified = await Isolate.run(
-        () => decodeBackupState(
-          encodeBackupState(
-            readback,
-            platform: 'android',
-            sequence: state.sequence,
-            backupId: state.metadata['backup_id'] as String,
-            createdAt: state.metadata['created_at'] as String,
-            sourceVersion: state.metadata['source_version'] as String,
-          ),
-          platform: 'android',
-        ),
+      final verified = await _readbackDetached(
+        readback,
+        state.sequence,
+        state.metadata,
       );
       _need(verified.digest == state.digest);
     });
@@ -149,3 +139,24 @@ Future<BackupState> inspectBackupSqlite(
     }
   }
 }
+
+// Keep native DB/Transaction values out of worker-isolate closure contexts.
+Future<BackupState> _decodeDetached(Uint8List payload) =>
+    Isolate.run(() => decodeBackupState(payload, platform: 'android'));
+Future<BackupState> _readbackDetached(
+  Map<String, List<Map<String, Object?>>> readback,
+  int? sequence,
+  Map<String, Object?> metadata,
+) => Isolate.run(
+  () => decodeBackupState(
+    encodeBackupState(
+      readback,
+      platform: 'android',
+      sequence: sequence,
+      backupId: metadata['backup_id'] as String,
+      createdAt: metadata['created_at'] as String,
+      sourceVersion: metadata['source_version'] as String,
+    ),
+    platform: 'android',
+  ),
+);

@@ -1,9 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/services.dart' show PlatformException;
 
 import 'models.dart';
+import 'backup_store.dart';
+import 'backup_state.dart';
+import 'backup_evidence.dart';
+import 'store_lease.dart';
 import 'repository.dart';
 import 'reporting.dart';
 import 'schema.dart';
@@ -14,9 +20,26 @@ class SqliteOfflineRepository
     implements
         OfflineRepository,
         OfflineTransferRepository,
-        OfflineReportingRepository {
-  SqliteOfflineRepository._(this._db);
-  final Database _db;
+        OfflineReportingRepository,
+        OfflineBackupRepository,
+        OfflineRecoveryStatus {
+  SqliteOfflineRepository._(
+    this._db,
+    this._path,
+    this._factory,
+    this._ownership,
+  );
+  Database _db;
+  final String _path;
+  final DatabaseFactory _factory;
+  final StoreOwnership? _ownership;
+  bool _maintenance = false;
+  bool _writeBlocked = false;
+  int _storeGeneration = 0;
+  int get storeGeneration => _storeGeneration;
+  @override
+  RestoreResult? startupRecovery;
+
   Future<void> _tail = Future.value();
   Future<void>? _closing;
   bool _accepting = true;
@@ -29,13 +52,83 @@ class SqliteOfflineRepository
     'storage',
     'Local storage could not complete the operation. Please retry.',
   );
+  static const _recoveryFailure = OfflineFailure(
+    'recovery_required',
+    assistedAndroidRecovery,
+  );
+
+  static bool _isCorruption(Object error) {
+    if (error is DatabaseException) {
+      final code = error.getResultCode();
+      if (code != null && ((code & 255) == 11 || (code & 255) == 26)) {
+        return true;
+      }
+      return error.toString().contains('BHLI_OFFLINE_CORRUPTION');
+    }
+    return error is PlatformException &&
+        (error.message?.contains('BHLI_OFFLINE_CORRUPTION') ?? false);
+  }
+
+  // A small stop flag, not a recovery store. Never overwrite or remove it.
+  static Future<void> _rememberCorruption(String path) async {
+    if (path == inMemoryDatabasePath) return;
+    try {
+      final flag = File('$path.bhli-corrupt');
+      if (await FileSystemEntity.type(flag.path, followLinks: false) ==
+          FileSystemEntityType.notFound) {
+        await flag.writeAsString('BHLI_OFFLINE_CORRUPTION\n', flush: true);
+      }
+    } catch (_) {
+      // Storage failure cannot make corruption safe. The in-memory latch and
+      // startup validation still refuse unsafe use; persistence is best effort.
+    }
+  }
 
   static Future<SqliteOfflineRepository> open(
     String path, {
     DatabaseFactory? factory,
+    StoreOwnership? ownership,
   }) async {
     Database? db;
+    StoreOwnership? held;
     try {
+      if (factory == null) {
+        if (ownership != null ||
+            path != '${await getDatabasesPath()}/bhli_offline.db') {
+          throw const OfflineFailure(
+            'store_owned',
+            'Only the normal private offline store can be opened.',
+          );
+        }
+        held = await OfflineStoreLease.acquire();
+      } else {
+        held = ownership;
+      }
+      await held?.ensureHeld();
+      if (path != inMemoryDatabasePath &&
+          await FileSystemEntity.type(
+                '$path.bhli-corrupt',
+                followLinks: false,
+              ) !=
+              FileSystemEntityType.notFound) {
+        throw _recoveryFailure;
+      }
+      final evidence = factory == null ? NativeBackupEvidence() : null;
+      final pendingMarker = await evidence?.readMarker();
+      final existed = path != inMemoryDatabasePath && await File(path).exists();
+      if (!existed && path != inMemoryDatabasePath) {
+        for (final suffix in ['-wal', '-shm', '-journal']) {
+          if (await File('$path$suffix').exists()) throw _recoveryFailure;
+        }
+      }
+      if (pendingMarker != null && !existed) throw _recoveryFailure;
+      if (existed) {
+        if (await File(path).length() == 0) throw _recoveryFailure;
+      }
+      // Ordinary SQLite must be allowed to recover journals. A read-only
+      // preflight can refuse healthy recovery with SQLITE_READONLY_ROLLBACK.
+      // The native adapter never deletes/reset existing stores; validation
+      // completes before admitting the repository for normal use.
       db = await (factory ?? databaseFactory).openDatabase(
         path,
         options: OpenDatabaseOptions(
@@ -55,6 +148,7 @@ class SqliteOfflineRepository
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'android_metadata'",
         );
         if (version == 0 && tables.isEmpty) {
+          if (existed || pendingMarker != null) throw _recoveryFailure;
           final objects = await txn.rawQuery(
             "SELECT name FROM sqlite_master WHERE name NOT GLOB 'sqlite_*' AND name != 'android_metadata'",
           );
@@ -76,28 +170,116 @@ class SqliteOfflineRepository
           final identities = await validateOfflineRows(txn, version);
           if (version == 1) await migrateOfflineV1(txn, identities);
         }
+        final integrity = await txn.rawQuery('PRAGMA integrity_check(1)');
+        if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+          await _rememberCorruption(path);
+          throw _recoveryFailure;
+        }
       });
-      return SqliteOfflineRepository._(db);
+      final repository = SqliteOfflineRepository._(
+        db,
+        path,
+        factory ?? databaseFactory,
+        held,
+      );
+      if (evidence != null && pendingMarker != null) {
+        repository.startupRecovery = await reconcileBackupStartup(
+          _RepositoryBackupMaintenance(repository),
+          evidence,
+        );
+        if (repository.startupRecovery?.outcome == RestoreOutcome.unknown) {
+          throw const OfflineFailure(
+            'recovery_required',
+            assistedAndroidRecovery,
+          );
+        }
+      }
+      return repository;
     } catch (error) {
-      await db?.close();
+      try {
+        await db?.close();
+        await held?.release();
+      } catch (_) {
+        throw _storageFailure;
+      }
       if (error is OfflineFailure) rethrow;
+      if (_isCorruption(error)) {
+        await _rememberCorruption(path);
+        throw _recoveryFailure;
+      }
+      if (error is PlatformException && error.code == 'recovery_evidence') {
+        throw const OfflineFailure(
+          'recovery_required',
+          assistedAndroidRecovery,
+        );
+      }
+      if (error is PlatformException && error.code == 'store_owned') {
+        throw const OfflineFailure(
+          'store_owned',
+          'Close other offline app copies and older versions, then retry. Local storage ownership could not be obtained.',
+        );
+      }
       throw _storageFailure;
     }
   }
 
   Future<T> _run<T>(Future<T> Function(Transaction txn) work) {
+    if (_writeBlocked) return Future.error(_recoveryFailure);
+    if (_maintenance) {
+      return Future.error(
+        const OfflineFailure(
+          'maintenance',
+          'Local changes are blocked while backup recovery is in progress.',
+        ),
+      );
+    }
     if (!_accepting) {
       return Future.error(
         const OfflineFailure('closed', 'Local storage is closed.'),
       );
     }
     final result = _tail.then((_) async {
+      // Admission happened before a prior queued operation detected corruption.
+      if (_writeBlocked) throw _recoveryFailure;
       try {
         return await _db.transaction(work);
       } on OfflineFailure {
         rethrow;
-      } catch (_) {
+      } catch (error) {
+        if (_isCorruption(error)) {
+          _writeBlocked = true;
+          await _rememberCorruption(_path);
+          throw _recoveryFailure;
+        }
         throw _storageFailure;
+      }
+    });
+    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
+  }
+
+  @override
+  Future<BackupState> captureBackup() => _run(captureBackupTransaction);
+
+  @override
+  Future<T> withBackupMaintenance<T>(
+    Future<T> Function(BackupMaintenance owner) work,
+  ) {
+    if (!_accepting || _maintenance || _writeBlocked || _ownership == null) {
+      return Future.error(
+        const OfflineFailure(
+          'maintenance',
+          'Exclusive valid local storage is required for replacement.',
+        ),
+      );
+    }
+    _maintenance = true;
+    final result = _tail.then((_) async {
+      try {
+        await _ownership.ensureHeld();
+        return await work(_RepositoryBackupMaintenance(this));
+      } finally {
+        _maintenance = false;
       }
     });
     _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
@@ -487,9 +669,91 @@ class SqliteOfflineRepository
     return _closing ??= _tail.then((_) async {
       try {
         await _db.close();
+        await _ownership?.release();
       } catch (_) {
         throw _storageFailure;
       }
     });
+  }
+}
+
+class _RepositoryBackupMaintenance implements BackupMaintenance {
+  _RepositoryBackupMaintenance(this.repository);
+  final SqliteOfflineRepository repository;
+  @override
+  Future<void> checkOwnership() async {
+    final ownership = repository._ownership;
+    if (ownership == null || repository._writeBlocked) {
+      throw const OfflineFailure('recovery_required', assistedAndroidRecovery);
+    }
+    await ownership.ensureHeld();
+  }
+
+  @override
+  Future<BackupState> capture() =>
+      repository._db.transaction(captureBackupTransaction);
+  @override
+  Future<void> replace(
+    BackupState candidate,
+    String expectedDigest, {
+    bool Function()? cancel,
+  }) async {
+    await checkOwnership();
+    final db = repository._db;
+    await db.execute('PRAGMA foreign_keys=ON');
+    await db.execute('PRAGMA synchronous=EXTRA');
+    final fk = (await db.rawQuery('PRAGMA foreign_keys')).single.values.single;
+    final sync = (await db.rawQuery('PRAGMA synchronous')).single.values.single;
+    final journal = (await db.rawQuery('PRAGMA journal_mode'))
+        .single
+        .values
+        .single;
+    if (fk != 1 ||
+        sync != 3 ||
+        !['delete', 'truncate', 'persist', 'wal'].contains(journal)) {
+      throw const BackupStoreFailure(
+        'durability',
+        'Required SQLite durability could not be verified.',
+      );
+    }
+    await db.transaction(
+      (txn) => replaceBackupTransaction(
+        txn,
+        candidate,
+        expectedDigest,
+        cancel: cancel,
+      ),
+      exclusive: true,
+    );
+  }
+
+  @override
+  Future<BackupState> reopen() async {
+    await checkOwnership();
+    await repository._db.close();
+    if (!await File(repository._path).exists()) {
+      throw const BackupStoreFailure(
+        'missing',
+        'The original store is missing.',
+      );
+    }
+    repository._db = await repository._factory.openDatabase(
+      repository._path,
+      options: OpenDatabaseOptions(
+        singleInstance: false,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys=ON'),
+      ),
+    );
+    return capture();
+  }
+
+  @override
+  void blockWrites() {
+    repository._writeBlocked = true;
+  }
+
+  @override
+  void advanceGeneration() {
+    repository._storeGeneration++;
   }
 }
