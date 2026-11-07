@@ -152,11 +152,21 @@ class _OfflineBackupScreenState extends State<OfflineBackupScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.paused &&
+    if (state != AppLifecycleState.inactive &&
+        state != AppLifecycleState.hidden &&
+        state != AppLifecycleState.paused &&
         state != AppLifecycleState.detached) {
       return;
     }
-    // Android's system document picker legitimately pauses this Activity.
+    // Focus can be lost without a full stop (for example a quick Home/resume).
+    // Clear idle drafts then, without interrupting already owned picker,
+    // confirmation or restore work. A full stop retains its existing behavior.
+    if ((state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.hidden) &&
+        (busy || confirming || ticket != null)) {
+      return;
+    }
+    // Android's system document picker also legitimately pauses this Activity.
     // Its pending result remains owned; only an applying ticket requests stop.
     if (busy) {
       if (ticket != null) unawaited(cancel());

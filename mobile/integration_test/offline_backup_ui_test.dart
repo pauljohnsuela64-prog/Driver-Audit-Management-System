@@ -43,7 +43,7 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 }
 
 Future<void> _capture(WidgetTester tester, String name) async {
-  // The real app reapplies FLAG_SECURE on resume. Re-enable fictional capture
+  // Activity recreation can restore FLAG_SECURE. Re-enable fictional capture
   // only at non-password checkpoints, never in the ordinary application target.
   // The background checkpoint deliberately exercises the real resume behavior.
   if (name != 'background-form-cleared') {

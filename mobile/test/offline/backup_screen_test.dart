@@ -126,6 +126,46 @@ class ScreenEvidence implements BackupEvidence {
 }
 
 void main() {
+  for (final action in ['Create Backup', 'Restore Backup']) {
+    for (final lifecycle in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.detached,
+    ]) {
+      testWidgets('unsent $action passphrase is cleared on $lifecycle', (
+        tester,
+      ) async {
+        final store = ScreenStore();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: OfflineBackupScreen(
+              store: store,
+              documents: ScreenDocuments(),
+              evidence: ScreenEvidence(),
+              onRestored: (_) {},
+            ),
+          ),
+        );
+        await tester.ensureVisible(find.text(action));
+        await tester.tap(find.text(action));
+        await tester.pumpAndSettle();
+        final field = find.byKey(const ValueKey('backup_password'));
+        await tester.enterText(field, fixtures.password);
+        tester.binding.handleAppLifecycleStateChanged(lifecycle);
+        await tester.pump();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+        expect(field, findsNothing);
+        expect(find.text('Create Backup'), findsOneWidget);
+        expect(store.applied, 0);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets(
     'verified restore warning remains visible when rebuilt profile admission is blocked',
     (tester) async {
@@ -501,6 +541,12 @@ void main() {
         await tester.ensureVisible(find.text('Continue'));
         await tester.tap(find.text('Continue'));
         await tester.pump();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump();
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        await tester.pump();
         tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
         await tester.pump();
         expect(documents.cancellations, 0); // The SAF Activity may pause us.
@@ -610,6 +656,14 @@ void main() {
     );
     await tester.pump();
     await tester.ensureVisible(find.text('Cancel operation'));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump();
+    expect(store.requested, 0);
+    expect(store.applied, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
     await tester.tap(find.text('Cancel operation'));
     await tester.pump();
     expect(store.requested, 1);
