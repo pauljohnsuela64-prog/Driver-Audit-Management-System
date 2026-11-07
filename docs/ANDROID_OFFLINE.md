@@ -1,6 +1,6 @@
 ﻿# BHLI Audit Offline Android - Phase 6B
 
-Development build only: use fictional records. [Manual transfer](OFFLINE_TRANSFER.md) is available; backup/restore is not. Uninstalling/clearing app data or losing the device can permanently lose records. This is not employee-ready software.
+Development build only: use fictional records. [Manual transfer](OFFLINE_TRANSFER.md) and [reports, encrypted backup and same-platform restore](OFFLINE_REPORTS_AND_BACKUPS.md) are available. Keep a verified backup off the device: uninstalling/clearing app data or losing it can still lose unprotected records. This is not employee-ready software.
 
 ## Separate editions
 
@@ -51,15 +51,15 @@ Online build/run commands now explicitly select `--flavor online`. `scripts/andr
 
 ## Protection and limitations
 
-The app-private database is not separately application-encrypted. Relying on an unlocked device or locally entered name does not establish verified identity or tamper-proof history. Native screenshot protection stays enabled in the ordinary app. Android cloud backup/device transfer rules exclude the offline database; manual backup is a later phase, so keep all Phase6B work fictional.
+The app-private database is not separately application-encrypted. Relying on an unlocked device or locally entered name does not establish verified identity or tamper-proof history. Native screenshot protection stays enabled in the ordinary app. Android cloud backup/device transfer rules exclude the offline database; use complete encrypted manual backups and keep this development build fictional-data-only.
 
-There is no server, internet requirement, local server installer, report export, backup, PIN/password scheme or cloud synchronization. The Windows offline peer and manual file transfer operate without a server. No production data/grants/migrations are accessed. Updates must preserve the same package, compatible signer, version progression and database migrations; a signature mismatch is an error, never permission to uninstall. Stable employee distribution signing remains a separately approved activity.
+There is no server, internet requirement, local server installer, local-login PIN/password scheme or cloud synchronization. Phase 6E adds readable UTF-8 reports and passphrase-encrypted complete backups, not authenticated employee accounts. The Windows offline peer and manual file transfer operate without a server. No production data/grants/migrations are accessed. Updates must preserve the same package, compatible signer, version progression and database migrations; a signature mismatch is an error, never permission to uninstall. Stable employee distribution signing remains a separately approved activity.
 
 ## Deferred phases
 
 - 6C: Windows SQLite/offline workflows.
 - 6D: shared transfer format, preview/import, duplicates and explicit conflict handling (implemented locally; publication requires approval).
-- 6E: reports, backup and restoration.
+- 6E: reports, backup and restoration implemented locally; see the verification report for actual acceptance and limits.
 - 6F: comprehensive offline artifact/release acceptance.
 - 6G: employee-ready cleanup and final zero-demo-data packaging.
 

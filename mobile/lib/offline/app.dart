@@ -10,9 +10,12 @@ import 'transfer_screen.dart';
 import 'reporting.dart';
 import 'report_screen.dart';
 import 'transfer_store.dart';
+import 'backup_store.dart';
+import 'backup_evidence.dart';
+import 'backup_screen.dart';
 
 const offlineDevelopmentWarning =
-    'Development: fictional data only. This device has no backup. Uninstalling or clearing app data can permanently remove local audits.';
+    'Development: fictional data only. Back up regularly and keep a copy off this device. Uninstalling or clearing app data can permanently remove local audits.';
 
 /// Injected repositories belong to the caller; production bootstrap owns shutdown.
 class OfflineApp extends StatefulWidget {
@@ -23,18 +26,41 @@ class OfflineApp extends StatefulWidget {
 }
 
 class _OfflineAppState extends State<OfflineApp> {
+  int restorationEpoch = 0;
+  String? restoreNotice;
+  void restored(String warning) {
+    if (mounted) {
+      setState(() {
+        restorationEpoch++;
+        restoreNotice =
+            'The complete backup was restored and verified. $warning';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
+    key: ValueKey(restorationEpoch),
     title: 'BHLI Audit Offline',
     theme: auditTheme(Brightness.light),
     darkTheme: auditTheme(Brightness.dark),
-    home: _OfflineHome(repository: widget.repository),
+    home: _OfflineHome(
+      repository: widget.repository,
+      onRestored: restored,
+      restoreNotice: restoreNotice,
+    ),
   );
 }
 
 class _OfflineHome extends StatefulWidget {
-  const _OfflineHome({required this.repository});
+  const _OfflineHome({
+    required this.repository,
+    required this.onRestored,
+    this.restoreNotice,
+  });
   final OfflineRepository repository;
+  final ValueChanged<String> onRestored;
+  final String? restoreNotice;
   @override
   State<_OfflineHome> createState() => _OfflineHomeState();
 }
@@ -59,6 +85,16 @@ class _OfflineHomeState extends State<_OfflineHome> {
   @override
   void initState() {
     super.initState();
+    success = widget.restoreNotice;
+    final repository = widget.repository;
+    if (success == null && repository is OfflineRecoveryStatus) {
+      final recovery = (repository as OfflineRecoveryStatus).startupRecovery;
+      if (recovery != null) {
+        success = recovery.outcome == RestoreOutcome.restored
+            ? 'The complete restored state was verified after restart. ${recovery.warning}'
+            : 'The complete original state was verified after restart. ${recovery.warning}';
+      }
+    }
     start();
   }
 
@@ -253,6 +289,7 @@ class _OfflineHomeState extends State<_OfflineHome> {
         builder: (_) => _LocalProfileScreen(
           repository: widget.repository,
           profile: profile,
+          onRestored: widget.onRestored,
         ),
       ),
     );
@@ -288,11 +325,12 @@ class _OfflineHomeState extends State<_OfflineHome> {
         appBar: AppBar(title: const Text('BHLI Audit Offline')),
         body: SafeArea(
           child: ContentWidth(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (success != null) StatusMessage(success!),
                   if (starting) const LinearProgressIndicator(),
                   if (startupError != null) ...[
                     StatusMessage(startupError!, error: true),
@@ -311,7 +349,10 @@ class _OfflineHomeState extends State<_OfflineHome> {
     if (profile == null) {
       return _LocalProfileScreen(
         repository: widget.repository,
+        onRestored: widget.onRestored,
+        restoreNotice: success,
         onSetup: (saved) async {
+          if (!mounted) return;
           setState(() => profile = saved);
           await load();
         },
@@ -558,10 +599,14 @@ class _LocalProfileScreen extends StatefulWidget {
     required this.repository,
     this.profile,
     this.onSetup,
+    required this.onRestored,
+    this.restoreNotice,
   });
   final OfflineRepository repository;
   final LocalProfile? profile;
   final ValueChanged<LocalProfile>? onSetup;
+  final ValueChanged<String> onRestored;
+  final String? restoreNotice;
   @override
   State<_LocalProfileScreen> createState() => _LocalProfileScreenState();
 }
@@ -571,6 +616,48 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
   late final TextEditingController name;
   bool busy = false;
   String? error;
+  Future<void> backup() async {
+    if (busy || widget.repository is! OfflineBackupRepository) return;
+    if (name.text != (widget.profile?.name ?? '')) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          scrollable: true,
+          title: const Text('Discard unsaved profile changes?'),
+          content: const Text(
+            'The backup workflow uses the saved local state. Discard this unfinished profile draft before continuing.',
+          ),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Discard draft and continue'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+      name.text = widget.profile?.name ?? '';
+    }
+    if (!mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OfflineBackupScreen(
+          store: BackupStore(
+            widget.repository as OfflineBackupRepository,
+            evidence: NativeBackupEvidence(),
+          ),
+          onRestored: widget.onRestored,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -626,6 +713,13 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(offlineDevelopmentWarning),
+                  if (widget.restoreNotice != null)
+                    StatusMessage(widget.restoreNotice!),
+                  if (widget.repository is OfflineBackupRepository)
+                    OutlinedButton(
+                      onPressed: busy ? null : backup,
+                      child: const Text('Backup & restore'),
+                    ),
                   const SizedBox(height: 24),
                   const Text(
                     'Your name is self-declared and recorded with new audits. Changing it affects future creations only; original auditor names stay unchanged.',

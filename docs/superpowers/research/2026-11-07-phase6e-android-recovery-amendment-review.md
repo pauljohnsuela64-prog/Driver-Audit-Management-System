@@ -1,5 +1,9 @@
 # Phase 6E Android recovery amendment — research and independent review
 
+**Historical review of a CANCELLED proposal.** The operator superseded this
+architecture with ordinary SQLite and simple user-created backups. Retained for
+evidence; this document does not authorize generation-system implementation.
+
 Date: 2026-11-07, Asia/Manila. **Design only; operator approval pending.**
 
 Proposed specification:

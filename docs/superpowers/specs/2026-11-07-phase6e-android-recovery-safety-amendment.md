@@ -1,5 +1,10 @@
 # Phase 6E Android recovery-safety amendment
 
+**CANCELLED by operator direction. Historical proposal only; do not implement.**
+The simplified ordinary-SQLite scope supersedes this proposal. No generation,
+Keystore storage system, immutable chain or selector publication is authorized.
+See [simplified completion scope](2026-11-07-phase6e-simplified-completion.md).
+
 Status: **PROPOSED — explicit operator approval required before implementation.**
 Design/research only; branch `feat/dams-offline-reporting-backup`, input HEAD
 `4f7b6dc8d7c43c1ffe218da559baf467c2559187`. This is a material Android storage

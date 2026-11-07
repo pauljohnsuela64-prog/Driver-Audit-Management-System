@@ -146,7 +146,8 @@ void main() {
       await tap(tester, 'Start offline');
       expect((await db.profile())!.name.length, 200);
       expect(find.text('No audits yet'), findsOneWidget);
-      expect(find.textContaining('no backup'), findsWidgets);
+      expect(find.textContaining('Back up regularly'), findsWidgets);
+      expect(find.textContaining('no backup'), findsNothing);
     },
   );
 
