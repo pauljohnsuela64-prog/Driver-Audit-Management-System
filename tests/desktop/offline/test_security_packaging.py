@@ -1,5 +1,6 @@
 """Offline dependency closure and rejection of generated backup payloads."""
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -27,11 +28,28 @@ def test_windows_inspector_rejects_backup_transfer_and_fixture_assets(tmp_path, 
 
 def test_security_inventory_records_installed_native_binary_and_both_sboms():
     from scripts.offline_security import security_inventory
+    if sys.platform != 'win32':
+        with pytest.raises(RuntimeError, match='requires Windows'):
+            security_inventory()
+        return
     inventory = security_inventory()
     assert inventory['openssl'] == 'OpenSSL 4.0.3 29 Sep 2026'
     assert inventory['cryptography'] == '50.0.2'
     assert len(inventory['sboms']) == 2
     assert len(inventory['native_binary_sha256']) == 64
+
+
+@pytest.mark.parametrize('host', ['linux', 'darwin'])
+def test_windows_security_inventory_rejects_other_hosts_before_reading_wheels(monkeypatch, host):
+    from scripts import offline_security
+    monkeypatch.setattr(sys, 'platform', host)
+
+    def unexpected_metadata_read(*args):
+        pytest.fail('Unsupported hosts must fail before inspecting installed Windows wheels')
+
+    monkeypatch.setattr(offline_security.metadata, 'version', unexpected_metadata_read)
+    with pytest.raises(RuntimeError, match='requires Windows'):
+        offline_security.security_inventory()
 
 
 def test_offline_native_notices_cover_wheel_sbom_and_are_copied(tmp_path):

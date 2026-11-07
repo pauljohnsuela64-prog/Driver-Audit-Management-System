@@ -2,6 +2,7 @@
 import hashlib
 import importlib.metadata as metadata
 import json
+import sys
 from pathlib import Path
 
 
@@ -9,6 +10,9 @@ PINS = {'cryptography': '50.0.2', 'cffi': '2.1.1', 'pycparser': '3.12'}
 
 
 def security_inventory(destination=None):
+    # Reviewed hashes describe Windows wheels, not same-version Linux/macOS wheels.
+    if sys.platform != 'win32':
+        raise RuntimeError('Offline security wheel inventory requires Windows')
     for name, expected in PINS.items():
         if metadata.version(name) != expected:
             raise RuntimeError('Use the pinned offline security build overlay: ' + name)
