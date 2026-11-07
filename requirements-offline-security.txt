@@ -1,0 +1,4 @@
+# Offline backup runtime only. Do not add to online desktop build/runtime.
+cryptography==50.0.2
+cffi==2.1.1
+pycparser==3.12

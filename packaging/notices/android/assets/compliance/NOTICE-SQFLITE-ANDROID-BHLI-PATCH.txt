@@ -1,0 +1,28 @@
+BHLI offline SQLite safety patch
+
+Upstream: sqflite_android 2.4.5, Alexandre Roux Tekartik, BSD 2-Clause.
+Official archive: https://pub.dev/api/archives/sqflite_android-2.4.5.tar.gz
+Archive SHA-256: 3986f4cbdde19ca538aae877981c5a53400dcc4601499df18e7ed9e848a0bdd4
+The unchanged upstream LICENSE remains applicable and is supplied separately.
+
+BHLI modification (2026-11-07): Database.java selects a nondeleting corruption
+handler only for the separately identified com.bhli.audit.offline application.
+The handler latches corruption and throws the constant BHLI_OFFLINE_CORRUPTION
+error instead of invoking Android's destructive default handler or retrying.
+Existing offline stores are opened without CREATE_IF_NECESSARY. Subsequent
+SQL operations fail closed, including queued cached-cursor continuations.
+A fixed app-private .bhli-corrupt presence flag blocks subsequent native opens;
+flag persistence is best effort when storage is failing and never clears the
+in-memory latch. Corrupt/NOTADB errors are recognized even if the platform
+does not invoke its corruption callback. The flag contains no application data.
+The online application's original default-handler branch is retained.
+
+This is a source patch to version 2.4.5, not an upstream release or upgrade.
+It does not promise automatic repair or byte-identical preservation against
+SQLite's independent journal recovery, checkpoint/close changes, storage faults
+or operating-system behavior. Recovery uses a valid user-created external
+backup; changes made after that backup might be unrecoverable. Native safety
+verification remains an application gate. No generation or snapshot system is added.
+No passwords, audit contents, database paths or signing material are recorded
+in this notice. Source provenance and every original/patched source hash are
+recorded in vendor/sqflite_android/BHLI-PROVENANCE.json in the source repository.

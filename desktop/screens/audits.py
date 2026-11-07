@@ -36,9 +36,18 @@ class Audits(ctk.CTkFrame):
         if self.offline:
             if callable(getattr(app,'open_transfer',None)):
                 self.transfer_button=button(toolbar,'Transfer audits',app.open_transfer,width=160)
-                self.transfer_button.grid(row=1,column=1,columnspan=3,sticky='w',padx=(16,0),pady=(8,0))
-            label(toolbar,'Offline reports and backup are planned for Phase 6E.',12,True,
-                  wraplength=350).grid(row=2,column=0,columnspan=4,sticky='w',padx=(16,0),pady=(8,0))
+                self.transfer_button.grid(row=1,column=1,sticky='w',padx=(16,0),pady=(8,0))
+            if hasattr(app,'report_job'):
+                from desktop.offline.report_ui import choose_export
+                self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
+                self.export_button.grid(row=1,column=2,columnspan=2,sticky='w',padx=(12,0),pady=(8,0))
+                export_status=ctk.CTkFrame(self,fg_color='transparent')
+                export_status.grid(row=6,column=0,sticky='ew',pady=(8,0))
+                export_status.columnconfigure(0,weight=1)
+                self.export_status=label(export_status,'',12,True,anchor='w',justify='left',wraplength=480)
+                self.export_status.grid(row=0,column=0,sticky='ew')
+                self.cancel_export=button(export_status,'Cancel export',app.report_job.cancel,width=120)
+                self.cancel_export.grid(row=0,column=1,padx=(8,0))
         else:
             from desktop.export_ui import choose_export,open_folder
             self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
@@ -107,7 +116,14 @@ class Audits(ctk.CTkFrame):
                 self.date_to.get(),self.mine.get() if self.mine else 0,self.sort.get(),self.include_deleted.get() if self.include_deleted else 0)
 
     def render_export(self):
-        if self.offline:return
+        if self.offline:
+            job=getattr(self.app,'report_job',None)
+            if job is None:return
+            self.export_button.configure(state='disabled' if job.pending else 'normal')
+            self.export_status.configure(text=job.message)
+            if job.pending:self.cancel_export.grid()
+            else:self.cancel_export.grid_remove()
+            return
         job=self.app.export_job
         self.export_button.configure(state='disabled' if job.pending else 'normal')
         self.export_status.configure(text=job.message)

@@ -2,6 +2,7 @@
 .venv/
 .venv-desktop/
 .venv-build/
+.venv-offline-build/
 venv/
 __pycache__/
 .pytest_cache/
@@ -44,6 +45,7 @@ id_ed25519
 *.sql.zip
 *.bak
 *.backup
+*.bhlibackup
 *.sql.bak
 /backups/
 /dumps/

@@ -1,0 +1,16 @@
+{
+  "fictional_test_only": true,
+  "password": "Fictional passphrase 2026!",
+  "state_sha256": "143427275430e2fd11ef5fa3f395bf9f1ef9d597afba7fcf989ba899bf5fa08d",
+  "payload_sha256": "84c78758bd349c32d3cdecb96c46a963d00c08955e8df367d54c403000148b3a",
+  "backup_sha256": "d0fc957a2b7a4f79a4f59951f92c6e52c8c38d0b5ff18132280c594e12ff76ee",
+  "sequence": 90,
+  "counts": {
+    "app_meta": 2,
+    "local_profile": 1,
+    "auditor_identities": 2,
+    "audit_records": 1,
+    "audit_events": 3,
+    "transfer_receipts": 1
+  }
+}

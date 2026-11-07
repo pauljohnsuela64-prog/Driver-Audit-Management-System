@@ -8,7 +8,7 @@ from desktop.theme import color, font
 
 WARNING = ('Development edition · Use fictional data only. This device holds the only copy. '
            'Losing this Windows profile or its database permanently loses the records. '
-           'Reports and backup/restore are deferred to Phase 6E.')
+           'Use complete encrypted backups and keep their passphrase separately. Reports are unencrypted.')
 
 
 class ProfileView(ctk.CTkScrollableFrame):
@@ -35,6 +35,11 @@ class ProfileView(ctk.CTkScrollableFrame):
         self.notice.grid(row=3, column=0, sticky='ew', padx=24)
         self.save_button = button(panel, 'Save local profile', self.save, True, width=180)
         self.save_button.grid(row=4, column=0, sticky='w', padx=24, pady=24)
+        label(self, 'Backups replace the complete Windows installation state. Transfer audits copies selected '
+              'audits between platforms. Save any edited profile name before leaving this screen.',
+              muted=True, wraplength=580, justify='left').grid(row=4, column=0, sticky='ew', pady=(20, 8))
+        button(self, 'Backup & restore…', app.open_backup).grid(
+            row=5, column=0, sticky='w', pady=(0, 20))
 
     def save(self):
         if self.pending or self.app.closing:

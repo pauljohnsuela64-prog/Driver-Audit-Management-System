@@ -24,7 +24,24 @@ def _repository(path):
         path.parent.mkdir(parents=True, exist_ok=True)
     except OSError:
         raise OfflineError('storage', 'The local data folder is unavailable. Check access and retry.') from None
-    return SqliteRepository(path)
+    from desktop.offline.store_lease import StoreLease
+    from desktop.offline.backup_store import bootstrap_check, reconcile_startup
+    lease = StoreLease.acquire(path.parent)
+    repository = None
+    try:
+        directory = path.parent / 'backup-recovery'
+        bootstrap_check(path, directory)
+        repository = SqliteRepository(path, lease=lease)
+        result = reconcile_startup(repository, directory)
+        if result is not None and result.outcome == 'UNKNOWN':
+            raise OfflineError('recovery_required', result.message)
+        repository._startup_recovery_result = result
+        return repository
+    except BaseException:
+        if repository is not None:
+            repository.close()
+        lease.release()
+        raise
 
 
 class OfflineApplication(OfflineLifecycle, ctk.CTk):
@@ -52,6 +69,11 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             self.screen = None
             self.destination = ''
             self.mutation_pending = False
+            self.recovery_blocked = False
+            from desktop.offline.report_ui import ReportController
+            self.report_job = ReportController(self)
+            from desktop.offline.backup_ui import BackupController
+            self.backup_job = BackupController(self)
             self.closing = self.closed = False
             self._generation = 0
             self._retry_bootstrap = False
@@ -91,7 +113,8 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         self._replace_root_view(StatePanel(self, 'Opening local audit storage', 'Records remain on this computer.'))
         path = self.db_path
         self.worker = self._worker_factory(lambda: _repository(path))
-        self.worker.submit(lambda repo: repo.profile(), self._bootstrapped, key='bootstrap')
+        self.worker.submit(lambda repo: (repo.profile(), getattr(repo, '_startup_recovery_result', None)),
+                           self._bootstrapped, key='bootstrap')
 
     def _bootstrapped(self, profile, error):
         if self.closing:
@@ -102,6 +125,8 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
                 str(error) + ' Your existing database has not been replaced. Retry after resolving the problem.',
                 self.retry_bootstrap))
             return
+        profile, recovery = profile
+        self.recovery_blocked = False
         self.profile = profile
         if profile is None:
             from desktop.offline.views import ProfileView
@@ -109,6 +134,9 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             self._replace_root_view(ProfileView(self, self))
         else:
             self.rebuild_shell('Dashboard')
+        if recovery is not None:
+            self._notice(recovery.message + (' ' + recovery.cleanup_warning if recovery.cleanup_warning else ''),
+                         bool(recovery.cleanup_warning))
 
     def retry_bootstrap(self):
         if self.closing or self.mutation_pending:
@@ -126,6 +154,49 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
 
     def report_callback_exception(self, exc, value, traceback):
         self._notice('The interface could not complete this action. Your local data was not reset. Try Refresh.')
+
+    def poll(self):
+        self.report_job.poll()
+        self.backup_job.poll()
+        self._close_worker_when_ready()
+        super().poll()
+
+    def _close_worker_when_ready(self):
+        if self.closing:
+            if self.backup_job.pending:
+                self.backup_job.shutdown()
+            else:
+                self.worker.close()
+
+    def backup_restored(self):
+        if self.closing:
+            return
+        self.worker.invalidate_reads()
+        self._generation += 1
+        self.draft = self.selected_id = self.profile = None
+        self.query = AuditQuery()
+        if self.shell is not None:
+            destroy_view(self.shell)
+            self.shell = self.screen = None
+        self._replace_root_view(StatePanel(self, 'Opening restored local storage',
+                                          'Verifying the restored profile before displaying records.'))
+        self.request(lambda repo: repo.profile(),
+                     lambda profile, error: self._bootstrapped((profile, None), error),
+                     key='restored-profile')
+
+    def backup_unknown(self, message):
+        if self.closing:
+            return
+        self.recovery_blocked = True
+        self.worker.invalidate_reads()
+        self._generation += 1
+        self.draft = self.selected_id = self.profile = None
+        if self.shell is not None:
+            destroy_view(self.shell)
+            self.shell = self.screen = None
+        self.worker.close()
+        self._replace_root_view(StatePanel(self, 'Recovery verification required', message,
+                                          self.retry_bootstrap))
 
     def _notice(self, message, error=True):
         if self.closed:
@@ -179,18 +250,28 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         self.screen = None
         self.shell = Shell(self, self, local_profile=self.profile, destinations=self.destinations)
         self.shell.pack(fill='both', expand=True)
-        self.shell.footer.configure(text='Offline · Development edition\nFictional data only · No backup yet')
+        self.shell.footer.configure(text='Offline · Development edition\nFictional data only · Back up regularly')
         self.navigate(destination or 'Dashboard', audit_id, force=True)
 
     def navigate(self, destination, audit_id=None, force=False):
-        if self.closing or self.profile is None or self.shell is None:
+        if self.closing:
+            return
+        if self.profile is None or self.shell is None:
+            if (destination == 'Local profile' and not self.recovery_blocked and
+                    not self.mutation_pending and not self.backup_job.pending):
+                from desktop.offline.views import ProfileView
+                self.destination = 'Local profile'
+                self._replace_root_view(ProfileView(self, self))
             return
         if self.mutation_pending:
             self._notice('Wait for the local save to finish before navigating.', False)
             return
+        if self.backup_job.pending:
+            self._notice('Finish or cancel the backup operation before navigating.', False)
+            return
         if not force and not self.leave_form(lambda: self.navigate(destination, audit_id, force=True)):
             return
-        if destination not in (*self.destinations, 'Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Transfer audits'):
+        if destination not in (*self.destinations, 'Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Transfer audits', 'Backup & restore'):
             return
         self.worker.invalidate_reads()
         self._generation += 1
@@ -198,7 +279,8 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             destroy_view(self.screen)
         self.screen = None
         self.destination = destination
-        self.shell.select('Driver Audits' if destination == 'Transfer audits' else destination)
+        self.shell.select('Driver Audits' if destination == 'Transfer audits' else
+                          'Local profile' if destination == 'Backup & restore' else destination)
         if destination == 'Dashboard':
             from desktop.screens.dashboard import Dashboard
             screen = Dashboard(self.shell.content, self)
@@ -208,6 +290,9 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         elif destination == 'Transfer audits':
             from desktop.offline.transfer_ui import TransferView
             screen = TransferView(self.shell.content, self)
+        elif destination == 'Backup & restore':
+            from desktop.offline.backup_ui import BackupView
+            screen = BackupView(self.shell.content, self)
         elif destination == 'Audit Details':
             from desktop.screens.details import Details
             screen = Details(self.shell.content, self, audit_id)
@@ -255,6 +340,18 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
 
     def open_transfer(self):
         self.navigate('Transfer audits')
+
+    def open_backup(self):
+        if self.closing or self.mutation_pending or self.backup_job.pending:
+            return
+        if not self.leave_form(self.open_backup):
+            return
+        if self.shell is None:
+            from desktop.offline.backup_ui import BackupView
+            self.destination = 'Backup & restore'
+            self._replace_root_view(BackupView(self, self))
+        else:
+            self.navigate('Backup & restore', force=True)
 
     def open_create(self):
         if self.closing or self.profile is None:
@@ -364,9 +461,11 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         if self.dialog is not None:
             self.dialog.dismiss()
         self.closing = True
+        self.report_job.cancel()
+        self.backup_job.shutdown()
         self.worker.invalidate_reads()
         self._generation += 1
-        self.worker.close()
+        self._close_worker_when_ready()
         self._notice('Closing… Waiting for all submitted local saves and database shutdown. Please keep this window open.', False)
         if self.shell is None:
             self._replace_root_view(StatePanel(self, 'Closing local storage', 'Waiting for submitted operations to finish…'))
@@ -384,7 +483,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         if self._shutdown_write_error is not None and error is not self._shutdown_write_error:
             message += '\n' + str(self._shutdown_write_error)
         panel = StatePanel(self, 'Local storage needs attention',
-            message + ' The database was not replaced. Keep its file for inspection.')
+            message + ' Keep the current database and any encrypted recovery files for inspection.')
         button(panel, 'Close application', self._finish_close).pack(pady=(0, 24))
         self._replace_root_view(panel)
 

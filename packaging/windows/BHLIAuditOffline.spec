@@ -6,7 +6,7 @@ root = Path(SPECPATH).resolve().parents[1]
 assets = root / 'desktop' / 'assets'
 a = Analysis([str(root / 'packaging/windows/offline_entry.py')], pathex=[str(root)],
     binaries=[], datas=collect_data_files('customtkinter') + [(str(assets / 'bhli.ico'), 'desktop/assets')],
-    hiddenimports=[], hookspath=[], runtime_hooks=[],
+    hiddenimports=['_cffi_backend'], hookspath=[], runtime_hooks=[],
     excludes=['backend', 'database', 'migrations', 'scripts', 'tests', 'pytest',
               'sqlalchemy', 'pymysql', 'fastapi', 'uvicorn', 'dotenv',
               'desktop.api', 'desktop.session', 'desktop.app', 'desktop.tasks',

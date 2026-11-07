@@ -86,8 +86,9 @@ Keep Windows open until admitted writes drain and any failure is acknowledged.
 
 Transfer files are **not full backups**: they exclude application configuration,
 the receiving profile and unrelated records, and cannot overwrite an existing
-audit to restore an old version. Backup/restore, reporting and employee-release
-preparation are later phases. No real data transfer or release is authorized.
+audit to restore an old version. Phase 6E adds [separate reports and complete
+encrypted backup/restore](OFFLINE_REPORTS_AND_BACKUPS.md). Employee-release
+preparation remains deferred. No real data transfer or release is authorized.
 
 ## Measured development acceptance
 

@@ -44,8 +44,10 @@ def inspect_candidate(apk, badging):
         for name in names:
             path = PurePosixPath(name)
             if (path.is_absolute() or '..' in path.parts or '\\' in name
-                    or path.name.startswith('.env') or path.suffix.lower() in
-                    ('.db', '.sqlite', '.sqlite3', '.env', '.jks', '.keystore', '.pem', '.pfx', '.key')):
+                    or path.name.startswith('.env') or 'fixtures' in path.parts
+                    or path.suffix.lower() in
+                    ('.db', '.sqlite', '.sqlite3', '.env', '.jks', '.keystore', '.pem', '.pfx', '.key',
+                     '.bhlibackup', '.bhlitransfer')):
                 raise ValueError('Private or populated database payload')
     return {'application_id': match[1], 'version_code': int(match[2]),
             'version': match[3], 'build_type': 'debug', 'production_ready': False,

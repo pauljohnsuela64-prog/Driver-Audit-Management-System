@@ -133,6 +133,13 @@
       "sha256": "482b930a462d2e6da28d07414100bd1918aa88419ff1cc8a95668f836c840aa3",
       "source": "Pinned sqlite3 3.5.2 hook metadata; https://www.sqlite.org/copyright.html",
       "role": "Native SQLite provenance note"
+    },
+    {
+      "path": "assets/compliance/NOTICE-SQFLITE-ANDROID-BHLI-PATCH.txt",
+      "sha256": "1491abd92c5a3bb7b89995cd224b924e183399301654119d126378d1183d6242",
+      "source": "vendor/sqflite_android/NOTICE-BHLI-SAFETY-PATCH.txt; official upstream archive pinned in BHLI-PROVENANCE.json",
+      "version": "2.4.5 (BHLI offline-only preservation patch)",
+      "role": "third-party modification/provenance notice; upstream BSD-2-Clause license retained"
     }
   ],
   "offline_sqlite": {

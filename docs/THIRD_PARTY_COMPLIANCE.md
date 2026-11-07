@@ -30,6 +30,44 @@ OpenSSL 3.5.9 license/copyright attribution and Roboto font attribution.
 The exact OpenSSL 3.5.9 source archive was inspected and supplies no NOTICE file;
 none is invented. Complete Pillow/CPython notices continue to be preserved.
 
+The separate offline Windows build adds `requirements-offline-security.lock`
+through `requirements-offline-build.lock`; the online build lock and retained
+`.venv-build` are unchanged. Use a separately created `.venv-offline-build` with
+Python 3.14.10, then install with `python -m pip install --only-binary=:all:
+--require-hashes -r requirements-offline-build.lock` using that environment's
+Python. Do not install this overlay into the original online build environment.
+
+`packaging/notices/windows-offline-security/manifest.json` records exact official
+wheel origins/hashes, native binary hashes, both cryptography wheel SBOMs and
+the checksum-verified native source archives. The cryptography 50.0.2 wheel uses
+OpenSSL 4.0.3, separately from CPython's OpenSSL 3.5.9. Its exact release archive
+SHA-256 is `325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9`.
+The complete archive was scanned for license/NOTICE filenames; no upstream
+NOTICE file was present. Its LICENSE, AUTHORS and README are retained. All 25
+registry components marked required in the Rust SBOM have exact archive hashes
+and license texts retained conservatively, including macros; seven cryptography
+workspace components use the wheel's Apache/BSD texts. Build-only excluded SBOM
+components are recorded separately by scope, rather than claimed as shipped.
+CFFI's Windows x64 bundled libffi source copyright comments are retained from
+its exact 2.1.1 source archive; no modern libffi version is guessed from them.
+The `self_cell` Apache alternative is selected; its upstream GPL alternative is
+also preserved, without electing it. Unicode-ident's Unicode license is retained
+in addition to its MIT/Apache alternatives.
+
+The offline builder validates all notice bytes before building, compares the
+installed native binaries and SBOMs against reviewed wheels, exercises Argon2id,
+and verifies both native security binaries in the frozen payload. It copies the
+offline inventory under `THIRD_PARTY_LICENSES/OFFLINE-SECURITY` and records it in
+`BUILD-MANIFEST.json`. Source/wheel downloads are preparation evidence only;
+candidate builds remain offline and never download notices. A successful source
+inventory or focused packaging test does not establish frozen application,
+installer, vulnerability, or native UI acceptance; those require separate runs.
+
+Android's existing resolved-package notice generator enumerates every actual
+package root, including cryptography 2.9.0 and transitive packages, and fails for
+missing license texts. Regenerate both online and offline candidate inventories
+after the shared lock change; do not reuse a prior candidate's notice sidecar.
+
 Android embeds the reviewed material under `assets/compliance/`. The ordinary
 internal/debug APK includes JUnit 4.12 classes through the integration-test
 native plugin even though its Dart entry point is `lib/main.dart`. This is

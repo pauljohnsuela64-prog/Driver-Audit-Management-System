@@ -5,3 +5,7 @@ packaging/notices/** -text -whitespace
 LICENSE -text
 # Transfer golden streams and packages are byte contracts, never host newlines.
 mobile/test/fixtures/transfer/** -text
+# Encrypted backup vectors and canonical NDJSON must remain byte-identical.
+mobile/test/fixtures/backup/** -text
+# Exact same-version upstream SQLite plugin source and reviewed patch hashes.
+vendor/sqflite_android/** -text

@@ -12,7 +12,8 @@ import sys
 
 from desktop.offline.identity import PRODUCT, VERSION, ARTIFACT_VERSION, APP_ID, INSTALLER_GUID
 from scripts.build_windows import copy_notices
-from scripts.license_notices import copy_verified_notices, copy_application_notices
+from scripts.license_notices import copy_verified_notices, copy_application_notices, verified_notices
+from scripts.offline_security import security_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN = {'backend', 'database', 'migrations', 'tests', 'pytest', 'sqlalchemy',
@@ -33,8 +34,9 @@ def inspect_payload_files(bundle):
             raise RuntimeError('Private or unsafe payload link')
         if path.is_file() and (
             path.name.startswith('.env') or
+            'fixtures' in path.relative_to(bundle).parts or
             path.suffix.lower() in {'.db', '.db3', '.sqlite', '.sqlite3', '.pem', '.pfx',
-                                    '.key', '.jks', '.keystore'} or
+                                    '.key', '.jks', '.keystore', '.bhlibackup', '.bhlitransfer'} or
             path.name.lower().endswith(('-wal', '-shm', '-journal'))
         ):
             raise RuntimeError('Private key, configuration or database payload')
@@ -48,8 +50,21 @@ def inspect_bundle(bundle):
                   any(name == prefix or name.startswith(prefix + '.') for prefix in ONLINE_MODULES)]
     if unexpected:
         raise RuntimeError('Online/server/test modules in offline candidate: ' + ', '.join(unexpected))
-    if 'sqlite3' not in modules or 'desktop.offline.repository' not in modules:
-        raise RuntimeError('Offline SQLite implementation missing from candidate')
+    required = {'sqlite3', 'desktop.offline.repository', 'desktop.offline.backup_crypto',
+                'cryptography', 'cryptography.hazmat.primitives.kdf.argon2',
+                'cryptography.hazmat.primitives.ciphers.aead'}
+    if not required.issubset(modules):
+        raise RuntimeError('Offline SQLite/security implementation missing from candidate')
+    native = list(Path(bundle).rglob('_rust.pyd'))
+    if len(native) != 1:
+        raise RuntimeError('Offline native cryptography implementation missing from candidate')
+    if digest(native[0]) != security_inventory()['native_binary_sha256']:
+        raise RuntimeError('Unexpected bundled cryptography native binary')
+    security = security_inventory()
+    for name, expected in security['native_files'].items():
+        files = list(Path(bundle).rglob(Path(name).name))
+        if len(files) != 1 or digest(files[0]) != expected:
+            raise RuntimeError('Missing or modified offline native security dependency')
     inspect_payload_files(bundle)
     return modules
 
@@ -58,7 +73,11 @@ def build(iscc, output_root):
     if sys.platform != 'win32' or platform.machine().lower() not in ('amd64', 'x86_64'):
         raise SystemExit('Offline development packaging requires Windows x64')
     if sys.version_info[:3] != (3, 14, 10) or metadata.version('pyinstaller') != '6.22.3':
-        raise SystemExit('Use the retained Python 3.14.10 / PyInstaller 6.22.3 build environment')
+        raise SystemExit('Use Python 3.14.10 / PyInstaller 6.22.3 in .venv-offline-build')
+    if Path(sys.prefix).resolve() != (ROOT / '.venv-offline-build').resolve():
+        raise SystemExit('Use the separate .venv-offline-build with requirements-offline-build.lock')
+    security_inventory()
+    verified_notices('windows-offline-security')
     output = Path(output_root).resolve()
     if not output.is_relative_to((ROOT / 'dist').resolve()) or output == (ROOT / 'dist').resolve():
         raise SystemExit('Use a fresh isolated subdirectory of repository dist')
@@ -77,6 +96,7 @@ def build(iscc, output_root):
     modules = inspect_bundle(bundle)
     licenses = bundle / 'THIRD_PARTY_LICENSES'
     licenses.mkdir(exist_ok=True)
+    security = security_inventory(licenses)
     dependencies = []
     for dist in metadata.distributions():
         dependencies.append({'name': dist.metadata['Name'], 'version': dist.version})
@@ -86,6 +106,7 @@ def build(iscc, output_root):
         raise RuntimeError('CPython composite license missing')
     shutil.copyfile(python_license, licenses / 'CPython-LICENSE.txt')
     supplemental = copy_verified_notices('windows', licenses / 'SUPPLEMENTAL')
+    security_notices = copy_verified_notices('windows-offline-security', licenses / 'OFFLINE-SECURITY')
     application = copy_application_notices(bundle)
     sqlite_dlls = list(bundle.rglob('sqlite3.dll'))
     runtime_dll = Path(sys.base_prefix) / 'DLLs/sqlite3.dll'
@@ -96,8 +117,10 @@ def build(iscc, output_root):
                     python=platform.python_version(), sqlite=sqlite3.sqlite_version,
                     sqlite_dll_sha256=digest(sqlite_dlls[0]), signed_release=False,
                     fictional_development_only=True, database_bundled=False,
-                    modules=modules, build_environment_dependencies=sorted(dependencies, key=lambda d: d['name'].lower()),
+                    modules=modules, offline_security=security,
+                    build_environment_dependencies=sorted(dependencies, key=lambda d: d['name'].lower()),
                     supplemental_notices=supplemental, application_license_notices=application)
+    manifest['offline_security_notices'] = security_notices
     (bundle / 'BUILD-MANIFEST.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     subprocess.run([str(Path(iscc).resolve()), '/DBundleDir=' + str(bundle),
                     '/DOutputDir=' + str(output / 'installer'),

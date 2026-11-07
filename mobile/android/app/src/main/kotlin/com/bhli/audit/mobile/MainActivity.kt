@@ -10,14 +10,20 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private lateinit var transferDocuments: TransferDocuments
+    private lateinit var reportsDocuments: ReportsDocuments
+    private lateinit var offlineDocuments: OfflineDocuments
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (::transferDocuments.isInitialized && transferDocuments.onActivityResult(requestCode, resultCode, data)) return
+        if (::reportsDocuments.isInitialized && reportsDocuments.onActivityResult(requestCode, resultCode, data)) return
+        if (::offlineDocuments.isInitialized && offlineDocuments.onActivityResult(requestCode, resultCode, data)) return
         super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onDestroy() {
         if (::transferDocuments.isInitialized) transferDocuments.dispose()
+        if (::reportsDocuments.isInitialized) reportsDocuments.dispose()
+        if (::offlineDocuments.isInitialized) offlineDocuments.dispose()
         super.onDestroy()
     }
 
@@ -30,6 +36,16 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         if (applicationContext.packageName == "com.bhli.audit.offline") {
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.bhli.audit/offline_store")
+                .setMethodCallHandler(OfflineStoreLease.handler(applicationContext))
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.bhli.audit/backup_evidence")
+                .setMethodCallHandler(OfflineBackupEvidence(applicationContext))
+            offlineDocuments = OfflineDocuments(this)
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.bhli.audit/backup_documents")
+                .setMethodCallHandler(offlineDocuments)
+            reportsDocuments = ReportsDocuments(this)
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.bhli.audit/reports_documents")
+                .setMethodCallHandler(reportsDocuments)
             transferDocuments = TransferDocuments(this)
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.bhli.audit/transfer_documents")
                 .setMethodCallHandler(transferDocuments)

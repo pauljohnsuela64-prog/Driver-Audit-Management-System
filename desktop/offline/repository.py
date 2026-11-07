@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import json
 import sqlite3
 import threading
+from pathlib import Path
 
 from .models import (
     AuditFilter, FIELDS, LocalAudit, LocalEvent, LocalPage, LocalProfile,
@@ -80,10 +81,18 @@ def _audit(row):
 
 
 class SqliteRepository:
-    def __init__(self, path, timeout=.25):
+    def __init__(self, path, timeout=.25, *, lease=None):
         self._owner = threading.get_ident()
         self._closed = False
         self._connection = None
+        self._lease = lease
+        self._path = Path(path).absolute()
+        self._timeout = timeout
+        self._maintenance = None
+        self._write_blocked = False
+        self._recovery_pending = False
+        if lease is not None and (not lease.held or self._path.parent.resolve() != lease.directory):
+            raise OfflineError('store_owned', 'Local storage ownership is required before opening the database.')
         try:
             self._connection = sqlite3.connect(path, timeout=timeout, isolation_level=None)
             self._connection.row_factory = sqlite3.Row
@@ -93,6 +102,8 @@ class SqliteRepository:
         except BaseException as error:
             if self._connection is not None:
                 self._connection.close()
+            if lease is not None:
+                lease.release()
             if isinstance(error, sqlite3.Error):
                 raise _storage_error(error) from None
             raise
@@ -106,6 +117,12 @@ class SqliteRepository:
     @contextmanager
     def _transaction(self, *, write=False):
         self._check()
+        if self._maintenance is not None:
+            raise OfflineError('maintenance', 'Backup restoration is in progress. Wait for its result.')
+        if write and self._write_blocked:
+            raise OfflineError('recovery_required', 'Local changes are blocked until recovery is resolved. Preserve the database and encrypted recovery files.')
+        if write and self._recovery_pending:
+            raise OfflineError('recovery_pending', 'The complete restore outcome is verified, but local changes must wait until its recovery marker is safely archived. Retry recovery reconciliation.')
         try:
             self._connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
             yield
@@ -301,5 +318,7 @@ class SqliteRepository:
         try:
             self._connection.close()
             self._closed = True
+            if self._lease is not None:
+                self._lease.release()
         except sqlite3.Error as error:
             raise _storage_error(error) from None

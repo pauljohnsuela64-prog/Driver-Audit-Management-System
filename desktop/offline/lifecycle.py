@@ -23,7 +23,9 @@ class OfflineLifecycle:
                 self._poll_timer = self.after(30, self.poll)
 
     def mutate(self, work, done):
-        if self.closing or self.mutation_pending:
+        if (self.closing or self.mutation_pending or
+                any(getattr(getattr(self, name, None), 'pending', False)
+                    for name in ('file_job', 'backup_job'))):
             done(None, OfflineError('queue', 'Wait for the submitted operation to finish. No new operation was queued.'))
             return False
         self.mutation_pending = True

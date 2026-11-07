@@ -10,6 +10,15 @@ import 'offline/sqlite_repository.dart';
 import 'ui/core/audit_theme.dart';
 import 'ui/core/content.dart';
 
+const _assistedRecovery =
+    'Preserve the database, SQLite sidecars and encrypted recovery files. '
+    'Use a verified encrypted backup on a fresh Android device or separate OS user. '
+    'Do not clear data or uninstall the damaged original. Protect the fresh '
+    'instance first, then use its normal Backup & restore workflow. A lost '
+    'backup passphrase cannot be reset. Changes made after your last backup '
+    'might be unrecoverable. SQLite may change journal files while closing; '
+    'the app will not automatically delete or reset the database.';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const OfflineBootstrap());
@@ -57,7 +66,11 @@ class _OfflineBootstrapState extends State<OfflineBootstrap>
         setState(
           () => _error = error is OfflineFailure && error.code == 'schema'
               ? 'This local database is not supported by this app. Your data was not reset.'
-              : 'Local storage could not be opened. Your data was not reset. Check available space and retry.',
+              : error is OfflineFailure && error.code == 'recovery_required'
+              ? _assistedRecovery
+              : error is OfflineFailure && error.code == 'store_owned'
+              ? 'Close other offline app copies and older versions, then retry. Your data was not reset.'
+              : 'Local storage could not be opened. Your data was not reset. Check available space and retry. $_assistedRecovery',
         );
       }
     } finally {

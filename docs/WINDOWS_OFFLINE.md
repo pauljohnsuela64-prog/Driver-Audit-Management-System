@@ -1,6 +1,6 @@
 # BHLI Audit Offline for Windows — Phase 6C
 
-This is a development edition for fictional data only. There is no backup or restore yet. Losing the Windows profile, disk or database can permanently lose the only copy. Keep the original online application and its data intact.
+This is a development edition for fictional data only. Complete encrypted backup and same-platform restore are described in [Offline reports and backups](OFFLINE_REPORTS_AND_BACKUPS.md). Keep a verified copy off this computer: losing the Windows profile, disk or database can still lose unprotected records. Keep the original online application and its data intact.
 
 ## Launch and identity
 
@@ -44,9 +44,9 @@ Windows retains its own application identity in metadata. [Manual transfer](OFFL
 
 ## Reporting and later phases
 
-The original Excel engine/source is preserved. Offline report controls are intentionally absent. Future reports can consume immutable `LocalAudit` pages through the local repository/worker seam; snapshot consistency and complete report generation must be implemented and tested in Phase 6E. There is no daily/weekly/monthly/custom offline reporting or backup hidden behind a placeholder.
+The original online Excel engine remains separate. Phase 6E adds snapshot-consistent local Excel reporting and complete encrypted backup/restore. See [workflows, limits and recovery guidance](OFFLINE_REPORTS_AND_BACKUPS.md).
 
-Phase 6D adds manual transfer locally; publication requires approval. Phase 6E reports/backup, Phase 6F signed distribution and Phase 6G employee-ready cleanup remain deferred.
+Phase 6D adds manual transfer locally; publication requires approval. Phase 6E reporting/backup is implemented locally; Phase 6F signed distribution and Phase 6G employee-ready cleanup remain deferred.
 
 ## Local verification and candidates
 
@@ -54,10 +54,14 @@ Use fictional temporary test databases only. Native tests are opt-in with `DAMS_
 
 The shared contract lives in `mobile/test/fixtures/offline_contract.json`, exercised by new Python tests and `mobile/test/offline/windows_contract_test.dart`; Android application code remains unchanged.
 
-Build from committed, reviewed source using the retained hash-locked Windows build environment:
+Build from committed, reviewed source using the separate hash-locked offline
+build environment. Preserve the original online `.venv-build` environment:
 
 ```text
-.venv-build\Scripts\python.exe -m scripts.build_windows_offline --iscc local\inno710\ISCC.exe --output-root dist\phase6c-<fresh-checkpoint>
+.venv\Scripts\python.exe -m venv .venv-offline-build
+.venv-offline-build\Scripts\python.exe -m pip install --only-binary=:all: --require-hashes -r requirements-offline-build.lock
+.venv-offline-build\Scripts\python.exe -m pip check
+.venv-offline-build\Scripts\python.exe -m scripts.build_windows_offline --iscc local\inno710\ISCC.exe --output-root dist\phase6e-<fresh-checkpoint>
 ```
 
 Outputs are a folder executable, portable ZIP and unsigned per-user installer. The builder refuses nonempty output directories and inspects modules, data exclusions, notices, identity and the retained SQLite DLL hash. It never installs, uninstalls, deploys or publishes a candidate. Exact source hashes, candidate checksums, executed tests and acceptance gaps are recorded in ignored `artifacts/phase6c/` evidence.

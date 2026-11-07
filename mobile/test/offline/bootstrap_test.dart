@@ -16,6 +16,33 @@ class PendingRepository implements OfflineRepository {
 
 void main() {
   testWidgets(
+    'unreadable storage offers non-destructive fresh-instance recovery',
+    (tester) async {
+      await tester.pumpWidget(
+        OfflineBootstrap(
+          openRepository: () async {
+            throw const OfflineFailure(
+              'recovery_required',
+              'internal details must remain hidden',
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('fresh Android device or separate OS user'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Do not clear data or uninstall'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('internal details'), findsNothing);
+      expect(find.textContaining('after your last backup'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    },
+  );
+  testWidgets(
     'storage failure remains scrollable in compact large-text landscape',
     (tester) async {
       tester.view.physicalSize = const Size(640, 320);

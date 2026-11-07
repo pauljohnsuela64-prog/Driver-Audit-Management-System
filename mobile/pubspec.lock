@@ -65,6 +65,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.8"
+  cryptography:
+    dependency: "direct main"
+    description:
+      name: cryptography
+      sha256: "3eda3029d34ec9095a27a198ac9785630fe525c0eb6a49f3d575272f8e792ef0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.0"
   fake_async:
     dependency: transitive
     description:
@@ -405,12 +413,11 @@ packages:
     source: hosted
     version: "2.4.5"
   sqflite_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: sqflite_android
-      sha256: "3986f4cbdde19ca538aae877981c5a53400dcc4601499df18e7ed9e848a0bdd4"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../vendor/sqflite_android"
+      relative: true
+    source: path
     version: "2.4.5"
   sqflite_common:
     dependency: transitive

@@ -29,6 +29,24 @@ class CapturingFactory extends DatabaseFactory {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+// Android creates its locale table inside native open, after the repository's
+// fresh-file check but before Dart onConfigure. Model that ordering faithfully.
+class AndroidMetadataFactory extends CapturingFactory {
+  @override
+  Future<Database> openDatabase(
+    String path, {
+    OpenDatabaseOptions? options,
+  }) async {
+    if (!await File(path).exists()) {
+      final platform = await databaseFactoryFfi.openDatabase(path);
+      await platform.execute('CREATE TABLE android_metadata (locale TEXT)');
+      await platform.insert('android_metadata', {'locale': 'en_US'});
+      await platform.close();
+    }
+    return super.openDatabase(path, options: options);
+  }
+}
+
 void main() {
   late Directory directory;
   late String path;
@@ -51,13 +69,9 @@ void main() {
     'Android platform metadata permits fresh initialization and reopen',
     () async {
       final nativePath = '${directory.path}/android-platform.db';
-      final platform = await databaseFactoryFfi.openDatabase(nativePath);
-      await platform.execute('CREATE TABLE android_metadata (locale TEXT)');
-      await platform.insert('android_metadata', {'locale': 'en_US'});
-      await platform.close();
       var native = await SqliteOfflineRepository.open(
         nativePath,
-        factory: databaseFactoryFfi,
+        factory: AndroidMetadataFactory(),
       );
       try {
         expect(await native.profile(), isNull);
