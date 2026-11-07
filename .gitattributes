@@ -7,3 +7,5 @@ LICENSE -text
 mobile/test/fixtures/transfer/** -text
 # Encrypted backup vectors and canonical NDJSON must remain byte-identical.
 mobile/test/fixtures/backup/** -text
+# Exact same-version upstream SQLite plugin source and reviewed patch hashes.
+vendor/sqflite_android/** -text

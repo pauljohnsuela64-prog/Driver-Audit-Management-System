@@ -1,0 +1,323 @@
+{
+  "format": 1,
+  "upstream": {
+    "name": "sqflite_android",
+    "version": "2.4.5",
+    "archive_url": "https://pub.dev/api/archives/sqflite_android-2.4.5.tar.gz",
+    "archive_sha256": "3986f4cbdde19ca538aae877981c5a53400dcc4601499df18e7ed9e848a0bdd4",
+    "license": "BSD-2-Clause",
+    "license_sha256": "c81f9454cf3107c116bc3c1fd22b7d751523a2b11e17cf90c0db3327d3c9e0da"
+  },
+  "patch": {
+    "scope": "com.bhli.audit.offline only; original online open behavior retained",
+    "file": "android/src/main/java/com/tekartik/sqflite/Database.java",
+    "notice_sha256": "1491abd92c5a3bb7b89995cd224b924e183399301654119d126378d1183d6242"
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "upstream_sha256": "8733cecae8650fbbef6be8eb99cb699e77b72edef5da7fb25373f0cff003fd0b",
+      "sha256": "8733cecae8650fbbef6be8eb99cb699e77b72edef5da7fb25373f0cff003fd0b"
+    },
+    {
+      "path": "LICENSE",
+      "upstream_sha256": "c81f9454cf3107c116bc3c1fd22b7d751523a2b11e17cf90c0db3327d3c9e0da",
+      "sha256": "c81f9454cf3107c116bc3c1fd22b7d751523a2b11e17cf90c0db3327d3c9e0da"
+    },
+    {
+      "path": "README.md",
+      "upstream_sha256": "2ac090ffc13a59de3f50b0a3de675ff5da396934c15097e128f5f2d9a1f29be4",
+      "sha256": "2ac090ffc13a59de3f50b0a3de675ff5da396934c15097e128f5f2d9a1f29be4"
+    },
+    {
+      "path": "analysis_options.yaml",
+      "upstream_sha256": "532189e6235c5f36d5450581e5adc3dc1d1c45614c411207aef33f2df93f3fea",
+      "sha256": "532189e6235c5f36d5450581e5adc3dc1d1c45614c411207aef33f2df93f3fea"
+    },
+    {
+      "path": "android/build.gradle",
+      "upstream_sha256": "221614566e9463dbfd529144cbab45a8d77f22bb591ee8f9ee7a8b00ba2334db",
+      "sha256": "221614566e9463dbfd529144cbab45a8d77f22bb591ee8f9ee7a8b00ba2334db"
+    },
+    {
+      "path": "android/gradle.properties",
+      "upstream_sha256": "0458daa85e49a2b953af56eb874bc554173e639d3ff435b1f18d3518612e4635",
+      "sha256": "0458daa85e49a2b953af56eb874bc554173e639d3ff435b1f18d3518612e4635"
+    },
+    {
+      "path": "android/settings.gradle",
+      "upstream_sha256": "659b3bdf550c06b3b68e8f11a1481aca0ffea66ff59eee25c463c4d97c1285c2",
+      "sha256": "659b3bdf550c06b3b68e8f11a1481aca0ffea66ff59eee25c463c4d97c1285c2"
+    },
+    {
+      "path": "android/src/main/AndroidManifest.xml",
+      "upstream_sha256": "5cd294a1b20c3f5f5cb8fd12ef19b535879a64a89a76560970041db03855b057",
+      "sha256": "5cd294a1b20c3f5f5cb8fd12ef19b535879a64a89a76560970041db03855b057"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/Constant.java",
+      "upstream_sha256": "6c2239a123474a6baba574f468a0337fda76634f7f5da1373b558420aad6dc60",
+      "sha256": "6c2239a123474a6baba574f468a0337fda76634f7f5da1373b558420aad6dc60"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/Database.java",
+      "upstream_sha256": "b89bf89e17cb8d2db16a948940714056d6e49c5559d943f72c0b124e214d7790",
+      "sha256": "3e39d9b6368e248b94c684881e22501a3a9c0c1b9f68d43f56047eaad1357ce9"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/DatabaseTask.java",
+      "upstream_sha256": "f9b18b9d32eb368932bb8020100c2341cca062c168361c2b23cddcad1f771b5d",
+      "sha256": "f9b18b9d32eb368932bb8020100c2341cca062c168361c2b23cddcad1f771b5d"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/DatabaseWorker.java",
+      "upstream_sha256": "f5cf9ee72f2a3d9363f28c62a36219093623507572cc6aa841af8f1473bbe092",
+      "sha256": "f5cf9ee72f2a3d9363f28c62a36219093623507572cc6aa841af8f1473bbe092"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/DatabaseWorkerPool.java",
+      "upstream_sha256": "abf1851c06ae63fb2793501522fd9aefb5f858540fc9b1c59dc7302709ef4cd8",
+      "sha256": "abf1851c06ae63fb2793501522fd9aefb5f858540fc9b1c59dc7302709ef4cd8"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/LogLevel.java",
+      "upstream_sha256": "ba3f2be70d31df641d08a6689d0019421cdd82fd3df0a2500fae0fc46fae0719",
+      "sha256": "ba3f2be70d31df641d08a6689d0019421cdd82fd3df0a2500fae0fc46fae0719"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/SqfliteCursor.java",
+      "upstream_sha256": "23573af9c0dba2efb29bca8e02c7a56ee6c3c8395a52bf3da4449eaa720fc529",
+      "sha256": "23573af9c0dba2efb29bca8e02c7a56ee6c3c8395a52bf3da4449eaa720fc529"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/SqflitePlugin.java",
+      "upstream_sha256": "9345b01c2e314f989eab2a44c3e72026a27d925f58901e35e3cabce6e0d7d49d",
+      "sha256": "9345b01c2e314f989eab2a44c3e72026a27d925f58901e35e3cabce6e0d7d49d"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/SqlCommand.java",
+      "upstream_sha256": "3c3c1b70bee96de91b041273a7764ab8fd78f1f4d0d3b1c62bb1623b785a044a",
+      "sha256": "3c3c1b70bee96de91b041273a7764ab8fd78f1f4d0d3b1c62bb1623b785a044a"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/Utils.java",
+      "upstream_sha256": "110d6ffcd73d8c9348fea1480c3dae97e513c3294cf0722e52f05a686eaad493",
+      "sha256": "110d6ffcd73d8c9348fea1480c3dae97e513c3294cf0722e52f05a686eaad493"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/dev/Debug.java",
+      "upstream_sha256": "92a1f7f75650c3e397e9d41e0885f4497f6e5dd9d3e46c1f035e9436103a8554",
+      "sha256": "92a1f7f75650c3e397e9d41e0885f4497f6e5dd9d3e46c1f035e9436103a8554"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/BaseOperation.java",
+      "upstream_sha256": "a5b97b0aaced72c0efbdeeb18536df126d0088e73bb4465e8c55fddb0acac67c",
+      "sha256": "a5b97b0aaced72c0efbdeeb18536df126d0088e73bb4465e8c55fddb0acac67c"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/BaseReadOperation.java",
+      "upstream_sha256": "ad555022737146dbf705b28cba1c7fe41291aa4a6a5e8d5c66607f025b02a5ff",
+      "sha256": "ad555022737146dbf705b28cba1c7fe41291aa4a6a5e8d5c66607f025b02a5ff"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/BatchOperation.java",
+      "upstream_sha256": "3e913ebe7c16fa3d59913b758e4e7142a0f6cc012a3e92ce16386a89d692e556",
+      "sha256": "3e913ebe7c16fa3d59913b758e4e7142a0f6cc012a3e92ce16386a89d692e556"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/MethodCallOperation.java",
+      "upstream_sha256": "6a7110c57b8239032e0c5ae7d5d283919986405b6d1979becc974c08e4249d84",
+      "sha256": "6a7110c57b8239032e0c5ae7d5d283919986405b6d1979becc974c08e4249d84"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/Operation.java",
+      "upstream_sha256": "56aca10760790d5085632999063035bb6928e5f818085cda7a3cca17d7704ddc",
+      "sha256": "56aca10760790d5085632999063035bb6928e5f818085cda7a3cca17d7704ddc"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/OperationResult.java",
+      "upstream_sha256": "98f564a2c623b415ea33bcf85ec55b6aed99c9698f8524809bf803a1415d7001",
+      "sha256": "98f564a2c623b415ea33bcf85ec55b6aed99c9698f8524809bf803a1415d7001"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/OperationRunnable.java",
+      "upstream_sha256": "b69be7e5e785cf6f0ad950709171302bc1fb0df20803bb63cb92915f08ad6d28",
+      "sha256": "b69be7e5e785cf6f0ad950709171302bc1fb0df20803bb63cb92915f08ad6d28"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/QueuedOperation.java",
+      "upstream_sha256": "9978fd55f22d0ed7b47e996942929a1317af2154756f686c6d944c17f33b2ef7",
+      "sha256": "9978fd55f22d0ed7b47e996942929a1317af2154756f686c6d944c17f33b2ef7"
+    },
+    {
+      "path": "android/src/main/java/com/tekartik/sqflite/operation/SqlErrorInfo.java",
+      "upstream_sha256": "13fb7efc84d95945eadaad9f3b830ae6aaf302e162b178eac01ccb84b37e906e",
+      "sha256": "13fb7efc84d95945eadaad9f3b830ae6aaf302e162b178eac01ccb84b37e906e"
+    },
+    {
+      "path": "android/src/test/java/com/tekartik/sqflite/ConstantTest.java",
+      "upstream_sha256": "1ea1ad538ded01779cfce5b096c9242162bb5cf0d72087a441bf5ed241aabe4d",
+      "sha256": "1ea1ad538ded01779cfce5b096c9242162bb5cf0d72087a441bf5ed241aabe4d"
+    },
+    {
+      "path": "android/src/test/java/com/tekartik/sqflite/DatabaseWorkerPoolTest.java",
+      "upstream_sha256": "86e81208f0c7c5b0eb2d29085061f19c7eb150c251411210db51a1602a1e41a7",
+      "sha256": "86e81208f0c7c5b0eb2d29085061f19c7eb150c251411210db51a1602a1e41a7"
+    },
+    {
+      "path": "android/src/test/java/com/tekartik/sqflite/LogLevelTest.java",
+      "upstream_sha256": "a45776a40efa86d5aea9aa146c0fc33ef96f86681be6ccafd04987f53d8c4c42",
+      "sha256": "a45776a40efa86d5aea9aa146c0fc33ef96f86681be6ccafd04987f53d8c4c42"
+    },
+    {
+      "path": "android/src/test/java/com/tekartik/sqflite/SqlCommandTest.java",
+      "upstream_sha256": "cc27f8256f7ed5cb3b4e6b285c05cfefe00f5337afb833ee9f17fff88886b79f",
+      "sha256": "cc27f8256f7ed5cb3b4e6b285c05cfefe00f5337afb833ee9f17fff88886b79f"
+    },
+    {
+      "path": "android/src/test/java/com/tekartik/sqflite/UtilsTest.java",
+      "upstream_sha256": "0b95f3aca84bd71a24f179f3f695288b62d240d7a694fa8b0c12ca27df7f5073",
+      "sha256": "0b95f3aca84bd71a24f179f3f695288b62d240d7a694fa8b0c12ca27df7f5073"
+    },
+    {
+      "path": "example/README.md",
+      "upstream_sha256": "1641983407e794ac51f5057a1672730d8a451d82eb8f1911fe321760cba39c66",
+      "sha256": "1641983407e794ac51f5057a1672730d8a451d82eb8f1911fe321760cba39c66"
+    },
+    {
+      "path": "example/analysis_options.yaml",
+      "upstream_sha256": "e1b438ec8b86b58c97d88020a6d25102f574438e8f5da0032346f98380b55739",
+      "sha256": "e1b438ec8b86b58c97d88020a6d25102f574438e8f5da0032346f98380b55739"
+    },
+    {
+      "path": "example/android/app/build.gradle.kts",
+      "upstream_sha256": "0c1467a551178d6750daf6dbc9a55d8d3d1643244f5b6524c76990930b20c064",
+      "sha256": "0c1467a551178d6750daf6dbc9a55d8d3d1643244f5b6524c76990930b20c064"
+    },
+    {
+      "path": "example/android/app/src/androidTest/java/com/tekartik/sqflite/FileUtils.java",
+      "upstream_sha256": "90d8bba2abb472c68a82e3ddc8f1b29bfb343e3fd5015d082a75637564ec917f",
+      "sha256": "90d8bba2abb472c68a82e3ddc8f1b29bfb343e3fd5015d082a75637564ec917f"
+    },
+    {
+      "path": "example/android/app/src/androidTest/java/com/tekartik/sqflite/LocaleUtilsTest.java",
+      "upstream_sha256": "3ae8a92552fb18ae0cd22a4a42afb5ffc68f370257038f1008cc92a9ba2cccda",
+      "sha256": "3ae8a92552fb18ae0cd22a4a42afb5ffc68f370257038f1008cc92a9ba2cccda"
+    },
+    {
+      "path": "example/android/app/src/androidTest/java/com/tekartik/sqflite/RawSqliteTest.java",
+      "upstream_sha256": "adcbc584929deffe631a0d203e587cfb9d3a77c642c2ad64b35d44f07e472581",
+      "sha256": "adcbc584929deffe631a0d203e587cfb9d3a77c642c2ad64b35d44f07e472581"
+    },
+    {
+      "path": "example/android/app/src/androidTest/java/com/tekartik/sqflite/TestSqflitePlugin.java",
+      "upstream_sha256": "1238060c67d09e195afb1a456c76386111c2919aa87f91fa5cdca3ef3e97b1a1",
+      "sha256": "1238060c67d09e195afb1a456c76386111c2919aa87f91fa5cdca3ef3e97b1a1"
+    },
+    {
+      "path": "example/android/app/src/androidTest/java/com/tekartik/sqflite/TestSqflitePluginTest.java",
+      "upstream_sha256": "d9e50a231d320e692b93c5db378bd9cde00586cfcbd2a6aec95acc86990c71ff",
+      "sha256": "d9e50a231d320e692b93c5db378bd9cde00586cfcbd2a6aec95acc86990c71ff"
+    },
+    {
+      "path": "example/android/app/src/debug/AndroidManifest.xml",
+      "upstream_sha256": "4419815b98ac9456301def47304251a50cff4aa6a2986f7723f43b7b5c7acbff",
+      "sha256": "4419815b98ac9456301def47304251a50cff4aa6a2986f7723f43b7b5c7acbff"
+    },
+    {
+      "path": "example/android/app/src/main/AndroidManifest.xml",
+      "upstream_sha256": "7e60b61e34033ebab0b36b032de589fe1830fdbe3a83067efdb8edd600bbce21",
+      "sha256": "7e60b61e34033ebab0b36b032de589fe1830fdbe3a83067efdb8edd600bbce21"
+    },
+    {
+      "path": "example/android/app/src/main/kotlin/com/example/sqflite_example/MainActivity.kt",
+      "upstream_sha256": "bb7a8c2d2172e494ce6f92713257f92fcf4346c0b8d91042ca1d07673a9fa4f5",
+      "sha256": "bb7a8c2d2172e494ce6f92713257f92fcf4346c0b8d91042ca1d07673a9fa4f5"
+    },
+    {
+      "path": "example/android/app/src/main/res/drawable-v21/launch_background.xml",
+      "upstream_sha256": "7ca6d5cec2169c5a98661a119db23a6f3399c8fef2256ff04f3a642831282478",
+      "sha256": "7ca6d5cec2169c5a98661a119db23a6f3399c8fef2256ff04f3a642831282478"
+    },
+    {
+      "path": "example/android/app/src/main/res/drawable/launch_background.xml",
+      "upstream_sha256": "94433756fe10005ddd6fc55cc5c0b1e9f3c10b66a08ceac795ece6713d34e28a",
+      "sha256": "94433756fe10005ddd6fc55cc5c0b1e9f3c10b66a08ceac795ece6713d34e28a"
+    },
+    {
+      "path": "example/android/app/src/main/res/values-night/styles.xml",
+      "upstream_sha256": "8c5bad5152f217e837519f9c15211d19f39bd45f5f67faf6dd81cb4b299e518f",
+      "sha256": "8c5bad5152f217e837519f9c15211d19f39bd45f5f67faf6dd81cb4b299e518f"
+    },
+    {
+      "path": "example/android/app/src/main/res/values/styles.xml",
+      "upstream_sha256": "937d7c82f539c72eb94fd3a3773f29b3d3fef1997213c92cb632298cedf4bda9",
+      "sha256": "937d7c82f539c72eb94fd3a3773f29b3d3fef1997213c92cb632298cedf4bda9"
+    },
+    {
+      "path": "example/android/app/src/profile/AndroidManifest.xml",
+      "upstream_sha256": "30b0832ed8b92dfbd6ae2abfa939ccf26333d37600056b1572bd4a397a18a74b",
+      "sha256": "30b0832ed8b92dfbd6ae2abfa939ccf26333d37600056b1572bd4a397a18a74b"
+    },
+    {
+      "path": "example/android/build.gradle.kts",
+      "upstream_sha256": "c7c0aa7ca0903a144de20f2cb3efc5f0221b5221f985c846bf28d51d03cabb05",
+      "sha256": "c7c0aa7ca0903a144de20f2cb3efc5f0221b5221f985c846bf28d51d03cabb05"
+    },
+    {
+      "path": "example/android/gradle.properties",
+      "upstream_sha256": "0f82b18017fba6bb5ce3aa4b2d1a00c9382fc8aae7b1d9326e44b18abd66d80b",
+      "sha256": "0f82b18017fba6bb5ce3aa4b2d1a00c9382fc8aae7b1d9326e44b18abd66d80b"
+    },
+    {
+      "path": "example/android/gradle/wrapper/gradle-wrapper.properties",
+      "upstream_sha256": "b690d26223576fe4e63889fad9a00df81945cb870b9476cc5a563152a1a88a74",
+      "sha256": "b690d26223576fe4e63889fad9a00df81945cb870b9476cc5a563152a1a88a74"
+    },
+    {
+      "path": "example/android/settings.gradle.kts",
+      "upstream_sha256": "016759283e88ade6eba92910583feeef88b962839b957aa414296afd2952d122",
+      "sha256": "016759283e88ade6eba92910583feeef88b962839b957aa414296afd2952d122"
+    },
+    {
+      "path": "example/lib/main.dart",
+      "upstream_sha256": "1eec9eba40bbd0340488d85d34cc69a1860e2058b25f65689b1f92ea2e7fe8a2",
+      "sha256": "1eec9eba40bbd0340488d85d34cc69a1860e2058b25f65689b1f92ea2e7fe8a2"
+    },
+    {
+      "path": "example/pubspec.yaml",
+      "upstream_sha256": "d40f95e563b807c6992b5c8566681f42d11454ea522c5287a466b53ae5452476",
+      "sha256": "d40f95e563b807c6992b5c8566681f42d11454ea522c5287a466b53ae5452476"
+    },
+    {
+      "path": "example/test/widget_test.dart",
+      "upstream_sha256": "3ee8f94c9088dc2b89f08985f9625f7ff4120321a9f06386743d531ca0ffb9c7",
+      "sha256": "3ee8f94c9088dc2b89f08985f9625f7ff4120321a9f06386743d531ca0ffb9c7"
+    },
+    {
+      "path": "example/test_driver/integration_test.dart",
+      "upstream_sha256": "6d88b6bdd22960ed9cac1ed0cce58104a32915afa1dc6630f31f0e43eabd8b6e",
+      "sha256": "6d88b6bdd22960ed9cac1ed0cce58104a32915afa1dc6630f31f0e43eabd8b6e"
+    },
+    {
+      "path": "example/tool/run_android_native_test.dart",
+      "upstream_sha256": "1f83037c3fb0ab74aeae7ba01874c085a7f2d3de27e9e6d07f02376ce6e157de",
+      "sha256": "1f83037c3fb0ab74aeae7ba01874c085a7f2d3de27e9e6d07f02376ce6e157de"
+    },
+    {
+      "path": "lib/sqflite_android.dart",
+      "upstream_sha256": "2d703c93fc5d610dab4cb573953873c63bb3b31e99f5725d968767705f4e33a6",
+      "sha256": "2d703c93fc5d610dab4cb573953873c63bb3b31e99f5725d968767705f4e33a6"
+    },
+    {
+      "path": "pubspec.yaml",
+      "upstream_sha256": "867356a15e087ea94b0980fe9c7199a31c89a852773d88486ef479452198031d",
+      "sha256": "867356a15e087ea94b0980fe9c7199a31c89a852773d88486ef479452198031d"
+    },
+    {
+      "path": "skills/sqflite-android-setup/SKILL.md",
+      "upstream_sha256": "90aa62be93b9c5de4a0bba43197b3c0857d7a16a6d6c3d48d95339a4bffb6632",
+      "sha256": "90aa62be93b9c5de4a0bba43197b3c0857d7a16a6d6c3d48d95339a4bffb6632"
+    }
+  ]
+}
