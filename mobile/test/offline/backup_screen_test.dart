@@ -126,6 +126,36 @@ class ScreenEvidence implements BackupEvidence {
 }
 
 void main() {
+  testWidgets(
+    'backup route retains its coordinator across theme and layout changes',
+    (tester) async {
+      await tester.pumpWidget(
+        OfflineApp(repository: BlockedStartupRepository()),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Backup & restore'));
+      await tester.tap(find.text('Backup & restore'));
+      await tester.pumpAndSettle();
+      final original = tester
+          .widget<OfflineBackupScreen>(find.byType(OfflineBackupScreen))
+          .store;
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<OfflineBackupScreen>(find.byType(OfflineBackupScreen))
+            .store,
+        same(original),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final action in ['Create Backup', 'Restore Backup']) {
     for (final lifecycle in [
       AppLifecycleState.inactive,

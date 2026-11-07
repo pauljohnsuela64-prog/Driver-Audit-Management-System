@@ -644,14 +644,15 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
       name.text = widget.profile?.name ?? '';
     }
     if (!mounted) return;
+    final backupStore = BackupStore(
+      widget.repository as OfflineBackupRepository,
+      evidence: NativeBackupEvidence(),
+    );
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
         builder: (_) => OfflineBackupScreen(
-          store: BackupStore(
-            widget.repository as OfflineBackupRepository,
-            evidence: NativeBackupEvidence(),
-          ),
+          store: backupStore,
           onRestored: widget.onRestored,
         ),
       ),
