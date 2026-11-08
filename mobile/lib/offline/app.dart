@@ -15,7 +15,7 @@ import 'backup_evidence.dart';
 import 'backup_screen.dart';
 
 const offlineDevelopmentWarning =
-    'Development: fictional data only. Back up regularly and keep a copy off this device. Uninstalling or clearing app data can permanently remove local audits.';
+    'Back up regularly and keep a copy off this device. Uninstalling or clearing app data can permanently remove local audits.';
 
 /// Injected repositories belong to the caller; production bootstrap owns shutdown.
 class OfflineApp extends StatefulWidget {
@@ -27,6 +27,7 @@ class OfflineApp extends StatefulWidget {
 
 class _OfflineAppState extends State<OfflineApp> {
   int restorationEpoch = 0;
+  bool entered = false;
   String? restoreNotice;
   void restored(String warning) {
     if (mounted) {
@@ -48,6 +49,8 @@ class _OfflineAppState extends State<OfflineApp> {
       repository: widget.repository,
       onRestored: restored,
       restoreNotice: restoreNotice,
+      entered: entered,
+      onEntered: () => entered = true,
     ),
   );
 }
@@ -56,10 +59,14 @@ class _OfflineHome extends StatefulWidget {
   const _OfflineHome({
     required this.repository,
     required this.onRestored,
+    required this.entered,
+    required this.onEntered,
     this.restoreNotice,
   });
   final OfflineRepository repository;
   final ValueChanged<String> onRestored;
+  final bool entered;
+  final VoidCallback onEntered;
   final String? restoreNotice;
   @override
   State<_OfflineHome> createState() => _OfflineHomeState();
@@ -67,6 +74,7 @@ class _OfflineHome extends StatefulWidget {
 
 class _OfflineHomeState extends State<_OfflineHome> {
   LocalProfile? profile;
+  bool welcomed = false;
   bool starting = true;
   bool loading = false;
   String? startupError;
@@ -85,6 +93,7 @@ class _OfflineHomeState extends State<_OfflineHome> {
   @override
   void initState() {
     super.initState();
+    welcomed = widget.entered;
     success = widget.restoreNotice;
     final repository = widget.repository;
     if (success == null && repository is OfflineRecoveryStatus) {
@@ -107,6 +116,7 @@ class _OfflineHomeState extends State<_OfflineHome> {
       final local = await widget.repository.profile();
       if (!mounted) return;
       setState(() => profile = local);
+      if (welcomed && local != null) await load();
     } catch (failure) {
       if (mounted) {
         setState(
@@ -119,7 +129,6 @@ class _OfflineHomeState extends State<_OfflineHome> {
     } finally {
       if (mounted) setState(() => starting = false);
     }
-    if (mounted && startupError == null && profile != null) await load();
   }
 
   Future<void> load({bool resetPage = false, AuditFilter? request}) async {
@@ -346,14 +355,20 @@ class _OfflineHomeState extends State<_OfflineHome> {
         ),
       );
     }
-    if (profile == null) {
+    if (!welcomed || profile == null) {
       return _LocalProfileScreen(
         repository: widget.repository,
+        profile: profile,
+        welcome: true,
         onRestored: widget.onRestored,
         restoreNotice: success,
         onSetup: (saved) async {
           if (!mounted) return;
-          setState(() => profile = saved);
+          widget.onEntered();
+          setState(() {
+            profile = saved;
+            welcomed = true;
+          });
           await load();
         },
       );
@@ -384,7 +399,7 @@ class _OfflineHomeState extends State<_OfflineHome> {
               children: [
                 const Text(offlineDevelopmentWarning),
                 const SizedBox(height: 16),
-                Text('Local profile: ${profile!.name} (self-declared)'),
+                Text('Auditor: ${profile!.name}'),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 16,
@@ -601,12 +616,14 @@ class _LocalProfileScreen extends StatefulWidget {
     this.onSetup,
     required this.onRestored,
     this.restoreNotice,
+    this.welcome = false,
   });
   final OfflineRepository repository;
   final LocalProfile? profile;
   final ValueChanged<LocalProfile>? onSetup;
   final ValueChanged<String> onRestored;
   final String? restoreNotice;
+  final bool welcome;
   @override
   State<_LocalProfileScreen> createState() => _LocalProfileScreenState();
 }
@@ -673,7 +690,10 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
     });
     LocalProfile? saved;
     try {
-      saved = await widget.repository.saveProfile(name.text);
+      final normalized = offlineText(name.text, 200);
+      saved = widget.profile?.name == normalized
+          ? widget.profile
+          : await widget.repository.saveProfile(normalized);
     } catch (failure) {
       if (mounted) {
         setState(
@@ -699,9 +719,7 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
     canPop: !busy,
     child: Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.profile == null ? 'Set up local profile' : 'Local profile',
-        ),
+        title: Text(widget.welcome ? 'BHLI Audit' : 'Local profile'),
         automaticallyImplyLeading: !busy,
       ),
       body: SafeArea(
@@ -713,7 +731,25 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(offlineDevelopmentWarning),
+                  if (widget.welcome) ...[
+                    Image.asset(
+                      'assets/bhli.png',
+                      width: 72,
+                      height: 72,
+                      semanticLabel: 'BHLI Audit logo',
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Welcome to BHLI Audit',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Enter your auditor name to continue. No password required.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   if (widget.restoreNotice != null)
                     StatusMessage(widget.restoreNotice!),
                   if (widget.repository is OfflineBackupRepository)
@@ -722,16 +758,17 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
                       child: const Text('Backup & restore'),
                     ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Your name is self-declared and recorded with new audits. Changing it affects future creations only; original auditor names stay unchanged.',
-                  ),
+                  if (!widget.welcome)
+                    const Text(
+                      'Your name is self-declared and recorded with new audits. Changing it affects future creations only; original auditor names stay unchanged.',
+                    ),
                   const SizedBox(height: 24),
                   TextFormField(
                     key: const ValueKey('offline_profile_name'),
                     controller: name,
                     enabled: !busy,
                     decoration: const InputDecoration(
-                      labelText: 'Your name',
+                      labelText: 'Auditor name',
                       errorMaxLines: 3,
                     ),
                     validator: (value) {
@@ -758,8 +795,8 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
                     child: Text(
                       busy
                           ? 'Saving…'
-                          : widget.profile == null
-                          ? 'Start offline'
+                          : widget.welcome
+                          ? 'Continue'
                           : 'Save',
                     ),
                   ),

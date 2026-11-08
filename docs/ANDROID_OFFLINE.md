@@ -11,7 +11,7 @@ Development build only: use fictional records. [Manual transfer](OFFLINE_TRANSFE
 
 ## Behavior and attribution
 
-First launch opens local profile setup and an empty SQLite database: zero audits and zero history. There are no seeded stations/drivers, accounts, default credentials, API settings or server startup.
+Every launch opens the BHLI Audit welcome screen with an Auditor name field and Continue. The saved name is prefilled on returning launches; confirmation opens the existing audit workspace. First use has an empty SQLite database: zero audits and zero history. There are no seeded stations/drivers, accounts, default credentials, API settings or server startup.
 
 Enter a locally declared auditor name. It is not authenticated or independently verified. Every new audit captures that name and profile UUID; later profile-name changes affect subsequent creations and the actor of later changes, never original Audited By snapshots. The operator can edit any active local record. Archiving preserves the record/history; archived records cannot be edited, restored or physically deleted by this phase.
 

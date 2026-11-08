@@ -6,36 +6,44 @@ from desktop.offline.models import OfflineError, normalize_name
 from desktop.theme import color, font
 
 
-WARNING = ('Development edition · Use fictional data only. This device holds the only copy. '
-           'Losing this Windows profile or its database permanently loses the records. '
-           'Use complete encrypted backups and keep their passphrase separately. Reports are unencrypted.')
-
-
 class ProfileView(ctk.CTkScrollableFrame):
-    def __init__(self, parent, app):
+    def __init__(self, parent, app, welcome=False):
         super().__init__(parent, fg_color='transparent')
         self.app = app
+        self.welcome = welcome
         self.pending = False
         self.columnconfigure(0, weight=1)
-        label(self, 'Local auditor profile', 28).grid(row=0, column=0, sticky='w', pady=(0, 12))
-        label(self, 'Your name is locally declared. It is not verified authentication.',
-              muted=True, wraplength=580, justify='left').grid(row=1, column=0, sticky='w', pady=(0, 12))
-        label(self, WARNING, wraplength=580, justify='left').grid(row=2, column=0, sticky='ew', pady=(0, 24))
-        panel = ctk.CTkFrame(self, fg_color=color('surface'), corner_radius=12)
-        panel.grid(row=3, column=0, sticky='ew')
+        if welcome:
+            from PIL import Image
+            from desktop.resources import resource_path
+            with Image.open(resource_path('bhli.ico')) as image:
+                self.logo = ctk.CTkImage(image.copy(), size=(64, 64))
+            ctk.CTkLabel(self, text='', image=self.logo).grid(row=0, column=0, pady=(24, 12))
+        label(self, 'Welcome to BHLI Audit' if welcome else 'Local auditor profile', 28).grid(
+            row=1, column=0, pady=(0, 12))
+        label(self, 'Enter your auditor name to continue. No password required.' if welcome else
+              'This name is recorded with new audits. Original auditor names stay unchanged.',
+              muted=True, wraplength=580, justify='left').grid(row=2, column=0, pady=(0, 12))
+        # Keep a visible label and keyboard submission; this is not account authentication.
+        panel = ctk.CTkFrame(self, fg_color=color('surface'), corner_radius=12, width=520)
+        panel.grid(row=3, column=0, sticky='' if welcome else 'ew')
         panel.columnconfigure(0, weight=1)
         label(panel, 'Auditor name *').grid(row=0, column=0, sticky='w', padx=24, pady=(24, 4))
         self.name = entry(panel)
+        if welcome:
+            self.name.configure(width=440)
         self.name.grid(row=1, column=0, sticky='ew', padx=24)
         self.name.insert(0, app.profile.name if app.profile else '')
         self.name.bind('<Return>', lambda event: self.save())
+        self.name.focus_set()
         label(panel, 'Maximum 200 characters. Existing auditor names are preserved.',
               12, True, wraplength=500).grid(row=2, column=0, sticky='w', padx=24, pady=(4, 12))
         self.notice = Notice(panel)
         self.notice.grid(row=3, column=0, sticky='ew', padx=24)
-        self.save_button = button(panel, 'Save local profile', self.save, True, width=180)
+        self.save_button = button(panel, 'Continue' if welcome else 'Save local profile', self.save, True, width=180)
         self.save_button.grid(row=4, column=0, sticky='w', padx=24, pady=24)
-        label(self, 'Backups replace the complete Windows installation state. Transfer audits copies selected '
+        if not welcome:
+            label(self, 'Backups replace the complete Windows installation state. Transfer audits copies selected '
               'audits between platforms. Save any edited profile name before leaving this screen.',
               muted=True, wraplength=580, justify='left').grid(row=4, column=0, sticky='ew', pady=(20, 8))
         button(self, 'Backup & restore…', app.open_backup).grid(
@@ -60,12 +68,14 @@ class ProfileView(ctk.CTkScrollableFrame):
                 return
             if error:
                 self.notice.show(str(error) + ' Retry saving the profile.')
-                self.save_button.configure(state='normal', text='Save local profile')
+                self.save_button.configure(state='normal', text='Continue' if self.welcome else 'Save local profile')
                 self.name.configure(state='normal')
                 return
             first = app.profile is None
             app.profile = profile
-            app.rebuild_shell('Dashboard' if first else 'Local profile')
+            if self.welcome:
+                app._entered = True
+            app.rebuild_shell('Dashboard' if first or self.welcome else 'Local profile')
             app.shell.notice.show('Local profile saved. Historical auditor names are unchanged.', False)
         app.mutate(lambda repo: repo.save_profile(name), completed)
 

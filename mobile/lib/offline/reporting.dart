@@ -252,7 +252,7 @@ Uint8List _encode(OfflineReportSnapshot s) {
   }
 
   add(
-    'BHLI Audit Offline - readable text report\nOffline development edition - fictional data only\nUnencrypted report: protect this file.\nPoint-in-time local snapshot\nGenerated UTC: ${DateTime.now().toUtc().toIso8601String()}\nSnapshot UTC: ${s.snapshotUtc.toIso8601String()}\nApplied filters:\n${reportFilterDescription(s.filter)}\nAll-status matching total: ${s.total}\nActive: ${s.active}\nArchived: ${s.archived}\nDisplayed scope: ${s.displayed}\nInclude archived changes the displayed result set. Active + archived equals all-status total.\nStations (displayed scope):\n',
+    'BHLI Audit Offline - readable text report\nUnencrypted report: protect this file.\nPoint-in-time local snapshot\nGenerated UTC: ${DateTime.now().toUtc().toIso8601String()}\nSnapshot UTC: ${s.snapshotUtc.toIso8601String()}\nApplied filters:\n${reportFilterDescription(s.filter)}\nAll-status matching total: ${s.total}\nActive: ${s.active}\nArchived: ${s.archived}\nDisplayed scope: ${s.displayed}\nInclude archived changes the displayed result set. Active + archived equals all-status total.\nStations (displayed scope):\n',
   );
   for (final station in s.stations) {
     field(

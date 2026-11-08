@@ -255,7 +255,7 @@ class _TransferState extends State<OfflineTransferScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Transfer includes complete available history and archived records. Use fictional data only.',
+                  'Transfer includes complete available history and archived records. Protect files you share.',
                 ),
                 const SizedBox(height: 16),
                 if (widget.importing) ...[

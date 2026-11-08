@@ -130,20 +130,91 @@ void main() {
     if (profile) await db.saveProfile('Fictional Auditor');
     await tester.pumpWidget(OfflineApp(repository: repository));
     await tester.pumpAndSettle();
+    if (find.text('Continue').evaluate().isNotEmpty &&
+        await db.profile() != null) {
+      await tap(tester, 'Continue');
+    }
   }
 
   // Catches bypassed profile validation and accidental initial record seeding.
+  for (final brightness in Brightness.values) {
+    offlineTestWidgets(
+      'welcome remains usable at 320dp and 200 percent $brightness',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        await launch(tester, profile: false);
+        await enter(tester, 'offline_profile_name', 'Fictional Auditor 日本語');
+        await tap(tester, 'Continue');
+        expect(find.text('New Audit'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  offlineTestWidgets(
+    'returning launch confirms name without replacing identity or history',
+    (tester) async {
+      final original = await db.saveProfile('Fictional Original');
+      final audit = await db.create(
+        'c0852638-c5f7-421f-8997-cc5672aac640',
+        values('Fictional Existing'),
+      );
+      await tester.pumpWidget(OfflineApp(repository: repository));
+      await tester.pumpAndSettle();
+      expect(find.text('Welcome to BHLI Audit'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('New Audit'), findsNothing);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('offline_profile_name')),
+            )
+            .controller!
+            .text,
+        original.name,
+      );
+      await enter(tester, 'offline_profile_name', 'Fictional Renamed');
+      await tap(tester, 'Continue');
+      expect((await db.profile())!.id, original.id);
+      expect((await db.read(audit.id)).auditedByName, original.name);
+      expect((await db.history(audit.id)).length, 1);
+      expect(find.text('New Audit'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(OfflineApp(repository: repository));
+      await tester.pumpAndSettle();
+      expect(find.text('Continue'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('offline_profile_name')),
+            )
+            .controller!
+            .text,
+        'Fictional Renamed',
+      );
+      await tap(tester, 'Continue');
+      expect(find.text('Fictional Existing'), findsOneWidget);
+    },
+  );
+
   offlineTestWidgets(
     'fresh setup rejects blank and overlong names before empty list',
     (tester) async {
       await launch(tester, profile: false);
-      await tap(tester, 'Start offline');
+      await tap(tester, 'Continue');
       expect(await db.profile(), isNull);
       await enter(tester, 'offline_profile_name', 'a' * 201);
-      await tap(tester, 'Start offline');
+      await tap(tester, 'Continue');
       expect(await db.profile(), isNull);
       await enter(tester, 'offline_profile_name', 'a' * 200);
-      await tap(tester, 'Start offline');
+      await tap(tester, 'Continue');
       expect((await db.profile())!.name.length, 200);
       expect(find.text('No audits yet'), findsOneWidget);
       expect(find.textContaining('Back up regularly'), findsWidgets);
@@ -489,6 +560,7 @@ void main() {
       expect(find.textContaining('/database/path'), findsNothing);
       repository.failProfile = false;
       await tap(tester, 'Retry');
+      await tap(tester, 'Continue');
       final record = await db.create(newUuid(), values('Fictional Driver'));
       await tap(tester, 'Refresh');
       repository.failRead = true;

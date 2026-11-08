@@ -461,7 +461,7 @@ void main() {
           await tester.pump();
           if (find.text('Backup & restore').evaluate().isNotEmpty) break;
         }
-        expect(find.text('Set up local profile'), findsOneWidget);
+        expect(find.text('Welcome to BHLI Audit'), findsOneWidget);
         expect(
           find.textContaining('Retain startup recovery evidence.'),
           findsOneWidget,
@@ -488,10 +488,10 @@ void main() {
             () => Future<void>.delayed(const Duration(milliseconds: 20)),
           );
           await tester.pump();
-          if (find.text('Set up local profile').evaluate().isNotEmpty) break;
+          if (find.text('Welcome to BHLI Audit').evaluate().isNotEmpty) break;
         }
         expect(find.byType(OfflineBackupScreen), findsNothing);
-        expect(find.text('Set up local profile'), findsOneWidget);
+        expect(find.text('Welcome to BHLI Audit'), findsOneWidget);
         expect(
           find.textContaining('Retain encrypted evidence.'),
           findsOneWidget,
