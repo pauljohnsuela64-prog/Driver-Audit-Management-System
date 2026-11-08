@@ -5,8 +5,17 @@ from desktop.version import APP_ID
 
 
 def resource_path(name):
-    if name not in ('bhli.ico',):raise ValueError('Unknown application resource')
+    if name not in ('bhli.ico', 'basic_logo.jpg'):raise ValueError('Unknown application resource')
     return Path(__file__).resolve().parent/'assets'/name
+
+
+def company_logo(width):
+    """Fit the approved original artwork without cropping, recoloring or distortion."""
+    import customtkinter as ctk
+    from PIL import Image
+    with Image.open(resource_path('basic_logo.jpg')) as image:
+        size = (width, width * image.height / image.width)
+        return ctk.CTkImage(light_image=image.copy(), dark_image=image.copy(), size=size)
 
 
 def set_app_identity():

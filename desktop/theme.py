@@ -1,5 +1,6 @@
 """Approved semantic tokens and local monochrome navigation artwork."""
 import customtkinter as ctk
+import tkinter as tk
 from PIL import Image, ImageDraw
 
 COLORS = {
@@ -10,15 +11,25 @@ COLORS = {
     'on_primary': ('#FFFFFF', '#0B1220'), 'hover': ('#115E59', '#5EEAD4'),
     'border': ('#64748B', '#71839B'), 'focus': ('#0F766E', '#5EEAD4'),
     'error': ('#B91C1C', '#FCA5A5'), 'selected': ('#134E4A', '#134E4A'),
+    'nav_accent': ('#5EEAD4', '#5EEAD4'),
 }
+
+OFFLINE_COLORS = dict(COLORS, **{
+    'bg': ('#F0F6FC', '#0B1220'), 'raised': ('#F5F9FD', '#17253B'),
+    'primary': ('#315E8E', '#A8CFF0'), 'on_primary': ('#FFFFFF', '#0C2440'),
+    'hover': ('#254B73', '#C3DDF4'), 'focus': ('#315E8E', '#A8CFF0'),
+    'selected': ('#20456D', '#183C62'), 'nav_accent': ('#A8CFF0', '#A8CFF0'),
+})
 
 
 def color(name):
-    return COLORS[name]
+    # Each desktop process owns one Tk application. Do not recolor the online entry.
+    palette = OFFLINE_COLORS if getattr(tk._default_root, 'offline', False) else COLORS
+    return palette[name]
 
 
 def resolved(name):
-    return COLORS[name][ctk.get_appearance_mode() == 'Dark']
+    return color(name)[ctk.get_appearance_mode() == 'Dark']
 
 
 def font(size=14, weight='normal'):

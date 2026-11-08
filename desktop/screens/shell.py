@@ -15,7 +15,12 @@ class Shell(ctk.CTkFrame):
         self.sidebar.grid_propagate(False)
         self.sidebar.columnconfigure(0,weight=1)
         self.sidebar.rowconfigure(8,weight=1)
-        self.brand = ctk.CTkLabel(self.sidebar,text='BHLI  /  AUDIT',text_color='#5EEAD4',font=font(18,'bold'))
+        self.brand_image = None
+        if local_profile is not None:
+            from desktop.resources import company_logo
+            self.brand_image = company_logo(184)
+        self.brand = ctk.CTkLabel(self.sidebar,text='' if self.brand_image else 'BHLI  /  AUDIT',
+                                image=self.brand_image,text_color=color('nav_accent'),font=font(18,'bold'))
         self.brand.grid(row=0,column=0,padx=16,pady=(24,16))
         self.toggle = button(self.sidebar,'Collapse navigation',self.collapse,width=200)
         self.toggle.grid(row=1,column=0,padx=12,pady=(0,24),sticky='ew')
@@ -73,7 +78,8 @@ class Shell(ctk.CTkFrame):
     def set_collapsed(self,value):
         self.collapsed=value
         self.sidebar.configure(width=64 if value else 232)
-        self.brand.configure(text='BH' if value else 'BHLI  /  AUDIT')
+        self.brand.configure(text='BH' if value else '' if self.brand_image else 'BHLI  /  AUDIT',
+                             image=None if value else self.brand_image)
         self.toggle.configure(text='›' if value else 'Collapse navigation',width=40 if value else 200)
         for name,b in self.nav_buttons.items():
             b.configure(text='' if value else name,width=40 if value else 200,anchor='center' if value else 'w')
@@ -88,7 +94,7 @@ class Shell(ctk.CTkFrame):
         for destination,b in self.nav_buttons.items():
             selected = destination == name or (name=='Audit Details' and destination=='Driver Audits')
             b.configure(fg_color=color('selected') if selected else color('nav'),
-                        border_color='#5EEAD4' if selected else color('nav'))
+                        border_color=color('nav_accent') if selected else color('nav'))
         self.menu.grid_remove()
 
     def toggle_menu(self):
