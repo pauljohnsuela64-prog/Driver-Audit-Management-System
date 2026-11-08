@@ -8,6 +8,10 @@ class Shell(ctk.CTkFrame):
     def __init__(self,parent,app,local_profile=None,destinations=None):
         super().__init__(parent,fg_color=color('bg'),corner_radius=0)
         self.app,self.collapsed = app,False
+        self.offline = local_profile is not None
+        self._compact_band = None
+        self._resize_job = None
+        self._restored_state = getattr(app, "_sidebar_collapsed", None) if self.offline else None
         self.columnconfigure(1,weight=1)
         self.rowconfigure(0,weight=1)
         self.sidebar = ctk.CTkFrame(self,width=232,fg_color=color('nav'),corner_radius=0)
@@ -24,7 +28,7 @@ class Shell(ctk.CTkFrame):
         self.brand.grid(row=0,column=0,padx=16,pady=(24,16))
         self.toggle = button(self.sidebar,'Collapse navigation',self.collapse,width=200)
         self.toggle.grid(row=1,column=0,padx=12,pady=(0,24),sticky='ew')
-        self.nav_buttons,self.images = {},[]
+        self.nav_buttons,self.images,self.tips = {},[],{}
         for row,destination in enumerate(destinations if destinations is not None else app.session.destinations,2):
             image=icon(self,'My Account' if destination=='Local profile' else destination)
             self.images.append(image)
@@ -33,7 +37,9 @@ class Shell(ctk.CTkFrame):
             b.configure(fg_color=color('nav'),text_color='#F1F5F9',hover_color='#1E293B',border_color=color('nav'))
             b.grid(row=row,column=0,padx=12,pady=4,sticky='ew')
             self.nav_buttons[destination]=b
-            Tip(b,destination)
+            self.tips[destination] = Tip(b, destination, delay=350 if self.offline else 0,
+                                         enabled=(lambda: self.collapsed) if self.offline else None,
+                                         outside=self.offline)
         self.footer = ctk.CTkLabel(self.sidebar,text='',font=font(11),text_color='#B8C5D6',wraplength=190)
         self.footer.grid(row=9,column=0,padx=12,pady=20)
         main=ctk.CTkFrame(self,fg_color='transparent',corner_radius=0)
@@ -71,11 +77,21 @@ class Shell(ctk.CTkFrame):
         self.notice=Notice(main)
         self.notice.grid(row=3,column=0,sticky='ew',padx=24,pady=(0,12))
         tk.Misc.bind(self,'<Configure>',self.resize,add='+')
+        if self._restored_state is not None:
+            self.set_collapsed(self._restored_state)
 
     def collapse(self):
+        if self.offline:
+            self.app._sidebar_manual = True
         self.set_collapsed(not self.collapsed)
 
     def set_collapsed(self,value):
+        for tip in self.tips.values():
+            tip.hide()
+        if self.offline:
+            self.app._sidebar_collapsed = bool(value)
+        if self.collapsed == value:
+            return
         self.collapsed=value
         self.sidebar.configure(width=64 if value else 232)
         self.brand.configure(text='BH' if value else '' if self.brand_image else 'BHLI  /  AUDIT',
@@ -90,13 +106,30 @@ class Shell(ctk.CTkFrame):
         self.footer.configure(text='')
 
     def resize(self,event):
-        if event.widget is self and event.width/self._get_widget_scaling() < 1050 and not self.collapsed:
+        if event.widget is not self:
+            return
+        if self.offline:
+            if self._resize_job is not None:
+                self.after_cancel(self._resize_job)
+            self._resize_job = self.after_idle(self._settle_resize)
+        elif event.width/self._get_widget_scaling() < 1050 and not self.collapsed:
+            self.set_collapsed(True)
+
+    def _settle_resize(self):
+        self._resize_job = None
+        compact = self.winfo_width()/self._get_widget_scaling() < 1050
+        previous = self._compact_band
+        self._compact_band = compact
+        if (not getattr(self.app, "_sidebar_manual", False) and compact
+                and (previous is False or previous is None and self._restored_state is None)):
             self.set_collapsed(True)
 
     def select(self,name):
+        for tip in self.tips.values():
+            tip.hide()
         self.heading.configure(text=name)
         for destination,b in self.nav_buttons.items():
-            selected = destination == name or (name=='Audit Details' and destination=='Driver Audits')
+            selected = destination == name or (name in (('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit') if self.offline else ('Audit Details',)) and destination=='Driver Audits')
             b.configure(fg_color=color('selected') if selected else color('nav'),
                         border_color=color('nav_accent') if selected else color('nav'))
         self.menu.grid_remove()
