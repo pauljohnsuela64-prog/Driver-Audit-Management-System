@@ -169,6 +169,8 @@ def test_native_transfer_view_export_preview_confirmation_and_import(tmp_path,mo
             time.sleep(.01)
         assert predicate()
     try:
+        pump(lambda: hasattr(app.screen, 'name'))
+        app.screen.save()
         pump(lambda: app.shell is not None)
         app.navigate('Driver Audits')
         app.screen.transfer_button.invoke()

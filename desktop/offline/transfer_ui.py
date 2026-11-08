@@ -7,7 +7,7 @@ from desktop.offline.models import valid_date
 from desktop.offline.transfer_controller import TransferController, confirm_import
 from desktop.theme import color
 
-WARNING = ('Use fictional data only. Transfer files are plaintext and names are locally declared. '
+WARNING = ('Transfer files are plaintext and names are locally declared. '
            'Transfer copies selected audits and history; it is not backup/restore or synchronization. '
            'Existing identities are never merged. Archived audits are included.')
 

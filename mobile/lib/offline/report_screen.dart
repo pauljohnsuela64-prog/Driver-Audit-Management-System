@@ -256,7 +256,7 @@ class _ReportState extends State<OfflineReportScreen> {
                 child: const Text('Cancel report'),
               ),
             const Text(
-              'Offline development edition. The saved UTF-8 text report is unencrypted. After saving, share it through Android Files if needed.',
+              'The saved UTF-8 text report is unencrypted. After saving, share it through Android Files if needed.',
             ),
           ],
         ),

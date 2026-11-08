@@ -174,6 +174,7 @@ void main() {
         await tester.pumpAndSettle();
       }
 
+      await tap('Continue');
       await tap('Filters');
       await tester.enterText(
         find.byKey(const ValueKey('offline_filter_driver')),
@@ -257,6 +258,7 @@ void main() {
         false,
       );
       await tester.ensureVisible(find.text('Cancel report'));
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('Cancel report'));
       await tester.pump();
       expect(docs.canceled, true);

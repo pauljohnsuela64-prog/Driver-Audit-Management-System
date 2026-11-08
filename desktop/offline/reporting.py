@@ -274,7 +274,7 @@ def _write_workbook(snapshot, sink, work, budget, progress):
                    ('Snapshot UTC', snapshot.snapshot_utc), ('Filters and ordering', filter_summary(snapshot)),
                    ('Records exported', str(snapshot.total)), ('Active', str(snapshot.active)),
                    ('Archived', str(snapshot.archived)), ('Consistency', 'point-in-time local snapshot'),
-                   ('Edition', 'Offline development edition; fictional data only'),
+                   ('Edition', 'BHLI Audit Offline'),
                    ('Security', 'Unencrypted local report. Store in an appropriately protected location.'),
                    ('Result', 'No matching audits (zero records).' if not snapshot.total else 'Complete matching result.'))
         for index, (name, value) in enumerate(details):

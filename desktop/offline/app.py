@@ -128,12 +128,12 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         profile, recovery = profile
         self.recovery_blocked = False
         self.profile = profile
-        if profile is None:
-            from desktop.offline.views import ProfileView
-            self.destination = 'Local profile'
-            self._replace_root_view(ProfileView(self, self))
-        else:
+        from desktop.offline.views import ProfileView
+        if profile is not None and getattr(self, '_entered', False):
             self.rebuild_shell('Dashboard')
+        else:
+            self.destination = 'Local profile'
+            self._replace_root_view(ProfileView(self, self, welcome=True))
         if recovery is not None:
             self._notice(recovery.message + (' ' + recovery.cleanup_warning if recovery.cleanup_warning else ''),
                          bool(recovery.cleanup_warning))
@@ -250,7 +250,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         self.screen = None
         self.shell = Shell(self, self, local_profile=self.profile, destinations=self.destinations)
         self.shell.pack(fill='both', expand=True)
-        self.shell.footer.configure(text='Offline · Development edition\nFictional data only · Back up regularly')
+        self.shell.footer.configure(text='BHLI Audit · Offline\nBack up regularly')
         self.navigate(destination or 'Dashboard', audit_id, force=True)
 
     def navigate(self, destination, audit_id=None, force=False):

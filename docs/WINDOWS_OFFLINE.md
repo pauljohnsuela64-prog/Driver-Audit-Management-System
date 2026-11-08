@@ -22,7 +22,7 @@ The original `BHLIAudit.exe`, online entry, installer GUID, shortcuts, mutex and
 
 ## Everyday workflows
 
-First launch has zero profiles, audits and history events. Enter one local auditor name; it is self-declared, not verified employee identity or an ADMIN account. Local profile settings can rename it while preserving the profile UUID. New audits capture the current name; previous Audited By snapshots never change.
+Each launch opens the BHLI Audit welcome screen. Enter an auditor name on first use, or confirm the prefilled saved name, then choose Continue. There is no password or authenticated account. First use has zero profiles, audits and history events. The existing profile UUID is retained when the name changes; it is self-declared, not verified employee identity or an ADMIN account. Local profile settings can rename it while preserving the profile UUID. New audits capture the current name; previous Audited By snapshots never change.
 
 Dashboard, Driver Audits and Local profile reuse the existing navy/teal CustomTkinter shell, light/dark themes, collapsible navigation, 38-logical-pixel table, form layout, details, history and confirmation components. The offline entry constructs no API client, authentication session or HTTP worker. It does not load server `.env` files or online endpoint preferences.
 
