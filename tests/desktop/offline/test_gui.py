@@ -102,7 +102,7 @@ def offline_app(tmp_path_factory):
     assert app.screen.name.get() == ''
     app.screen.name.insert(0, 'Fictional Local Auditor')
     app.screen.save()
-    pump(app, lambda: app.destination == 'Dashboard' and app.screen.loaded)
+    pump(app, lambda: app.destination == 'Driver Audits' and app.screen.loaded)
     assert app.screen.total == 0
     yield app
     faults['block'] = None
@@ -118,7 +118,7 @@ def offline_app(tmp_path_factory):
 
 def test_fictional_workflow_uuid_history_profile_and_layout(offline_app):
     app = offline_app
-    assert tuple(app.shell.nav_buttons) == ('Dashboard', 'Driver Audits', 'Local profile')
+    assert tuple(app.shell.nav_buttons) == ('Driver Audits', 'Settings & Tools')
     app.open_create()
     app.screen.save()
     assert app.draft.errors and app.draft.intent is None
@@ -226,11 +226,13 @@ def test_navigation_drops_callbacks_for_destroyed_views(offline_app):
     app.navigate('Audit Details', app.test_record_id)
     old_screen = app.screen
     pump(app, lambda: app.faults['read_started'].is_set())
-    app.navigate('Dashboard')
+    app.navigate('Settings & Tools')
     gate.set()
     app.faults['read_block'] = None
-    pump(app, lambda: app.screen.loaded)
-    assert app.destination == 'Dashboard' and not old_screen.winfo_exists()
+    from tests.desktop.offline.test_backup_gui import call
+    call(app, lambda repo: repo.profile())
+    assert app.screen.name.get() == app.profile.name
+    assert app.destination == 'Settings & Tools' and not old_screen.winfo_exists()
     assert app.callback_errors == []
 
 
@@ -238,7 +240,7 @@ def test_dirty_cancel_and_close_waits_for_admitted_write(offline_app):
     app = offline_app
     app.open_create()
     fill(app.screen, driver_name='Fictional Closing Driver')
-    app.navigate('Dashboard')
+    app.navigate('Settings & Tools')
     assert app.dialog is not None
     app.dialog.cancel()
     assert app.destination == 'Create Audit'
@@ -246,7 +248,7 @@ def test_dirty_cancel_and_close_waits_for_admitted_write(offline_app):
     app.faults['block'] = gate
     app.screen.save()
     assert app.mutation_pending
-    app.navigate('Dashboard')
+    app.navigate('Settings & Tools')
     assert app.destination == 'Create Audit'
     app.faults['close'] = os.getenv('DAMS_OFFLINE_CLOSE_FAILURE') == '1'
     app.faults['shutdown_write'] = not app.faults['close']

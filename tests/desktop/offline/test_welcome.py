@@ -53,7 +53,7 @@ def test_native_first_use_and_restart_preserve_records_and_original_identity(tmp
                 assert app.screen.save_button.winfo_width() >= 100
                 assert app.screen.name.winfo_width() > 200
             app.screen.save()
-            pump(app, lambda: app.destination == 'Dashboard' and app.screen.loaded)
+            pump(app, lambda: app.destination == 'Driver Audits' and app.screen.loaded)
             if launch == 0:
                 identity = app.profile.id
                 call(app, lambda repo: repo.create(audit_id, dict(

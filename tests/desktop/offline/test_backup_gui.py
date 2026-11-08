@@ -47,7 +47,7 @@ def test_native_full_backup_preview_cancel_restore_and_restart(tmp_path, monkeyp
         pump(app, lambda: hasattr(app.screen, 'name'))
         app.screen.name.insert(0, 'Fictional Backup Auditor')
         app.screen.save()
-        pump(app, lambda: app.profile is not None and app.destination == 'Dashboard')
+        pump(app, lambda: app.profile is not None and app.destination == 'Driver Audits')
         values = dict(driver_name='Fictional preserved driver', helper_name=None,
                       audit_date='2026-11-06', station='Fictional station',
                       plate_number='00123', remarks='Fictional Unicode 日本語 🚚')
@@ -90,7 +90,7 @@ def test_native_full_backup_preview_cancel_restore_and_restart(tmp_path, monkeyp
         monkeypatch.setattr(messagebox, 'askokcancel', lambda *a, **kw: True)
         view.acknowledgement.set(True)
         view.apply()
-        pump(app, lambda: app.backup_job.phase == 'restored' and app.destination == 'Dashboard')
+        pump(app, lambda: app.backup_job.phase == 'restored' and app.destination == 'Driver Audits')
         audits = call(app, lambda repo: repo.list(AuditFilter()))
         assert audits.total == 1 and audits.items[0].plate_number == '00123'
         assert audits.items[0].audited_by_name == 'Fictional Backup Auditor'

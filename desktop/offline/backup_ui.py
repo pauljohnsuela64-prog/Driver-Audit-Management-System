@@ -253,7 +253,7 @@ def BackupView(parent, app):
             self.replace.grid(row=11, column=0, sticky='w', pady=8)
             self.cancel_button = button(self, 'Cancel operation', app.backup_job.cancel)
             self.cancel_button.grid(row=12, column=0, sticky='w', pady=8)
-            self.back_button = button(self, 'Back to local profile', self.back)
+            self.back_button = button(self, 'Back to welcome' if app.shell is None else 'Back to Settings & Tools', self.back)
             self.back_button.grid(row=13, column=0, sticky='w', pady=12)
             self.actions = (self.create_button, self.inspect_button, self.protect,
                             self.replace, self.cancel_button, self.back_button)

@@ -30,7 +30,7 @@ class Shell(ctk.CTkFrame):
         self.toggle.grid(row=1,column=0,padx=12,pady=(0,24),sticky='ew')
         self.nav_buttons,self.images,self.tips = {},[],{}
         for row,destination in enumerate(destinations if destinations is not None else app.session.destinations,2):
-            image=icon(self,'My Account' if destination=='Local profile' else destination)
+            image=icon(self,'My Account' if destination in ('Local profile', 'Settings & Tools') else destination)
             self.images.append(image)
             b=button(self.sidebar,destination,lambda d=destination: app.navigate(d),image=image,
                       anchor='w',width=200)
@@ -59,17 +59,16 @@ class Shell(ctk.CTkFrame):
         display_name=name if len(name)<=28 else name[:27]+'…'
         self.identity=label(header,f'{display_name} · {identity_suffix}',12,True)
         self.identity.grid(row=1,column=0,sticky='w',padx=24,pady=(0,12))
-        self.appearance=option_menu(header,values=['Light','Dark'],command=app.set_theme,width=88,
-                                        font=font(12),fg_color=color('primary'),text_color=color('on_primary'))
-        self.appearance.set(ctk.get_appearance_mode())
-        self.appearance.grid(row=0,column=1,rowspan=2,padx=8)
-        self.account=button(header,'Local profile' if local_profile is not None else 'Account',self.toggle_menu,width=110 if local_profile is not None else 100)
-        self.account.grid(row=0,column=2,rowspan=2,padx=(0,16))
-        self.menu=ctk.CTkFrame(main,fg_color=color('surface'))
-        label(self.menu,f'{name} · {identity_suffix}',wraplength=450).pack(side='left',padx=16)
-        if local_profile is not None:
-            button(self.menu,'Local profile',lambda: app.navigate('Local profile'),width=120).pack(side='left',padx=4,pady=8)
-        else:
+        self.appearance = self.account = None
+        self.menu = ctk.CTkFrame(main, fg_color=color('surface'))
+        if not self.offline:
+            self.appearance=option_menu(header,values=['Light','Dark'],command=app.set_theme,width=88,
+                                       font=font(12),fg_color=color('primary'),text_color=color('on_primary'))
+            self.appearance.set(ctk.get_appearance_mode())
+            self.appearance.grid(row=0,column=1,rowspan=2,padx=8)
+            self.account=button(header,'Account',self.toggle_menu,width=100)
+            self.account.grid(row=0,column=2,rowspan=2,padx=(0,16))
+            label(self.menu,f'{name} · {identity_suffix}',wraplength=450).pack(side='left',padx=16)
             button(self.menu,'My Account',lambda: app.navigate('My Account'),width=110).pack(side='left',padx=4,pady=8)
             button(self.menu,'Sign Out',app.logout,width=100).pack(side='left',padx=4,pady=8)
         self.content=ctk.CTkFrame(main,fg_color='transparent')
@@ -86,11 +85,12 @@ class Shell(ctk.CTkFrame):
         self.set_collapsed(not self.collapsed)
 
     def set_collapsed(self,value):
-        for tip in self.tips.values():
-            tip.hide()
+        if self.offline:
+            for tip in self.tips.values():
+                tip.hide()
         if self.offline:
             self.app._sidebar_collapsed = bool(value)
-        if self.collapsed == value:
+        if self.offline and self.collapsed == value:
             return
         self.collapsed=value
         self.sidebar.configure(width=64 if value else 232)
@@ -125,8 +125,9 @@ class Shell(ctk.CTkFrame):
             self.set_collapsed(True)
 
     def select(self,name):
-        for tip in self.tips.values():
-            tip.hide()
+        if self.offline:
+            for tip in self.tips.values():
+                tip.hide()
         self.heading.configure(text=name)
         for destination,b in self.nav_buttons.items():
             selected = destination == name or (name in (('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit') if self.offline else ('Audit Details',)) and destination=='Driver Audits')
@@ -135,6 +136,8 @@ class Shell(ctk.CTkFrame):
         self.menu.grid_remove()
 
     def toggle_menu(self):
+        if self.account is None:
+            return
         if self.menu.winfo_ismapped():
             self.hide_menu()
         else:
@@ -143,4 +146,5 @@ class Shell(ctk.CTkFrame):
 
     def hide_menu(self):
         self.menu.grid_remove()
-        self.account.focus_set()
+        if self.account is not None:
+            self.account.focus_set()

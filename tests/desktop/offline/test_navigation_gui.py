@@ -82,6 +82,8 @@ def test_theme_rebuild_preserves_sidebar_and_unsent_audit(app, collapsed):
         assert app.destination == 'Create Audit'
         assert app.screen.inputs['driver_name'].get() == 'Fictional Offline Driver'
         assert app.shell.collapsed is collapsed
+        if collapsed:
+            assert app.shell.footer.cget('text') == ''
 
 
 def test_history_highlights_audit_parent(app):

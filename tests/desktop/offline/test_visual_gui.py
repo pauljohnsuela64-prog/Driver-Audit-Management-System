@@ -31,7 +31,7 @@ def test_centered_columns_and_backup_actions_reflow(tmp_path):
         app.screen.name.insert(0, 'Fictional Visual Auditor')
         app.screen.save()
         pump(app, lambda: callback_errors or
-             (app.destination == 'Dashboard' and getattr(app.screen, 'loaded', False)))
+             (app.destination == 'Driver Audits' and getattr(app.screen, 'loaded', False)))
         assert not callback_errors, callback_errors
         call(app, lambda repo: repo.create(str(uuid4()), dict(
             driver_name='Fictional Driver 日本語', helper_name='Fictional Helper',

@@ -1,7 +1,7 @@
 """Small local-only views alongside the shared audit screens."""
 import customtkinter as ctk
 
-from desktop.components.common import button, entry, label, Notice
+from desktop.components.common import button, entry, label, Notice, option_menu
 from desktop.offline.models import OfflineError, normalize_name
 from desktop.theme import color, font
 
@@ -17,14 +17,16 @@ class ProfileView(ctk.CTkScrollableFrame):
             from desktop.resources import company_logo
             self.logo = company_logo(320)
             ctk.CTkLabel(self, text='', image=self.logo).grid(row=0, column=0, pady=(24, 12))
-        label(self, 'Welcome to BHLI Audit' if welcome else 'Local auditor profile', 28).grid(
+        label(self, 'Welcome to BHLI Audit' if welcome else 'Settings & Tools', 28).grid(
             row=1, column=0, pady=(0, 12))
         label(self, 'Enter your auditor name to continue. No password required.' if welcome else
               'This name is recorded with new audits. Original auditor names stay unchanged.',
               muted=True, wraplength=580, justify='left').grid(row=2, column=0, pady=(0, 12))
         # Keep a visible label and keyboard submission; this is not account authentication.
         panel = ctk.CTkFrame(self, fg_color=color('surface'), corner_radius=12, width=520)
-        panel.grid(row=3, column=0, sticky='' if welcome else 'ew')
+        if not welcome:
+            label(self, 'Local Auditor Profile', 20).grid(row=3, column=0, sticky='w', pady=(12, 8))
+        panel.grid(row=4, column=0, sticky='' if welcome else 'ew')
         panel.columnconfigure(0, weight=1)
         label(panel, 'Auditor name *').grid(row=0, column=0, sticky='w', padx=24, pady=(24, 4))
         self.name = entry(panel)
@@ -43,9 +45,36 @@ class ProfileView(ctk.CTkScrollableFrame):
         if not welcome:
             label(self, 'Backups replace the complete Windows installation state. Transfer audits copies selected '
               'audits between platforms. Save any edited profile name before leaving this screen.',
-              muted=True, wraplength=580, justify='left').grid(row=4, column=0, sticky='ew', pady=(20, 8))
-        button(self, 'Backup & restore…', app.open_backup).grid(
-            row=5, column=0, sticky='w', pady=(0, 20))
+              muted=True, wraplength=580, justify='left').grid(row=5, column=0, sticky='ew', pady=(20, 8))
+        if not welcome:
+            label(self, 'Backup & Restore', 20).grid(row=6, column=0, sticky='w', pady=(12, 8))
+        self.backup_button = button(self, 'Backup & restore…', app.open_backup, width=360)
+        self.backup_button.grid(row=7, column=0, sticky='w', pady=(0, 20))
+        if not welcome:
+            label(self, 'Manual Data Transfer', 20).grid(row=8, column=0, sticky='w', pady=(12, 8))
+            self.transfer_button = button(self, 'Transfer audits…', app.open_transfer, width=360)
+            self.transfer_button.grid(row=9, column=0, sticky='w', pady=(0, 20))
+            label(self, 'Appearance', 20).grid(row=10, column=0, sticky='w', pady=(12, 8))
+            self.appearance = option_menu(self, values=['Light', 'Dark'], command=app.set_theme,
+                                          width=160, font=font(), fg_color=color('primary'),
+                                          text_color=color('on_primary'))
+            self.appearance.set(ctk.get_appearance_mode())
+            self.appearance.grid(row=11, column=0, sticky='w', pady=(0, 20))
+        controls = [self.name, self.save_button, self.backup_button]
+        if not welcome:
+            controls.extend((self.transfer_button, self.appearance))
+        for control in controls:
+            control.bind('<FocusIn>', lambda event, target=control: self.reveal(target), add='+')
+
+    def reveal(self, control):
+        canvas = self._parent_canvas
+        top = control.winfo_rooty() - self.winfo_rooty()
+        bottom = top + control.winfo_height()
+        visible_top, height = canvas.canvasy(0), canvas.winfo_height()
+        region = canvas.bbox('all')
+        if region and region[3] > height and (top < visible_top or bottom > visible_top + height):
+            target = max(0, top - 12) if top < visible_top else bottom - height + 12
+            canvas.yview_moveto(target / max(1, region[3]))
 
     def save(self):
         if self.pending or self.app.closing:
@@ -73,7 +102,7 @@ class ProfileView(ctk.CTkScrollableFrame):
             app.profile = profile
             if self.welcome:
                 app._entered = True
-            app.rebuild_shell('Dashboard' if first or self.welcome else 'Local profile')
+            app.rebuild_shell('Driver Audits' if first or self.welcome else 'Settings & Tools')
             app.shell.notice.show('Local profile saved. Historical auditor names are unchanged.', False)
         app.mutate(lambda repo: repo.save_profile(name), completed)
 
