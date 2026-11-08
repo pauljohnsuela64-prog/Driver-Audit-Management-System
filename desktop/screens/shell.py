@@ -80,6 +80,10 @@ class Shell(ctk.CTkFrame):
         self.sidebar.configure(width=64 if value else 232)
         self.brand.configure(text='BH' if value else '' if self.brand_image else 'BHLI  /  AUDIT',
                              image=None if value else self.brand_image)
+        if value and self.brand_image:
+            # CTkLabel leaves its native photo set when configured with image=None.
+            # Clear it explicitly so compact initials never crop the full artwork.
+            self.brand._label.configure(image='')
         self.toggle.configure(text='›' if value else 'Collapse navigation',width=40 if value else 200)
         for name,b in self.nav_buttons.items():
             b.configure(text='' if value else name,width=40 if value else 200,anchor='center' if value else 'w')

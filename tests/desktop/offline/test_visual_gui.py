@@ -41,6 +41,12 @@ def test_centered_columns_and_backup_actions_reflow(tmp_path):
         pump(app, lambda: app.screen.loaded)
         for field in ('driver_name', 'helper_name', 'station', 'plate_number', 'audited_by_name'):
             assert str(app.screen.table.tree.column(field, 'anchor')) == 'center'
+        app.shell.set_collapsed(True)
+        app.update()
+        assert not str(app.shell.brand._label.cget('image')), 'Collapsed sidebar must not clip the full logo'
+        app.shell.set_collapsed(False)
+        app.update()
+        assert str(app.shell.brand._label.cget('image'))
         if capture_dir:
             Path(capture_dir).mkdir(parents=True, exist_ok=True)
             capture_owned_window(app, Path(capture_dir) / 'audits-light.png')
