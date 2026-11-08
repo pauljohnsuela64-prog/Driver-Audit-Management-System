@@ -216,7 +216,7 @@ def BackupView(parent, app):
     """Scrollable subordinate screen, usable before a local profile exists."""
     import customtkinter as ctk
     from tkinter import filedialog, messagebox
-    from desktop.components.common import button, entry, label
+    from desktop.components.common import button, entry, label, checkbox
     from desktop.theme import color
 
     class View(ctk.CTkScrollableFrame):
@@ -225,11 +225,12 @@ def BackupView(parent, app):
             self.app = app
             self.columnconfigure(0, weight=1)
             label(self, 'Backup & restore', 28).grid(row=0, column=0, sticky='w', pady=12)
-            label(self, 'Complete Windows backups include all audits, archived records, history, receipts, '
+            self.explanation = label(self, 'Complete Windows backups include all audits, archived records, history, receipts, '
                   'profile and installation identity. No list filters apply. Your locally declared name is not '
                   'verified authentication. Live data and reports remain unencrypted. Keep a long unique '
                   'passphrase separately: lost passwords cannot be reset.', wraplength=650,
-                  justify='left').grid(row=1, column=0, sticky='ew', pady=12)
+                  justify='left', anchor='w')
+            self.explanation.grid(row=1, column=0, sticky='ew', pady=12)
             label(self, 'Backup passphrase (15–128 characters)').grid(row=2, column=0, sticky='w')
             self.secret = entry(self, show='•')
             self.secret.grid(row=3, column=0, sticky='ew', pady=8)
@@ -237,22 +238,42 @@ def BackupView(parent, app):
             self.confirmation = entry(self, show='•')
             self.confirmation.grid(row=5, column=0, sticky='ew', pady=8)
             self.create_button = button(self, 'Save complete encrypted backup…', self.create)
-            self.create_button.grid(row=6, column=0, sticky='w', pady=8)
+            self.create_button.grid(row=6, column=0, sticky='ew', pady=8)
             self.inspect_button = button(self, 'Open backup for authenticated preview…', self.inspect)
-            self.inspect_button.grid(row=7, column=0, sticky='w', pady=8)
-            self.status = label(self, '', wraplength=650, justify='left')
+            self.inspect_button.grid(row=7, column=0, sticky='ew', pady=8)
+            self.status = label(self, '', wraplength=650, justify='left', anchor='w')
             self.status.grid(row=8, column=0, sticky='ew', pady=12)
             self.protect = button(self, 'Save and verify current recovery backup…', self.prepare)
-            self.protect.grid(row=9, column=0, sticky='w', pady=8)
+            self.protect.grid(row=9, column=0, sticky='ew', pady=8)
             self.acknowledgement = ctk.BooleanVar(value=False)
-            self.ack = ctk.CTkCheckBox(self, text='I acknowledge complete replacement',
+            self.ack = checkbox(self, text='I acknowledge complete replacement',
                                     variable=self.acknowledgement)
             self.ack.grid(row=10, column=0, sticky='w', pady=12)
             self.replace = button(self, 'Confirm complete replacement…', self.apply)
-            self.replace.grid(row=11, column=0, sticky='w', pady=8)
-            button(self, 'Cancel operation', app.backup_job.cancel).grid(row=12, column=0, sticky='w', pady=8)
-            button(self, 'Back to local profile', self.back).grid(row=13, column=0, sticky='w', pady=12)
+            self.replace.grid(row=11, column=0, sticky='ew', pady=8)
+            self.cancel_button = button(self, 'Cancel operation', app.backup_job.cancel)
+            self.cancel_button.grid(row=12, column=0, sticky='ew', pady=8)
+            self.back_button = button(self, 'Back to local profile', self.back)
+            self.back_button.grid(row=13, column=0, sticky='ew', pady=12)
+            self.actions = (self.create_button, self.inspect_button, self.protect,
+                            self.replace, self.cancel_button, self.back_button)
+            self.bind('<Configure>', self.fit_content, add='+')
             self.render_backup()
+
+        def fit_content(self, event):
+            if event.widget is not self:
+                return
+            scale = self._get_widget_scaling()
+            width = max(120, self.winfo_width() / scale - 24)
+            self.explanation.configure(wraplength=min(650, width))
+            self.status.configure(wraplength=min(650, width))
+            for action in self.actions:
+                # CTk buttons expose no public wrap option. Their native label uses
+                # physical pixels; keep action height content-driven at every DPI.
+                action._text_label.configure(wraplength=round(width * scale))
+                height = max(40, action._text_label.winfo_reqheight() / scale + 20)
+                if action.cget('height') != height:
+                    action.configure(height=height)
 
         def back(self):
             self.secrets()

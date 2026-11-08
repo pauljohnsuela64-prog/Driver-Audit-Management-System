@@ -27,10 +27,12 @@ class AuditTable(ctk.CTkFrame):
         self.tree=ttk.Treeview(self,columns=COLUMNS,show='headings',style='BHLI.Treeview',
                                selectmode='browse',height=height,takefocus=True)
         self._table_scale=scale
+        centered = COLUMNS[1:] if getattr(self._root(), 'offline', False) else ()
         for key,title,width,minimum in zip(COLUMNS,HEADINGS,(110,180,150,150,120,170),(100,130,110,110,100,140)):
             self.tree.heading(key,text=title)
             self.tree.column(key,width=round(width*scale),minwidth=round(minimum*scale),
-                             stretch=key in ('driver_name','audited_by_name'))
+                             stretch=key in ('driver_name','audited_by_name'),
+                             anchor='center' if key in centered else 'w')
         self.tree.tag_configure('alternate',background=resolved('raised'))
         self.tree.grid(row=0,column=0,sticky='nsew')
         vertical=ttk.Scrollbar(self,orient='vertical',command=self.tree.yview)

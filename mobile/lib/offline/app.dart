@@ -43,8 +43,8 @@ class _OfflineAppState extends State<OfflineApp> {
   Widget build(BuildContext context) => MaterialApp(
     key: ValueKey(restorationEpoch),
     title: 'BHLI Audit Offline',
-    theme: auditTheme(Brightness.light),
-    darkTheme: auditTheme(Brightness.dark),
+    theme: auditTheme(Brightness.light, offline: true),
+    darkTheme: auditTheme(Brightness.dark, offline: true),
     home: _OfflineHome(
       repository: widget.repository,
       onRestored: restored,
@@ -732,11 +732,18 @@ class _LocalProfileScreenState extends State<_LocalProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (widget.welcome) ...[
-                    Image.asset(
-                      'assets/bhli.png',
-                      width: 72,
-                      height: 72,
-                      semanticLabel: 'BHLI Audit logo',
+                    Center(
+                      child: SizedBox(
+                        width: 320,
+                        child: AspectRatio(
+                          aspectRatio: 957 / 250,
+                          child: Image.asset(
+                            'assets/basic_logo.jpg',
+                            fit: BoxFit.contain,
+                            semanticLabel: 'BASIC Hauling & Logistic Inc. logo',
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(

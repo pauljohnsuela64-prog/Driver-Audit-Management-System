@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
-ThemeData auditTheme(Brightness brightness) {
+ThemeData auditTheme(Brightness brightness, {bool offline = false}) {
   final dark = brightness == Brightness.dark;
+  final primary = offline
+      ? Color(dark ? 0xffa8cff0 : 0xff315e8e)
+      : Color(dark ? 0xff2dd4bf : 0xff0f766e);
   final scheme =
       ColorScheme.fromSeed(
-        seedColor: const Color(0xff0f766e),
+        seedColor: offline ? const Color(0xff315e8e) : const Color(0xff0f766e),
         brightness: brightness,
       ).copyWith(
-        primary: Color(dark ? 0xff2dd4bf : 0xff0f766e),
-        onPrimary: Color(dark ? 0xff0b1220 : 0xffffffff),
+        primary: primary,
+        onPrimary: Color(
+          dark ? (offline ? 0xff0c2440 : 0xff0b1220) : 0xffffffff,
+        ),
         surface: Color(dark ? 0xff111c2e : 0xffffffff),
         onSurface: Color(dark ? 0xfff1f5f9 : 0xff0f172a),
         onSurfaceVariant: Color(dark ? 0xffb8c5d6 : 0xff475569),
@@ -18,7 +23,9 @@ ThemeData auditTheme(Brightness brightness) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: Color(dark ? 0xff0b1220 : 0xfff1f5f9),
+    scaffoldBackgroundColor: Color(
+      dark ? 0xff0b1220 : (offline ? 0xfff0f6fc : 0xfff1f5f9),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,

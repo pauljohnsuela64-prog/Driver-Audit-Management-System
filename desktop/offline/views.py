@@ -14,10 +14,8 @@ class ProfileView(ctk.CTkScrollableFrame):
         self.pending = False
         self.columnconfigure(0, weight=1)
         if welcome:
-            from PIL import Image
-            from desktop.resources import resource_path
-            with Image.open(resource_path('bhli.ico')) as image:
-                self.logo = ctk.CTkImage(image.copy(), size=(64, 64))
+            from desktop.resources import company_logo
+            self.logo = company_logo(320)
             ctk.CTkLabel(self, text='', image=self.logo).grid(row=0, column=0, pady=(24, 12))
         label(self, 'Welcome to BHLI Audit' if welcome else 'Local auditor profile', 28).grid(
             row=1, column=0, pady=(0, 12))
