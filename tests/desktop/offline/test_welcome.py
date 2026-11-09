@@ -67,3 +67,37 @@ def test_native_first_use_and_restart_preserve_records_and_original_identity(tmp
         finally:
             app.close(force=True)
             pump(app, lambda: app.closed)
+
+
+@pytest.mark.skipif(os.getenv('DAMS_DESKTOP_GUI_TESTS') != '1' or sys.platform != 'win32',
+                    reason='Native Windows welcome geometry requires explicit GUI mode')
+def test_welcome_backup_centered_below_name_without_changing_tools_alignment(tmp_path):
+    from tests.desktop.offline.test_backup_gui import pump
+    from tests.desktop.offline.test_navigation_gui import settle
+    import customtkinter as ctk
+    app = OfflineApplication(db_path=tmp_path / 'fictional-welcome-alignment.db')
+    try:
+        pump(app, lambda: hasattr(app.screen, 'name'))
+        for theme in ('Light', 'Dark'):
+            ctk.set_appearance_mode(theme)
+            for scale in (1, 1.5, 2):
+                ctk.set_widget_scaling(scale)
+                for width in (800, 1200):
+                    app.geometry(f'{width}x700')
+                    settle(app)
+                    view = app.screen
+                    panel = view.name.master
+                    panel_center = panel.winfo_rootx() + panel.winfo_width() / 2
+                    backup_center = view.backup_button.winfo_rootx() + view.backup_button.winfo_width() / 2
+                    assert abs(backup_center - panel_center) <= 2
+                    assert view.backup_button.winfo_rooty() >= panel.winfo_rooty() + panel.winfo_height()
+        app.screen.name.insert(0, 'Fictional Alignment Auditor')
+        app.screen.save()
+        pump(app, lambda: app.shell is not None and getattr(app.screen, 'loaded', False))
+        app.navigate('Settings & Tools')
+        assert app.screen.backup_button.grid_info()['sticky'] == 'w'
+    finally:
+        app.close(force=True)
+        pump(app, lambda: app.closed)
+        ctk.set_widget_scaling(1)
+        ctk.set_appearance_mode('Light')
