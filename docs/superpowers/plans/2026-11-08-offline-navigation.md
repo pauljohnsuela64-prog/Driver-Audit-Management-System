@@ -56,3 +56,5 @@ Ruling: Retire offline Dashboard routing as a home; its create/details/count cap
 Ruling: Once the operator explicitly toggles the offline sidebar, that choice wins over automatic resizing for the rest of the process (including theme/profile rebuilds). Automatic initial/size-band collapse applies only before an explicit choice. This avoids scaling-induced geometry changes being mistaken for operator intent; no persistent setting is added.
 
 Verification: Task1 RED6failed/1passed, GREEN7passed. Task2 RED5failed, final combined navigation/tools GREEN14passed. Existing affected workflow checkpoint10passed. Additional confirmed footer/focus defects were reproduced RED and corrected before final GREEN. Full native desktop regression and final review/publication remain pending.
+
+Resume verification: full desktop 618passed/1skipped with one stale transfer-route test failure. Test route corrected only; 22 transfer/navigation/tools tests passed. Fresh native screenshots and independent cumulative review completed; no important blockers. See docs/OFFLINE_NAVIGATION_VERIFICATION.md. Hosted publication checkpoint remains pending until verified.
