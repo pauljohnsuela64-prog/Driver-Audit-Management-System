@@ -49,7 +49,7 @@ class ProfileView(ctk.CTkScrollableFrame):
         if not welcome:
             label(self, 'Backup & Restore', 20).grid(row=6, column=0, sticky='w', pady=(12, 8))
         self.backup_button = button(self, 'Backup & restore…', app.open_backup, width=360)
-        self.backup_button.grid(row=7, column=0, sticky='w', pady=(0, 20))
+        self.backup_button.grid(row=7, column=0, sticky='' if welcome else 'w', pady=(0, 20))
         if not welcome:
             label(self, 'Manual Data Transfer', 20).grid(row=8, column=0, sticky='w', pady=(12, 8))
             self.transfer_button = button(self, 'Transfer audits…', app.open_transfer, width=360)
