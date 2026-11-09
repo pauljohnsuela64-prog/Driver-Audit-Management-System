@@ -16,3 +16,9 @@ Approved baseline3b5d76a. Implement the reviewed same-package/separate-device mi
 - Document exact future controlled keystore generation/custody, env-only secrets, pinned isolated release command, signature/public fingerprint checks, physical Android13+ migration checklist, cutover and rollback after new writes. No keys created/read/copied; do not relabel old binaries.
 - Independent source/security review, correct confirmed defects, verified checkpoint commit(s).
 - Publish existing feature branch and one draft PR; inspect applicable CI. Keep unmerged; no production signing or publication.
+
+## Verified ledger
+
+Checkpoint1 committedb154596: explicit release inspector RED7failures/GREEN; 54targeted Python contracts passed after CI-gate RED/GREEN; actual Gradle variant metadata and direct missing-key APK/bundle rejection passed. Gradle manifest processing remains blocked by uncached release dependencies in offline mode; no signed build/key operations.
+
+Checkpoint2:112affected Flutter regressions passed, including populated-receipt migration and64MiB/storage-failure tests; additional2-test run with explicit release provenance passed. Formatting101files0changes; static analysis no issues; independent source/security review and PKCS12/CI follow-up found no blockers. Keys/native signed candidate/physical migration remain future approvals. Draft publication/hosted CI to be recorded on PR.
