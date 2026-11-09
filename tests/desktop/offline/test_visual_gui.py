@@ -31,7 +31,7 @@ def test_centered_columns_and_backup_actions_reflow(tmp_path):
         app.screen.name.insert(0, 'Fictional Visual Auditor')
         app.screen.save()
         pump(app, lambda: callback_errors or
-             (app.destination == 'Dashboard' and getattr(app.screen, 'loaded', False)))
+             (app.destination == 'Driver Audits' and getattr(app.screen, 'loaded', False)))
         assert not callback_errors, callback_errors
         call(app, lambda repo: repo.create(str(uuid4()), dict(
             driver_name='Fictional Driver 日本語', helper_name='Fictional Helper',
@@ -64,6 +64,7 @@ def test_centered_columns_and_backup_actions_reflow(tmp_path):
                 assert len(actions) == 6
                 assert len({b.winfo_width() for b in actions}) == 1
                 for b in actions:
+                    assert b.winfo_width() <= round(360 * view._get_widget_scaling()) + 2
                     assert b.winfo_x() >= 0
                     assert b.winfo_x() + b.winfo_width() <= view.winfo_width() + 2
                     assert b._text_label.winfo_reqwidth() <= b.winfo_width() - 12

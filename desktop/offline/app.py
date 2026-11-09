@@ -46,7 +46,7 @@ def _repository(path):
 
 class OfflineApplication(OfflineLifecycle, ctk.CTk):
     offline = True
-    destinations = ('Dashboard', 'Driver Audits', 'Local profile')
+    destinations = ('Driver Audits', 'Settings & Tools')
 
     def __init__(self, db_path=None, worker_factory=None):
         self.collector = UiCollector()
@@ -130,7 +130,7 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         self.profile = profile
         from desktop.offline.views import ProfileView
         if profile is not None and getattr(self, '_entered', False):
-            self.rebuild_shell('Dashboard')
+            self.rebuild_shell('Driver Audits')
         else:
             self.destination = 'Local profile'
             self._replace_root_view(ProfileView(self, self, welcome=True))
@@ -250,18 +250,19 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         self.screen = None
         self.shell = Shell(self, self, local_profile=self.profile, destinations=self.destinations)
         self.shell.pack(fill='both', expand=True)
-        self.shell.footer.configure(text='BHLI Audit · Offline\nBack up regularly')
-        self.navigate(destination or 'Dashboard', audit_id, force=True)
+        self.shell.footer.configure(text='' if self.shell.collapsed else 'BHLI Audit · Offline\nBack up regularly')
+        self.navigate(destination or 'Driver Audits', audit_id, force=True)
 
     def navigate(self, destination, audit_id=None, force=False):
+        destination = {'Dashboard': 'Driver Audits', 'Local profile': 'Settings & Tools'}.get(destination, destination)
         if self.closing:
             return
         if self.profile is None or self.shell is None:
-            if (destination == 'Local profile' and not self.recovery_blocked and
+            if (destination == 'Settings & Tools' and not self.recovery_blocked and
                     not self.mutation_pending and not self.backup_job.pending):
                 from desktop.offline.views import ProfileView
                 self.destination = 'Local profile'
-                self._replace_root_view(ProfileView(self, self))
+                self._replace_root_view(ProfileView(self, self, welcome=True))
             return
         if self.mutation_pending:
             self._notice('Wait for the local save to finish before navigating.', False)
@@ -279,12 +280,8 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             destroy_view(self.screen)
         self.screen = None
         self.destination = destination
-        self.shell.select('Driver Audits' if destination == 'Transfer audits' else
-                          'Local profile' if destination == 'Backup & restore' else destination)
-        if destination == 'Dashboard':
-            from desktop.screens.dashboard import Dashboard
-            screen = Dashboard(self.shell.content, self)
-        elif destination == 'Driver Audits':
+        self.shell.select('Settings & Tools' if destination in ('Transfer audits', 'Backup & restore') else destination)
+        if destination == 'Driver Audits':
             from desktop.screens.audits import Audits
             screen = Audits(self.shell.content, self)
         elif destination == 'Transfer audits':
@@ -314,6 +311,17 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         if self.mutation_pending:
             self._notice('Wait for the local save to finish before navigating.', False)
             return False
+        if self.destination == 'Settings & Tools' and hasattr(self.screen, 'name'):
+            if self.screen.name.get() != self.profile.name:
+                from desktop.components.audit_dialogs import confirm
+                def discard_name():
+                    self.screen.name.delete(0, 'end')
+                    self.screen.name.insert(0, self.profile.name)
+                    accepted()
+                confirm(self, 'Leave the auditor name unsaved?',
+                        'The edited name has not been saved. Discard this name edit?',
+                        discard_name, 'Discard name edit')
+                return False
         if self.draft:
             if hasattr(self.screen, 'capture'):
                 self.screen.capture()
@@ -426,15 +434,20 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
         render_history_event(parent, event)
 
     def set_theme(self, appearance):
-        if self.closing or self.mutation_pending or self.dialog is not None:
+        if (self.closing or self.mutation_pending or self.dialog is not None or self.backup_job.pending
+                or getattr(getattr(self, 'file_job', None), 'pending', False)):
             self._notice('Wait for the current operation or close the dialog before changing appearance.', False)
             return
+        profile_text = self.screen.name.get() if self.destination == 'Settings & Tools' and hasattr(self.screen, 'name') else None
         self.focus_set()
         if hasattr(self.screen, 'capture'):
             self.screen.capture()
         ctk.set_appearance_mode(appearance)
         if self.profile is not None:
             self.rebuild_shell(self.destination, getattr(self.screen, 'audit_id', None))
+            if profile_text is not None:
+                self.screen.name.delete(0, 'end')
+                self.screen.name.insert(0, profile_text)
 
     def refresh(self):
         if not self.closing and not self.mutation_pending and hasattr(self.screen, 'refresh'):
@@ -450,7 +463,11 @@ class OfflineApplication(OfflineLifecycle, ctk.CTk):
             return
         if self.shell and self.shell.menu.winfo_ismapped():
             self.shell.hide_menu()
-        elif self.destination in ('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Transfer audits'):
+        elif self.destination == 'Transfer audits':
+            self.navigate('Settings & Tools')
+        elif self.destination == 'Backup & restore' and hasattr(self.screen, 'back'):
+            self.screen.back()
+        elif self.destination in ('Audit Details', 'Audit History', 'Create Audit', 'Edit Audit', 'Settings & Tools'):
             self.navigate('Driver Audits')
 
     def close(self, force=False):

@@ -39,3 +39,7 @@ Native geometry regressions cover both themes, compact `800×650` and wider `120
 Mobile rendering regressions cover standard `390×844`, compact `320×640`, 200% text and keyboard insets, with the same Backup & restore entry point as the real offline repository. Existing offline persistence, attribution, reports, transfer and backup tests remain in the regression suites.
 
 The updated visual source has not been reaccepted on a physical Android device or in a newly built frozen offline installer. The accepted Phase6F binaries remain unchanged; future updated candidates need their own visual acceptance. Android13+ remains the approved physical scope; API24 remains excluded. No signing, release publication or automatic merge is part of this change.
+
+## Operator-requested button sizing follow-up
+
+Backup and restore actions use one left-aligned column capped at 360 logical pixels, shrinking to the available width on narrow windows. Labels still wrap and button height follows the content. Existing actions, warnings, confirmation requirements and keyboard behavior are unchanged. Native geometry coverage asserts this width cap alongside equal widths, text containment and no overlap in both themes and existing scaling cases.

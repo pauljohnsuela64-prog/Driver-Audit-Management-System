@@ -97,23 +97,70 @@ class StatePanel(ctk.CTkFrame):
 
 
 class Tip:
-    def __init__(self, widget, text):
+    def __init__(self, widget, text, *, delay=0, enabled=None, outside=False):
         self.widget, self.text, self.window = widget, text, None
-        # Bind the persistent button frame, not CTk's replaceable text/image labels.
-        for event,handler in [('<Enter>',self.show),('<FocusIn>',self.show),('<Leave>',self.hide),
-                              ('<FocusOut>',self.hide),('<Destroy>',self.hide)]:
-            tk.Misc.bind(widget,event,handler,add='+')
+        self.delay, self.enabled, self.outside = delay, enabled, outside
+        self.pending = None
+        self.disposed = False
+        for event, handler in [('<Enter>', self.show), ('<FocusIn>', self.show),
+                               ('<Leave>', self.hide), ('<FocusOut>', self.hide),
+                               ('<Destroy>', self.destroy)]:
+            tk.Misc.bind(widget, event, handler, add='+')
 
     def show(self, event=None):
-        if self.window is None and self.widget.winfo_exists():
-            # Tooltips must not trigger CTkToplevel's delayed focus restoration.
-            self.window = tk.Toplevel(self.widget,takefocus=False,bg=resolved('surface'))
-            self.window.overrideredirect(True)
-            self.window.geometry(f'+{self.widget.winfo_rootx()+60}+{self.widget.winfo_rooty()+8}')
-            tk.Label(self.window,text=self.text,bg=resolved('surface'),fg=resolved('text'),
-                     font=('Segoe UI',-14)).pack(padx=10,pady=6)
+        if self.disposed or self.window is not None or self.pending is not None:
+            return
+        if self.enabled is not None and not self.enabled():
+            return
+        if self.delay:
+            self.pending = self.widget.after(self.delay, self._display)
+        else:
+            self._display()
+
+    def _display(self):
+        self.pending = None
+        if self.disposed or not self.widget.winfo_exists() or (self.enabled is not None and not self.enabled()):
+            return
+        self.window = tk.Toplevel(self.widget, takefocus=False, bg=resolved('surface'))
+        self.window.withdraw()
+        self.window.overrideredirect(True)
+        tk.Label(self.window, text=self.text, bg=resolved('surface'), fg=resolved('text'),
+                 font=('Segoe UI', -14)).pack(padx=10, pady=6)
+        self.window.update_idletasks()
+        x, y = self.widget.winfo_rootx(), self.widget.winfo_rooty()
+        if self.outside:
+            width, height = self.window.winfo_reqwidth(), self.window.winfo_reqheight()
+            bw, bh = self.widget.winfo_width(), self.widget.winfo_height()
+            sx, sy = self.widget.winfo_vrootx(), self.widget.winfo_vrooty()
+            sw, sh = self.widget.winfo_vrootwidth(), self.widget.winfo_vrootheight()
+            positions = ((x + bw + 8, y), (x - width - 8, y),
+                         (x, y + bh + 8), (x, y - height - 8))
+            position = next(((px, py) for px, py in positions
+                             if sx <= px and sy <= py and px + width <= sx + sw and py + height <= sy + sh), None)
+            if position is None:
+                self.hide()
+                return
+            x, y = position
+        else:
+            x, y = x + 60, y + 8
+        self.window.geometry(f'+{x}+{y}')
+        self.window.deiconify()
 
     def hide(self, event=None):
+        if self.pending is not None:
+            try:
+                self.widget.after_cancel(self.pending)
+            except tk.TclError:
+                pass
+            self.pending = None
         if self.window is not None:
-            self.window.destroy()
+            try:
+                self.window.destroy()
+            except tk.TclError:
+                pass
             self.window = None
+
+    def destroy(self, event=None):
+        if event is None or event.widget is self.widget:
+            self.disposed = True
+            self.hide()

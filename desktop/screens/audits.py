@@ -34,13 +34,10 @@ class Audits(ctk.CTkFrame):
         self.create_button=button(toolbar,'New audit',app.open_create,True,width=130)
         self.create_button.grid(row=1,column=0,columnspan=1 if self.offline else 4,sticky='w',pady=(8,0))
         if self.offline:
-            if callable(getattr(app,'open_transfer',None)):
-                self.transfer_button=button(toolbar,'Transfer audits',app.open_transfer,width=160)
-                self.transfer_button.grid(row=1,column=1,sticky='w',padx=(16,0),pady=(8,0))
             if hasattr(app,'report_job'):
                 from desktop.offline.report_ui import choose_export
                 self.export_button=button(toolbar,'Export to Excel',lambda:choose_export(self),width=155)
-                self.export_button.grid(row=1,column=2,columnspan=2,sticky='w',padx=(12,0),pady=(8,0))
+                self.export_button.grid(row=1,column=1,columnspan=3,sticky='w',padx=(16,0),pady=(8,0))
                 export_status=ctk.CTkFrame(self,fg_color='transparent')
                 export_status.grid(row=6,column=0,sticky='ew',pady=(8,0))
                 export_status.columnconfigure(0,weight=1)
