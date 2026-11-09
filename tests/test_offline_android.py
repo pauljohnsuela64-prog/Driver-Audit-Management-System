@@ -61,3 +61,45 @@ def test_offline_candidate_rejects_private_or_populated_payload(tmp_path, name):
         archive.writestr(name, 'not for distribution')
     with pytest.raises(ValueError, match='payload'):
         inspect_candidate(apk, BADGING)
+
+
+RELEASE_BADGING = BADGING.replace("versionCode='2'", "versionCode='3'").replace(
+    "versionName='1.0.0-offline-dev'", "versionName='1.0.0'").replace('application-debuggable', '')
+
+
+def test_release_inspection_is_explicit_and_does_not_imply_signature_acceptance(tmp_path):
+    from scripts.offline_android import inspect_candidate
+    apk = tmp_path / 'offline-release.apk'
+    with zipfile.ZipFile(apk, 'w') as archive:
+        archive.writestr('assets/ordinary', 'no user data')
+    result = inspect_candidate(apk, RELEASE_BADGING, release=True)
+    assert result['version_code'] == 3 and result['version'] == '1.0.0'
+    assert result['build_type'] == 'release'
+    assert result['production_ready'] is False
+    assert result['signature_verified'] is False
+    with pytest.raises(ValueError, match='identity'):
+        inspect_candidate(apk, RELEASE_BADGING)
+
+
+@pytest.mark.parametrize('badging', [BADGING, RELEASE_BADGING + 'application-debuggable',
+    RELEASE_BADGING.replace("versionCode='3'", "versionCode='2'"),
+    RELEASE_BADGING.replace('com.bhli.audit.offline', 'com.bhli.audit.mobile')])
+def test_release_inspection_rejects_debug_stale_or_online_metadata(tmp_path, badging):
+    from scripts.offline_android import inspect_candidate
+    apk = tmp_path / 'candidate.apk'
+    with zipfile.ZipFile(apk, 'w'):
+        pass
+    with pytest.raises(ValueError, match='identity'):
+        inspect_candidate(apk, badging, release=True)
+
+
+@pytest.mark.parametrize('extra', ['network', 'database'])
+def test_release_inspection_preserves_network_and_private_data_rejection(tmp_path, extra):
+    from scripts.offline_android import inspect_candidate
+    apk = tmp_path / 'candidate.apk'
+    with zipfile.ZipFile(apk, 'w') as archive:
+        if extra == 'database':
+            archive.writestr('assets/user.db', 'never distribute')
+    badging = RELEASE_BADGING + ("uses-permission: name='android.permission.INTERNET'" if extra == 'network' else '')
+    with pytest.raises(ValueError, match='network|payload'):
+        inspect_candidate(apk, badging, release=True)

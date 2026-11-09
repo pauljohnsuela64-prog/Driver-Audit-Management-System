@@ -129,6 +129,23 @@ jobs:
         run: flutter test --reporter expanded
       - name: Build internal debug Android application
         run: python3 ../scripts/android_candidate.py
+      - name: Verify key-free offline release configuration
+        working-directory: mobile/android
+        env:
+          BHLI_ANDROID_ENABLE_PRODUCTION_SIGNING: '0'
+        run: |
+          python3 - <<'PYCI'
+          import subprocess
+          base=['./gradlew','--offline','--no-daemon','--max-workers=1',
+                '-Dorg.gradle.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=256m','--console=plain']
+          subprocess.run(base+[':app:verifyOfflineReleaseConfiguration',
+              ':app:verifyOfflineDebugConfiguration',':app:verifyOnlineDebugConfiguration'],check=True)
+          result=subprocess.run(base+[':app:assembleOfflineRelease','--dry-run'],
+              stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+          assert result.returncode != 0, 'Unsigned offline release was unexpectedly admitted'
+          assert 'explicitly authorized external production signing' in result.stdout, result.stdout
+          print('Release metadata and missing-key rejection verified; no production signing performed')
+          PYCI
       - name: Retain internal debug candidate
         uses: actions/upload-artifact@v7
         with:

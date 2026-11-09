@@ -30,10 +30,12 @@ def inspect_source(entry, lib_root):
     return sorted(str(path.relative_to(lib_root)) for path in seen)
 
 
-def inspect_candidate(apk, badging):
+def inspect_candidate(apk, badging, *, release=False):
     match = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", badging)
-    if (not match or match.groups() != ('com.bhli.audit.offline', '2', '1.0.0-offline-dev')
-            or 'application-debuggable' not in badging):
+    expected = ('com.bhli.audit.offline', '3', '1.0.0') if release else (
+        'com.bhli.audit.offline', '2', '1.0.0-offline-dev')
+    debuggable = 'application-debuggable' in badging
+    if (not match or match.groups() != expected or debuggable == release):
         raise ValueError('Unexpected offline identity/build')
     if re.search(r"uses-permission[^\n]*android\.permission\.(?:INTERNET|ACCESS_NETWORK_STATE|ACCESS_WIFI_STATE)", badging):
         raise ValueError('Offline candidate contains a network permission')
@@ -50,7 +52,8 @@ def inspect_candidate(apk, badging):
                      '.bhlibackup', '.bhlitransfer')):
                 raise ValueError('Private or populated database payload')
     return {'application_id': match[1], 'version_code': int(match[2]),
-            'version': match[3], 'build_type': 'debug', 'production_ready': False,
+            'version': match[3], 'build_type': 'release' if release else 'debug',
+            'production_ready': False, 'signature_verified': False,
             'sha256': hashlib.file_digest(Path(apk).open('rb'), 'sha256').hexdigest()}
 
 
@@ -58,8 +61,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apk', required=True, type=Path)
     parser.add_argument('--badging', required=True, type=Path)
+    parser.add_argument('--release', action='store_true', help='Inspect release metadata; signature must be verified separately')
     parser.add_argument('--entry', type=Path, default=Path('mobile/lib/main_offline.dart'))
     args = parser.parse_args()
-    result = inspect_candidate(args.apk, args.badging.read_text(encoding='utf-8-sig'))
+    result = inspect_candidate(args.apk, args.badging.read_text(encoding='utf-8-sig'), release=args.release)
     result['source_imports'] = inspect_source(args.entry, Path('mobile/lib'))
     print(json.dumps(result, indent=2))

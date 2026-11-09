@@ -14,6 +14,12 @@ import 'backup_sqlite.dart';
 import 'models.dart';
 import 'schema.dart';
 
+// Nonsecret provenance only. Release packaging requires the matching explicit define.
+const offlineBackupSourceVersion = String.fromEnvironment(
+  'BHLI_OFFLINE_SOURCE_VERSION',
+  defaultValue: '1.0.0+2',
+);
+
 class BackupStoreFailure implements Exception {
   const BackupStoreFailure(this.code, this.message);
   final String code, message;
@@ -72,7 +78,7 @@ Future<BackupState> _detachedState(
       sequence: sequence,
       backupId: newUuid(),
       createdAt: _creationTime(),
-      sourceVersion: '1.0.0+2',
+      sourceVersion: offlineBackupSourceVersion,
     ),
     platform: 'android',
   ),

@@ -118,3 +118,14 @@ def test_android_candidate_rejects_wrong_actual_manifest(old, new):
     validate_badging(valid)
     with pytest.raises(ValueError, match='identity/build'):
         validate_badging(valid.replace(old, new))
+
+
+def test_android_release_configuration_ci_never_receives_production_signing():
+    workflow = (ROOT / '.github/workflows/mobile-tests.yml').read_text()
+    step = workflow.split('- name: Verify key-free offline release configuration', 1)[1].split('- name:', 1)[0]
+    assert "BHLI_ANDROID_ENABLE_PRODUCTION_SIGNING: '0'" in step
+    assert 'verifyOfflineReleaseConfiguration' in step
+    assert 'verifyOfflineDebugConfiguration' in step and 'verifyOnlineDebugConfiguration' in step
+    assert 'assembleOfflineRelease' in step and '--dry-run' in step
+    assert 'explicitly authorized external production signing' in step
+    assert 'secrets.' not in step and 'keytool' not in step
